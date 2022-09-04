@@ -9,7 +9,7 @@ float4x4 _CameraInverseProjection;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 2;
+static const uint _IterPerCycle = 1;
 double _Length;
 double _OffsetX;
 double _OffsetY;
@@ -640,6 +640,9 @@ float4 getColor(uint iter, bool finished) {
 	if (!finished || iter >= _MaxIter) {
 		return InColor;
 	}
+	if (iter == 0) {
+		iter = 1;
+	}
 	float ratio = log(iter) / log(10);
 	int baseColorIdx = (int)(floor(ratio) % 5);
 	int upColorIdx = (int)((floor(ratio) + 1) % 5);
@@ -721,11 +724,14 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 
 
 	}
-
 	for (int  l = 0; l < fpPre; l++) {
 		_ExperimentalBuffer[idx + CurX + l] = zX[l];
-		_ExperimentalBuffer[idx + CurY + l] = zY[l];
 	}
+	for (int k = 0; k < fpPre; k++) {
+		_ExperimentalBuffer[idx + CurY + k] = zY[k];
+	}
+	
+	
 	return iter;
 	
 	
@@ -837,41 +843,30 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 			_ExperimentalBuffer[PixeId + k] = 0;
 		}
 	}
-
-
-
+	
+	
 	//check if further computatuin is nesesary
 	if (!_ExperimentalBuffer[PixeId + finished]) {
 
 		currentIter = getIterExp(id.xy, width, height, PixeId);
 
 		_ExperimentalBuffer[PixeId + iter] += currentIter;
-		if (_ExperimentalBuffer[PixeId + iter] >= _MaxIter) {
-			//_ExperimentalBuffer[PixeId + finished] = true;
+		if ((uint)_ExperimentalBuffer[PixeId + iter] >= _MaxIter) {
+			_ExperimentalBuffer[PixeId + finished] = true;
 		}
-		Result[id.xy] = getColor(_ExperimentalBuffer[PixeId + iter], _ExperimentalBuffer[PixeId + finished]);
+		
 
 	}
-	else {
-		Result[id.xy] = float4(1.0, 0.0, 0.0, 1.0);
-	
-	}
-
+	Result[id.xy] = getColor(_ExperimentalBuffer[PixeId + iter], _ExperimentalBuffer[PixeId + finished]);
 
 
 	
+
 	
 
 	
 	
-	
 
-	/*
-	int iter = getIterExp(id.xy,width,height);
- 
-	Result[id.xy] = getColor(iter, true);
-   
-	*/
 	
 
 
