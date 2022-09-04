@@ -1,0 +1,878 @@
+#pragma kernel CSMain
+
+
+RWTexture2D<float4> Result;
+
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+
+float2 _PixelOffset;
+
+uint _MaxIter;
+static const uint _IterPerCycle = 2;
+double _Length;
+double _OffsetX;
+double _OffsetY;
+StructuredBuffer<double> _DoubleDataBuffet;
+static const int fpPre = 4;
+static const int tempBase[fpPre] = {0,0,0,0};
+
+
+static const uint digitBase = 10000;
+
+static const int CurX = 0;
+static const int CurY = fpPre;
+static const int iter = 2 * fpPre;
+static const int finished = 2 * fpPre + 1;
+static const int PixelSize = 2 * fpPre + 2;
+
+
+
+RWStructuredBuffer<int> _ExperimentalBuffer;
+//4 int CurrentZX
+//4 int CurretZY 
+//int iter 
+//int finished
+bool _reset;
+
+bool IsPositive(int a[fpPre]) {
+	bool res = true;
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		if (a[i] < 0) {
+			res = false;		
+		}
+	}
+	return res;
+}
+void Negate(inout int a[fpPre]) {
+	bool done = false;
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		if (a[i] != 0 && !done) {
+			a[i] = -a[i];
+			done = true;
+			
+		}
+	
+	}
+
+	
+}
+void MultiplyByInt(inout int a[fpPre], int num) {
+	bool negate = false;
+
+	if (!IsPositive(a))
+	{
+		if (num<0)
+		{
+			Negate(a);
+			num = -num;
+		}
+		else
+		{
+			Negate(a);
+			negate = true;
+		}
+	}
+	else if (num<0) {
+		num = -num;
+		negate = true;
+	}
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		a[ i] *= num;
+	}
+	[fastopt]
+	for (int x = fpPre - 1;x >= 0; x--) {
+
+		if (x != 0)
+		{
+			a[ x - 1] +=a[  x] / digitBase;
+		}
+		a[ x] %= digitBase;
+	}
+
+
+	if (negate) {
+		Negate(a);
+	}
+}
+void  Shift(inout int a[fpPre], int num) {
+	int temp[fpPre];
+	bool negate = false;
+	if (!IsPositive(a)) {
+		Negate(a);
+		negate = true;
+	}
+	[fastopt]
+	for (int i = 0; i < fpPre; i++)
+	{
+		if (i + num >= 0 && i + num < fpPre)
+		{
+			temp[i] = a[i + num];
+		}
+		else {
+			temp[i] = 0;
+		}
+	}
+	if (negate) {
+		Negate(temp);
+	} 
+	
+	a = temp;
+}
+
+bool isGrater(int a[fpPre], int b[fpPre])
+{
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		if (a[i] > b[i])
+		{
+			return true;
+		}if (a[i] < b[i]) {
+			return false;
+		}
+	}
+	return false;
+}
+
+bool isGraterAbs(int a[fpPre], int b[fpPre])
+{
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		if (abs(a[i]) > abs(b[i]))
+		{
+			return true;
+		}if (abs(a[i]) < abs(b[i])) {
+			return false;
+		}
+	}
+	return false;
+}
+
+
+
+void  absFpNum(inout int a[fpPre]) {
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		a[i] = abs(a[i]);
+	}
+
+}
+
+void sub(int a[fpPre],int b[fpPre],inout int res[fpPre]) //res has to be differnt than a or b
+{
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		res[i] = a[i] - b[i];
+	}
+	res[0]--;
+	[fastopt]
+	for (int j = 1; j < fpPre; j++) {
+		res[j] += digitBase - 1;
+	}
+	res[fpPre - 1]++;
+	[fastopt]
+	for (int k = fpPre - 1; k >= 0; k--) {
+
+		if (k != 0)
+		{
+			res[k - 1] += res[k] / digitBase;
+		}
+		res[k] %= digitBase;
+	}
+	
+	
+}
+
+void add(int a[fpPre], int b[fpPre], inout int res[fpPre]) { //res has to be differnt than a or b
+	bool negate = false;
+	
+	if (!IsPositive(a) && !IsPositive( b))
+	{
+		Negate( a);
+		Negate( b);
+		negate = true;
+
+	}else if (!IsPositive( a) && IsPositive( b)) {
+		//b-a
+		if (isGraterAbs(b, a)) {
+			absFpNum(a);
+			sub(b, a,res);
+			Negate( a);
+			return;
+		}
+		else {
+			absFpNum( a);
+			sub(a, b,res);
+			Negate( res);
+			Negate( a);
+			return;
+			//reverse
+		}
+	
+	
+	
+	
+	}
+	else if (!IsPositive( b) && IsPositive( a)) {
+		//a-b
+		if (isGraterAbs( a, b)) {
+			absFpNum( b);
+
+			sub( a, b,res);
+			Negate( b);
+			return;
+		}
+		else {
+			//reverse
+			absFpNum( b);
+			sub( b, a, res);
+			Negate( res);
+			Negate( b);
+			return;
+		}
+
+	}
+
+	res = a;
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		res[i] += b[i];
+	
+	}
+	[fastopt]
+	for (int x = fpPre - 1; x >= 0; x--) {
+
+		if (x != 0)
+		{
+			res[x - 1] += res[x] / digitBase;
+		}
+		res[x] %= digitBase;
+	}
+	if (negate)
+	{
+		Negate( res);
+		
+	}
+
+
+}
+bool isGraterDP(int a[fpPre * 2], int b[fpPre * 2])
+{
+	[fastopt]
+	for (int i = 0; i < fpPre * 2; i++) {
+		if (a[i] > b[i])
+		{
+			return true;
+		}if (a[i] < b[i]) {
+			return false;
+		}
+	}
+	return false;
+}
+
+bool isGraterAbsDP(int a[fpPre * 2], int b[fpPre * 2])
+{
+	[fastopt]
+	for (int i = 0; i < fpPre * 2; i++) {
+		if (abs(a[i]) > abs(b[i]))
+		{
+			return true;
+		}if (abs(a[i]) < abs(b[i])) {
+			return false;
+		}
+	}
+	return false;
+}
+bool IsPositiveDP(int a[fpPre * 2]) {
+	bool res = true;
+	[fastopt]
+	for (int i = 0; i < fpPre*2; i++) {
+		if (a[i] < 0) {
+			res = false;
+		}
+	}
+	return res;
+}
+
+void NegateDP(inout int a[fpPre * 2]) {
+	bool done = false;
+	[fastopt]
+	for (int i = 0; i < fpPre*2; i++) {
+		if (a[i] != 0 && !done) {
+			a[i] = -a[i];
+			done = true;
+
+		}
+
+	}
+
+}
+void  absFpNumDP(inout int a[fpPre * 2]) {
+	[fastopt]
+	for (int i = 0; i < fpPre*2; i++) {
+		a[i] = abs(a[i]);
+	}
+
+}
+
+void  ShiftDP(inout int a[fpPre*2], int num) {
+	int temp[fpPre*2];
+	bool negate = false;
+	if (!IsPositiveDP(a)) {
+		NegateDP(a);
+		negate = true;
+	}
+	[fastopt]
+	for (int i = 0; i < fpPre*2; i++)
+	{
+		if (i + num >= 0 && i + num < fpPre*2)
+		{
+			temp[i] = a[i + num];
+		}
+		else {
+			temp[i] = 0;
+		}
+	}
+	if (negate) {
+		NegateDP(a);
+	}
+	a = temp;
+}
+void MultiplyByIntDP(inout int a[fpPre*2], int num) {
+
+	[fastopt]
+	for (int i = 0; i < fpPre*2; i++) {
+		a[i] *= num;
+	} 
+	[fastopt]
+	for (int x = fpPre*2 - 1; x >= 0; x--) {
+
+		if (x != 0)
+		{
+			a[x - 1] += a[x] / digitBase;
+		}
+		a[x] %= digitBase;
+	}
+}
+
+
+void subDP(int a[fpPre*2], int b[fpPre*2], inout int res[fpPre*2]) //res has to be differnt than a or b
+{
+	[fastopt]
+	for (int i = 0; i < fpPre*2; i++) {
+		res[i] = a[i] - b[i];
+	}
+	res[0]--;
+	[fastopt]
+	for (int j = 1; j < fpPre*2; j++) {
+		res[j] += digitBase - 1;
+	}
+	res[fpPre - 1]++;
+	[fastopt]
+	for (int k = fpPre*2 - 1; k >= 0; k--) {
+
+		if (k != 0)
+		{
+			res[k - 1] += res[k] / digitBase;
+		}
+		res[k] %= digitBase;
+	}
+
+
+}
+void addDP(int a[fpPre*2], int b[fpPre*2], inout int res[fpPre*2]) { //res has to be differnt than a or b
+
+	bool negate = false;
+	if (!IsPositiveDP(a) && !IsPositiveDP(b))
+	{
+		NegateDP(a);
+		NegateDP(b);
+		negate = true;
+	}
+	else if (!IsPositiveDP(a) && IsPositiveDP(b)) {
+		//b-a
+		if (isGraterAbsDP(b, a)) {
+			absFpNumDP(a);
+			subDP(b, a, res);
+			NegateDP(a);
+			return;
+		}
+		else {
+			absFpNumDP(a);
+			subDP(a, b, res);
+			NegateDP(res);
+			NegateDP(a);
+			return;
+			//reverse
+		}
+
+
+
+
+	}
+	else if (!IsPositiveDP(b) && IsPositiveDP(a)) {
+		//a-b
+		if (isGraterAbsDP(a, b)) {
+			absFpNumDP(b);
+
+			subDP(a, b, res);
+			NegateDP(b);
+			return;
+		}
+		else {
+			//reverse
+			absFpNumDP(b);
+			subDP(b, a, res);
+			NegateDP(res);
+			NegateDP(b);
+			return;
+		}
+
+	}
+
+	res = a;
+	[fastopt]
+	for (int i = 0; i < fpPre*2; i++) {
+		res[i] += b[i];
+
+	}
+	[fastopt]
+	for (int x = fpPre*2 - 1; x >= 0; x--) {
+
+		if (x != 0)
+		{
+			res[x - 1] += res[x] / digitBase;
+		}
+		res[x] %= digitBase;
+	}
+	if (negate)
+	{
+		NegateDP(res);
+
+	}
+
+
+}
+void multiply(int a[fpPre], int b[fpPre], inout int res[fpPre])
+{
+	bool negate = false;
+	bool negatea = false;
+	bool negateb = false;
+
+	int temp1[fpPre*2];
+	int temp2[fpPre*2];
+	int temp3[fpPre * 2];
+
+	[fastopt]
+	for (int j = 0; j < fpPre*2; j++) {
+		temp2[j] = 0;	
+		temp3[j] = 0;
+	}
+	if (!IsPositive( a))
+	{
+		if (!IsPositive( b))
+		{
+			Negate( a);
+			negatea = true;
+			Negate( b);
+			negateb = true;
+		}
+		else
+		{
+			Negate( a);
+			negatea = true;
+			negate = true;
+		}
+	}
+	else if (!IsPositive( b)) {
+		Negate( b);
+		negateb = true;
+		negate = true;
+	}
+	[fastopt]
+	for (int i =0; i < fpPre; i++) {
+		for (int k = 0; k < fpPre * 2; k++) {
+			if (k < fpPre) {
+				temp1[k] = a[k];
+			}
+			else {
+				temp1[k] = 0;
+			}
+		
+		}
+
+		ShiftDP(temp1, -i);
+		MultiplyByIntDP( temp1, b[i]);
+		addDP( temp1, temp2, temp3);
+		temp2 = temp3;
+	}
+	if (negatea) {
+		Negate( a);
+	}
+	if (negateb) 
+	{
+		Negate( b);
+	}
+	[fastopt]
+	for (int x = 0; x < fpPre; x++) {
+		res[x] = temp3[x];
+	}
+	res[fpPre - 1] += temp3[fpPre] / (digitBase / 2);
+	if (negate) {
+		Negate(res);
+	}
+}
+void square(int a[fpPre], inout int res[fpPre]) {
+	int b[fpPre] = a;
+	multiply(a, b, res);
+
+
+}
+void setDouble(inout int a[fpPre], double num) {
+	bool negate = false;
+	if (num < 0) {
+		negate = true;
+		num = -num;
+	}
+	double temp = num;
+	[fastopt]
+	for (int i = 0; i < fpPre; i++)
+	{
+		a[i] = (int)temp;
+		temp = (temp - a[i]) * digitBase;
+	}
+	if (negate) {
+		Negate(a);
+	}
+}
+
+bool inBounds(int a[fpPre], int b[fpPre]) {
+	int x[fpPre];
+	int y[fpPre];
+	[fastopt]
+	for (int k = 0; k < fpPre; k++) {
+		x[k] = 0;
+		y[k] = 0;
+	}
+	square(a, x);
+
+	square(b, y);
+	int sum[fpPre];
+	[fastopt]
+	for (int j = 0; j < fpPre; j++) {
+		sum[j] = 0;
+	}
+	add(x, y, sum);
+	bool res = true;
+
+	if (sum[0]>4) {
+		res = false;
+	}
+	else if(sum[0] == 4) {
+		for (int i = 1; i < fpPre; i++) {
+			if (sum[i] > 0)
+			{
+				res = false;
+			}
+		
+		}
+	}
+	return res;
+	 
+}
+
+struct Pixel {
+	double CurrentZX;
+	double CurrentZY;
+	uint iter;
+	bool finished;
+};
+RWStructuredBuffer<Pixel> _MultiFrameData;
+
+int _ShiftX;
+int _ShiftY;
+
+uint _Register;
+
+
+
+//-------------------------------------
+//- KERNEL
+uint getIteration(double2 possition, double2 InitialZ, int idx) {
+	double2 c = possition;
+	uint iter = 0;
+	double2 z = InitialZ;
+
+
+	while (z.x * z.x + z.y + z.y < 4) {
+		if (iter >= (_IterPerCycle)) {
+
+			_MultiFrameData[idx].CurrentZX = z.x;
+			_MultiFrameData[idx].CurrentZY = z.y;
+			if (_MultiFrameData[idx].iter >= _MaxIter) {
+				_MultiFrameData[idx].finished = true;
+			}
+			return iter;
+		}
+		z = double2(z.x * z.x - z.y * z.y + c.x, 2 * z.x * z.y + c.y);
+
+		iter++;
+	}
+	_MultiFrameData[idx].finished = true;
+	return iter;
+
+
+}
+float4 getColor(uint iter, bool finished) {
+	float4 InColor = float4(0.31, 0.427, 0.478, 1.0f);
+	float4 Colors[5];
+
+	Colors[0] = float4(0.086, 0.376, 0.533, 1.0);
+	Colors[1] = float4(0.29, 0.435, 0.647, 1.0);
+	Colors[2] = float4(0.753, 0.839, 0.875, 1.0);
+	Colors[3] = float4(0.859, 0.529, 0.239, 1.0);
+	Colors[4] = float4(0.71, 0.098, 0.525, 1.0);
+
+
+	if (!finished || iter >= _MaxIter) {
+		return InColor;
+	}
+	float ratio = log(iter) / log(10);
+	int baseColorIdx = (int)(floor(ratio) % 5);
+	int upColorIdx = (int)((floor(ratio) + 1) % 5);
+	return float4(Colors[baseColorIdx] + (Colors[upColorIdx] - Colors[baseColorIdx]) * (ratio % 1));
+
+
+
+
+}
+uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
+	int cX[fpPre];
+	int cY[fpPre];
+	int zX[fpPre];
+	int zY[fpPre];
+	int temp1[fpPre];
+	int temp2[fpPre];
+	int temp3[fpPre];
+	int temp4[fpPre];
+	int zxsq[fpPre];
+	int zysq[fpPre];
+	for (int j = 0; j < fpPre; j++) {
+		//load in data
+		zX[j] = _ExperimentalBuffer[idx + CurX  + j];
+		zY[j] = _ExperimentalBuffer[idx + CurY + j];
+		cX[j] = 0;
+		cY[j] = 0;
+		temp1[j] = 0;
+		temp2[j] = 0;
+		temp3[j] = 0;
+		temp4[j] = 0;
+	}
+	temp1[0] = pixel.x - width / 2;
+	temp2[0] = pixel.y - height / 2;
+	temp3[1] = 30; 
+	multiply(temp1, temp3, cX);
+	multiply(temp2, temp3, cY);
+
+	int iter = 0;
+		
+	for (uint i = 0; i < _IterPerCycle; i++) {
+		
+		if (!inBounds(zX, zY)) {
+			_ExperimentalBuffer[idx + finished] = true;
+			return iter;
+		}
+		
+		[fastopt]
+		for (int k = 0; k < fpPre; k++) {
+			zxsq[k] = 0;
+			zysq[k] = 0;
+
+		}
+		square(zX, zxsq);
+		square(zY, zysq);
+
+		Negate(zysq);
+
+		add(zxsq, zysq, temp1);
+
+
+		add(cX, temp1, temp2);
+
+
+
+		MultiplyByInt(zX, 2);
+		multiply(zX, zY, temp3);
+		add(temp3, cY, temp4);
+
+
+		zX = temp2;
+		zY = temp4;
+
+		iter++;
+
+
+
+	
+
+
+	}
+
+	for (int  l = 0; l < fpPre; l++) {
+		_ExperimentalBuffer[idx + CurX + l] = zX[l];
+		_ExperimentalBuffer[idx + CurY + l] = zY[l];
+	}
+	return iter;
+	
+	
+
+	
+}
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+
+	uint width, height;
+	Result.GetDimensions(width, height);
+	/* //OLD DOUBLE CODE
+	//Get double data form buffer
+	_Length = _DoubleDataBuffet[0];
+	_OffsetX = _DoubleDataBuffet[1];
+	_OffsetY = _DoubleDataBuffet[2];
+
+
+	// Get the dimensions of the RenderTexture
+
+	//Get id of pixel
+	uint basePixelId = id.x + id.y * width;
+	uint pixelId = basePixelId + width * height * _Register;
+	int currentIter = 0;
+	if (_ShiftX != 0 || _ShiftY != 0) {
+
+		int oldPixelId = basePixelId - _ShiftX - _ShiftY * width + width * height * ((_Register + 1) % 2);
+		int oldPixelLowerBound = width * height * ((_Register + 1) % 2);
+		int oldPixelUpperBound = width * height * (((_Register + 1) % 2) + 1);
+
+		if (int(id.x) <= _ShiftX || -int(width - id.x) >= _ShiftX || int(id.y) <= _ShiftY || -int(height - id.y) >= _ShiftY) {
+			_MultiFrameData[pixelId].iter = 0;
+			_MultiFrameData[pixelId].CurrentZX = 0;
+			_MultiFrameData[pixelId].CurrentZY = 0;
+			_MultiFrameData[pixelId].finished = false;
+
+		}
+		else {
+			_MultiFrameData[pixelId].iter = _MultiFrameData[oldPixelId].iter;
+			_MultiFrameData[pixelId].CurrentZX = _MultiFrameData[oldPixelId].CurrentZX;
+			_MultiFrameData[pixelId].CurrentZY = _MultiFrameData[oldPixelId].CurrentZY;
+			_MultiFrameData[pixelId].finished = _MultiFrameData[oldPixelId].finished;
+
+		}
+
+
+
+
+
+
+	}
+
+	else if (_reset) {
+		_MultiFrameData[pixelId].iter = 0;
+		_MultiFrameData[pixelId].CurrentZX = 0;
+		_MultiFrameData[pixelId].CurrentZY = 0;
+		_MultiFrameData[pixelId].finished = false;
+
+
+	}
+
+
+
+	//check if further computatuin is nesesary
+	if (!_MultiFrameData[pixelId].finished) {
+		// Transform pixel to correct range
+		double2 scale = _Length / width;
+		double2 uv = ((double2)id.xy + _PixelOffset - double2(width / 2, height / 2)) * scale;
+		// add offset
+		uv += double2(_OffsetX, _OffsetY);
+
+		if (_MultiFrameData[pixelId].iter == 0) {
+			currentIter = getIteration(uv, double2(0.0, 0.0), pixelId);
+		}
+		else {
+			currentIter = getIteration(uv, double2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
+		}
+
+
+
+		_MultiFrameData[pixelId].iter += currentIter;
+
+	}
+
+
+
+	//Result[id.xy] = getColor(_MultiFrameData[pixelId].iter, _MultiFrameData[pixelId].finished);
+	*/
+
+
+
+
+	// Get the dimensions of the RenderTexture
+
+	//Get id of pixel
+
+	
+	uint basePixelId = id.x + id.y * width;
+
+	uint PixeId = basePixelId * PixelSize;
+	
+	int currentIter = 0;
+	
+
+	if (_reset) {
+		for (int k = 0; k < PixelSize; k++) {
+			_ExperimentalBuffer[PixeId + k] = 0;
+		}
+	}
+
+
+
+	//check if further computatuin is nesesary
+	if (!_ExperimentalBuffer[PixeId + finished]) {
+
+		currentIter = getIterExp(id.xy, width, height, PixeId);
+
+		_ExperimentalBuffer[PixeId + iter] += currentIter;
+		if (_ExperimentalBuffer[PixeId + iter] >= _MaxIter) {
+			//_ExperimentalBuffer[PixeId + finished] = true;
+		}
+		Result[id.xy] = getColor(_ExperimentalBuffer[PixeId + iter], _ExperimentalBuffer[PixeId + finished]);
+
+	}
+	else {
+		Result[id.xy] = float4(1.0, 0.0, 0.0, 1.0);
+	
+	}
+
+
+
+	
+	
+
+	
+	
+	
+
+	/*
+	int iter = getIterExp(id.xy,width,height);
+ 
+	Result[id.xy] = getColor(iter, true);
+   
+	*/
+	
+
+
+
+}
