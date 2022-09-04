@@ -681,10 +681,7 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 		
 	for (uint i = 0; i < _IterPerCycle; i++) {
 		
-		if (!inBounds(zX, zY)) {
-			_ExperimentalBuffer[idx + finished] = true;
-			return iter;
-		}
+		
 		
 		[fastopt]
 		for (int k = 0; k < fpPre; k++) {
@@ -704,19 +701,23 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 
 
 
-		MultiplyByInt(zX, 2);
+		
 		multiply(zX, zY, temp3);
+		MultiplyByInt(temp3, 2);
 		add(temp3, cY, temp4);
 
 
 		zX = temp2;
 		zY = temp4;
 
-		iter++;
-
-
-
+		if (!inBounds(zX, zY)) {
+			_ExperimentalBuffer[idx + finished] = true;
+			return iter;
+		}
 	
+
+
+		iter++;
 
 
 	}
