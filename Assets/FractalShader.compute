@@ -9,14 +9,20 @@ float4x4 _CameraInverseProjection;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 1;
+static const uint _IterPerCycle = 10;
 double _Length;
 double _OffsetX;
 double _OffsetY;
 StructuredBuffer<double> _DoubleDataBuffet;
-static const int fpPre = 4;
-static const int tempBase[fpPre] = {0,0,0,0};
 
+
+static const int fpPre = 4;
+
+StructuredBuffer<int> _PossitionBuffer;
+
+static const int MiddleX = 0;
+static const int MiddleY = fpPre;
+static const int Scale = fpPre * 2;
 
 static const uint digitBase = 10000;
 
@@ -671,14 +677,29 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 		cY[j] = 0;
 		temp1[j] = 0;
 		temp2[j] = 0;
-		temp3[j] = 0;
+		temp3[j] = _PossitionBuffer[Scale + j];
 		temp4[j] = 0;
 	}
 	temp1[0] = pixel.x - width / 2;
-	temp2[0] = pixel.y - height / 2;
-	temp3[1] = 30; 
-	multiply(temp1, temp3, cX);
-	multiply(temp2, temp3, cY);
+	
+ 
+	multiply(temp1, temp3, temp2);
+	for (int a = 0; a < fpPre; a++) {
+		temp1[a] = _PossitionBuffer[MiddleX + a];
+	}
+	add(temp2, temp1, cX);
+
+	for (int b = 0; b < fpPre; b++) {
+		temp1[b] = 0;
+	}
+
+	temp1[0] = pixel.y - height / 2;
+	multiply(temp1, temp3, temp2);
+	for (int c = 0; c < fpPre;c++) {
+		temp1[c] = _PossitionBuffer[MiddleY + c];
+	}
+	add(temp2, temp1, cY);
+
 
 	int iter = 0;
 		
@@ -830,35 +851,61 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	//Get id of pixel
 
-	
-	uint basePixelId = id.x + id.y * width;
 
-	uint PixeId = basePixelId * PixelSize;
-	
+	uint basePixelId = id.x + id.y * width + width * height * _Register;
+
+	uint pixelId = basePixelId * PixelSize;
+
 	int currentIter = 0;
-	
 
-	if (_reset) {
+
+	if (_ShiftX != 0 || _ShiftY != 0) {
+
+		int oldBasePixelId = basePixelId - _ShiftX - _ShiftY * width + width * height * ((_Register + 1) % 2);
+		int oldPixelId = oldBasePixelId * PixelSize;
+		int oldPixelLowerBound = width * height * ((_Register + 1) % 2);
+		int oldPixelUpperBound = width * height * (((_Register + 1) % 2) + 1);
+
+		if (int(id.x) <= _ShiftX || -int(width - id.x) >= _ShiftX || int(id.y) <= _ShiftY || -int(height - id.y) >= _ShiftY) {
+			for (int a = 0; a < PixelSize; a++) {
+				_ExperimentalBuffer[pixelId + a] = 0;
+			}
+			
+		}
+		else {
+			for (int b = 0; b < PixelSize; b++) {
+				_ExperimentalBuffer[pixelId + b] = _ExperimentalBuffer[oldPixelId + b];
+
+			}
+			
+		}
+
+
+
+
+
+
+	}
+	else if (_reset) {
 		for (int k = 0; k < PixelSize; k++) {
-			_ExperimentalBuffer[PixeId + k] = 0;
+			_ExperimentalBuffer[pixelId + k] = 0;
 		}
 	}
-	
 	
 	//check if further computatuin is nesesary
-	if (!_ExperimentalBuffer[PixeId + finished]) {
+	if (!_ExperimentalBuffer[pixelId + finished]) {
 
-		currentIter = getIterExp(id.xy, width, height, PixeId);
+		currentIter = getIterExp(id.xy, width, height, pixelId);
 
-		_ExperimentalBuffer[PixeId + iter] += currentIter;
-		if ((uint)_ExperimentalBuffer[PixeId + iter] >= _MaxIter) {
-			_ExperimentalBuffer[PixeId + finished] = true;
+		_ExperimentalBuffer[pixelId + iter] += currentIter;
+		if ((uint)_ExperimentalBuffer[pixelId + iter] >= _MaxIter) {
+			_ExperimentalBuffer[pixelId + finished] = true;
 		}
-		
+
 
 	}
-	Result[id.xy] = getColor(_ExperimentalBuffer[PixeId + iter], _ExperimentalBuffer[PixeId + finished]);
-
+	Result[id.xy] = getColor(_ExperimentalBuffer[pixelId + iter], _ExperimentalBuffer[pixelId + finished]);
+	
 
 	
 

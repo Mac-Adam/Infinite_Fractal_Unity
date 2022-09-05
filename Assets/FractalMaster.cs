@@ -19,8 +19,8 @@ public class FractalMaster : MonoBehaviour
     public double length = 4.0f;
     public double middleX = -1.0f;
     public double middleY = 0.0f;
-    public int maxIter = 500;
-    public int IterPecCycle = 3; 
+    public int maxIter = 100;
+    public int IterPecCycle = 4; 
 
     private int currIter = 0;
 
@@ -47,7 +47,9 @@ public class FractalMaster : MonoBehaviour
 
     ComputeBuffer MultiFrameRenderBuffer;
     ComputeBuffer ExperimentalBuffer;
+    ComputeBuffer PossionBuffer;
 
+    int[] TestPosiotnArray = new int[12];
 
     private bool reset = false;
     private int shiftX = 0;
@@ -59,8 +61,10 @@ public class FractalMaster : MonoBehaviour
     private int PrevScreenX;
     private int PrevScreenY;
 
+    FixedPointNumber MiddleX = new FixedPointNumber(4);
+    FixedPointNumber MiddleY = new FixedPointNumber(4);
+    FixedPointNumber Scale = new FixedPointNumber(4);
 
-  
 
     struct Pixel {
         public double x;
@@ -90,11 +94,21 @@ public class FractalMaster : MonoBehaviour
             }
         }
         public void setDouble(double num) {
+            bool negate = false;
+            if (num < 0)
+            {
+                negate = true;
+                num = -num;
+            }
             double temp = num;
             for (int i = 0; i < precision; i++)
             {
                 digits[i] = (int)temp;
                 temp = (temp - digits[i]) * digitBase;
+            }
+            if (negate)
+            {
+                Negate();
             }
         }
         public override string ToString() {
@@ -121,7 +135,17 @@ public class FractalMaster : MonoBehaviour
             return false;
         }
         public void Negate() {
-            digits[0] = -digits[0];
+            bool done = false;
+            for (int i = 0; i < precision; i++)
+            {
+                if (digits[i] != 0 && !done)
+                {
+                    digits[i] = -digits[i];
+                    done = true;
+
+                }
+
+            }
         }
         public void MultiplyByInt(int num) {
             for (int i = 0; i < precision; i++) {
@@ -349,13 +373,16 @@ public class FractalMaster : MonoBehaviour
     }
     private void Awake()
     {
-  
+        Application.targetFrameRate = 1;
+    
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(double) * 2 + sizeof(int) * 2);
-        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height, sizeof(int) * 10);
+        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(int) * 10);
+        PossionBuffer = new ComputeBuffer(12,sizeof(int));
         _camera = GetComponent<Camera>();
         oldMousePosition = Input.mousePosition;
     
+
     }
 
     private void OnEnable()
@@ -372,12 +399,12 @@ public class FractalMaster : MonoBehaviour
 
     private void Update()
     {
-     //   Debug.Log(maxIter);
+        Debug.Log(register);
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height) {
             MultiFrameRenderBuffer.Dispose();
             MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height *2, sizeof(double) * 2 + sizeof(int) * 2);
             ExperimentalBuffer.Dispose();
-            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height, sizeof(int) * 10);
+            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(int) * 10);
             reset = true;
         }
         PrevScreenX = Screen.width;
@@ -468,13 +495,28 @@ public class FractalMaster : MonoBehaviour
         doubleDataBuffer.Dispose();
         MultiFrameRenderBuffer.Dispose();
         ExperimentalBuffer.Dispose();
-       
+        PossionBuffer.Dispose();
     }
 
 
     private void SetShaderParameters()
     {
-       
+        MiddleX.setDouble(middleX);
+        MiddleY.setDouble(middleY);
+        Scale.setDouble(length/Screen.width);
+
+
+        for (int i = 0; i < 4; i++) {
+            //TestPosiotnArray[i] = MiddleX.digits[i];
+            TestPosiotnArray[4+i] = MiddleY.digits[i];
+            TestPosiotnArray[8+i] = Scale.digits[i];
+
+        }
+        for (int i = 0; i < 4; i++) {
+            TestPosiotnArray[i] = MiddleX.digits[i];
+        }
+
+        PossionBuffer.SetData(TestPosiotnArray);
         doubleDataArray[0] = length;
         doubleDataArray[1] = middleX;
         doubleDataArray[2] = middleY;
@@ -482,6 +524,7 @@ public class FractalMaster : MonoBehaviour
         FractalShader.SetBuffer(0,"_DoubleDataBuffet", doubleDataBuffer);
         FractalShader.SetBuffer(0, "_MultiFrameData",MultiFrameRenderBuffer);
         FractalShader.SetBuffer(0, "_ExperimentalBuffer", ExperimentalBuffer);
+        FractalShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
         FractalShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample%AntiAliasLookupTable.Length]);
         FractalShader.SetInt("_MaxIter",maxIter);
         FractalShader.SetInt("_IterPerCycle", IterPecCycle);
@@ -528,7 +571,7 @@ public class FractalMaster : MonoBehaviour
 
         // Blit the result texture to the screen
         
-        if ((_currentSample == 0 && !_frameFinished)||Input.GetMouseButton(0) )
+        if (true||(_currentSample == 0 && !_frameFinished)||Input.GetMouseButton(0) )
         {
             Graphics.Blit(_target, destination);
 
