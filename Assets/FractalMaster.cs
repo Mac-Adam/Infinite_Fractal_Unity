@@ -373,7 +373,7 @@ public class FractalMaster : MonoBehaviour
     }
     private void Awake()
     {
-        Application.targetFrameRate = 1;
+        Application.targetFrameRate = -1;
     
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(double) * 2 + sizeof(int) * 2);
