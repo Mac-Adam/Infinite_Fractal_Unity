@@ -19,6 +19,10 @@ public class FractalMaster : MonoBehaviour
     public double length = 4.0f;
     public double middleX = -1.0f;
     public double middleY = 0.0f;
+
+
+
+
     public int maxIter = 100;
     public int IterPecCycle = 4; 
 
@@ -40,7 +44,7 @@ public class FractalMaster : MonoBehaviour
     };
 
 
-    const int fpPre =3;
+    const int fpPre =4;
 
     double[] doubleDataArray = new double[3];
     ComputeBuffer doubleDataBuffer;
@@ -443,6 +447,10 @@ public class FractalMaster : MonoBehaviour
         ResetParams();
         PrevScreenX = Screen.width;
         PrevScreenY = Screen.height;
+        MiddleX.setDouble(middleX);
+        MiddleY.setDouble(middleY);
+        Scale.setDouble(length / Screen.width);
+
     }
     private void ResetParams() {
         reset = true;
@@ -498,18 +506,24 @@ public class FractalMaster : MonoBehaviour
 
         Vector2 mousePosPix = Input.mousePosition;
         //Transform pixel coardinates to position;
-        double scale = length / Screen.width;
-        double mousePosRealX = (mousePosPix.x - Screen.width/2) * scale + middleX;
-        double mousePosRealY = (mousePosPix.y - Screen.height / 2) * scale + middleY;
-
-
+        FixedPointNumber mousePosRealX = new FixedPointNumber(fpPre);
+        mousePosRealX.setDouble(mousePosPix.x - Screen.width / 2);
+        mousePosRealX = mousePosRealX*Scale+MiddleX;
+        FixedPointNumber mousePosRealY = new FixedPointNumber(fpPre);
+        mousePosRealY.setDouble(mousePosPix.y - Screen.height / 2);
+        mousePosRealY = mousePosRealY * Scale + MiddleY;
+        FixedPointNumber multiplyer = new FixedPointNumber(fpPre);
         if (Input.mouseScrollDelta.y != 0)
         {
-            length *=  1 - Input.mouseScrollDelta.y/ scrollSlowness;
-            double differenceX = mousePosRealX - middleX;
-            double differenceY = mousePosRealY - middleY;
-            middleX += differenceX * lerpStrength * Input.mouseScrollDelta.y;
-            middleY += differenceY * lerpStrength * Input.mouseScrollDelta.y;
+            
+            multiplyer.setDouble(1 - Input.mouseScrollDelta.y / scrollSlowness);
+            Scale *= multiplyer;
+       
+            FixedPointNumber differenceX = mousePosRealX - MiddleX;
+            FixedPointNumber differenceY = mousePosRealY - MiddleY;
+            multiplyer.setDouble(lerpStrength * Input.mouseScrollDelta.y);
+            MiddleX += differenceX * multiplyer;
+            MiddleY += differenceY * multiplyer;
             ResetParams();
         }
         if (Input.mouseScrollDelta.x != 0) { 
@@ -530,8 +544,10 @@ public class FractalMaster : MonoBehaviour
                 else { 
                     register = 0;
                 }
-                middleX -= (mousePosPix.x - oldMousePosition.x) * scale;
-                middleY -= (mousePosPix.y - oldMousePosition.y) * scale;
+                multiplyer.setDouble(mousePosPix.x - oldMousePosition.x);
+                MiddleX -= multiplyer * Scale;
+                multiplyer.setDouble(mousePosPix.y - oldMousePosition.y);
+                MiddleY -= multiplyer * Scale;
                 ResetParams();
             }
             
@@ -554,11 +570,7 @@ public class FractalMaster : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        MiddleX.setDouble(middleX);
-        MiddleY.setDouble(middleY);
-        Scale.setDouble(length/Screen.width);
-
-
+      
         for (int i = 0; i <fpPre; i++) {
             TestPosiotnArray[i] = MiddleX.digits[i];
             TestPosiotnArray[fpPre+i] = MiddleY.digits[i];
