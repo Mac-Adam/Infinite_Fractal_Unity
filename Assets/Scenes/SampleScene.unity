@@ -316,7 +316,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   FractalShader: {fileID: 7200000, guid: 97ce3c6f3118c4249882377764e1b84b, type: 3}
   length: 4
-  middleX: -1
+  middleX: 0
   middleY: 0
   maxIter: 2500
   IterPecCycle: 1

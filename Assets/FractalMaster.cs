@@ -265,7 +265,9 @@ public class FractalMaster : MonoBehaviour
             }
             return false;
         }
-        public static FixedPointNumber operator +(FixedPointNumber a, FixedPointNumber b){
+        public static FixedPointNumber operator +(FixedPointNumber aPassed, FixedPointNumber bPassed){
+            FixedPointNumber a = aPassed.Replicate();
+            FixedPointNumber b = bPassed.Replicate();
             if (a.precision < b.precision) {
                 a.IncresePrecision(b.precision);
             }
@@ -273,6 +275,7 @@ public class FractalMaster : MonoBehaviour
                 b.IncresePrecision(a.precision);
             }
             bool negate = false;
+      
             if (!a.IsPositive())
             {
                 if (!b.IsPositive())
@@ -315,8 +318,10 @@ public class FractalMaster : MonoBehaviour
             }
             return res;
         }
-        public static FixedPointNumber operator *(FixedPointNumber a, FixedPointNumber b)
+        public static FixedPointNumber operator *(FixedPointNumber aPassed, FixedPointNumber bPassed)
         {
+            FixedPointNumber a = aPassed.Replicate();
+            FixedPointNumber b = bPassed.Replicate();
             if (a.precision < b.precision)
             {
                 a.IncresePrecision(b.precision);
@@ -378,8 +383,10 @@ public class FractalMaster : MonoBehaviour
             return res;
 
         }
-        public static FixedPointNumber operator -(FixedPointNumber a, FixedPointNumber b)
+        public static FixedPointNumber operator -(FixedPointNumber aPassed, FixedPointNumber bPassed)
         {
+            FixedPointNumber a = aPassed.Replicate();
+            FixedPointNumber b = bPassed.Replicate();
             if (a.precision < b.precision)
             {
                 a.IncresePrecision(b.precision);
@@ -427,6 +434,16 @@ public class FractalMaster : MonoBehaviour
             }
             return res;
         }
+        public FixedPointNumber Replicate()
+        {
+            FixedPointNumber res = new FixedPointNumber(precision);
+            for(int i = 0; i < precision; i++)
+            {
+                res.digits[i] = digits[i];
+            }
+            return res;
+        }
+     
     }
     private void Awake()
     {
@@ -460,6 +477,8 @@ public class FractalMaster : MonoBehaviour
 
     private void Update()
     {
+     
+        
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height) {
             MultiFrameRenderBuffer.Dispose();
             MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height *2, sizeof(double) * 2 + sizeof(int) * 2);
