@@ -16,7 +16,7 @@ double _OffsetY;
 StructuredBuffer<double> _DoubleDataBuffet;
 
 
-static const int fpPre = 4;
+static const int fpPre =3;
 
 StructuredBuffer<int> _PossitionBuffer;
 

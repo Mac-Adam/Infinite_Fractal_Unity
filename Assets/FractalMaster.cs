@@ -40,7 +40,7 @@ public class FractalMaster : MonoBehaviour
     };
 
 
-
+    const int fpPre =3;
 
     double[] doubleDataArray = new double[3];
     ComputeBuffer doubleDataBuffer;
@@ -49,21 +49,23 @@ public class FractalMaster : MonoBehaviour
     ComputeBuffer ExperimentalBuffer;
     ComputeBuffer PossionBuffer;
 
-    int[] TestPosiotnArray = new int[12];
+    int[] TestPosiotnArray = new int[3*fpPre];
 
     private bool reset = false;
     private int shiftX = 0;
     private int shiftY = 0;
     private int register = 0;
 
+    
+
     private Vector2 oldMousePosition = new Vector2();
 
     private int PrevScreenX;
     private int PrevScreenY;
 
-    FixedPointNumber MiddleX = new FixedPointNumber(4);
-    FixedPointNumber MiddleY = new FixedPointNumber(4);
-    FixedPointNumber Scale = new FixedPointNumber(4);
+    FixedPointNumber MiddleX = new FixedPointNumber(fpPre);
+    FixedPointNumber MiddleY = new FixedPointNumber(fpPre);
+    FixedPointNumber Scale = new FixedPointNumber(fpPre);
 
 
     struct Pixel {
@@ -83,14 +85,6 @@ public class FractalMaster : MonoBehaviour
             digits = new int[pre];
             for (int i = 0; i<precision;i++) {
                 digits[i] = 0;
-            }
-        }
-        public void setFloat(float num)
-        {
-            float temp = num;
-            for (int i = 0; i < precision; i++) {
-                digits[i] = (int)temp;
-                temp = (temp - digits[i]) * digitBase;
             }
         }
         public void setDouble(double num) {
@@ -129,36 +123,70 @@ public class FractalMaster : MonoBehaviour
             precision = newPrecision;
         }
         public bool IsPositive() {
-            if (digits[0] >= 0) { 
-            return true;
-            }
-            return false;
-        }
-        public void Negate() {
-            bool done = false;
+            bool res = true;
             for (int i = 0; i < precision; i++)
             {
-                if (digits[i] != 0 && !done)
+                if (digits[i] < 0)
+                {
+                    res = false;
+                }
+            }
+            return res;
+        }
+        public void Negate() {
+            for (int i = 0; i < precision; i++)
+            {
+                if (digits[i] != 0)
                 {
                     digits[i] = -digits[i];
-                    done = true;
+                    return;
 
                 }
 
             }
         }
         public void MultiplyByInt(int num) {
-            for (int i = 0; i < precision; i++) {
+            bool negate = false;
+
+            if (!IsPositive())
+            {
+                if (num < 0)
+                {
+                    Negate();
+                    num = -num;
+                }
+                else
+                {
+                    Negate();
+                    negate = true;
+                }
+            }
+            else if (num < 0)
+            {
+                num = -num;
+                negate = true;
+            }
+    
+            for (int i = 0; i < precision; i++)
+            {
                 digits[i] *= num;
             }
-            for (int i = precision - 1; i >= 0; i--) {
+        
+            for (int x = precision - 1; x >= 0; x--)
+            {
 
-                if (i != 0)
+                if (x != 0)
                 {
-                    digits[i - 1] += digits[i] / digitBase;
+                    digits[x - 1] += digits[x] / digitBase;
                 }
-                digits[i] %= digitBase;
-            }        
+                digits[x] %= digitBase;
+            }
+
+
+            if (negate)
+            {
+                Negate();
+            }
         }
         public void Shift(int num) {
             int[] newDigits = new int[precision];
@@ -197,11 +225,15 @@ public class FractalMaster : MonoBehaviour
             if (b.precision < a.precision)
             {
                 b.IncresePrecision(a.precision);
-            }            
+            }
             for (int i = 0; i < a.precision; i++) {
                 if (a.digits[i] > b.digits[i])
                 {
                     return true;
+                }
+                if(a.digits[i] < b.digits[i])
+                {
+                    return false;
                 }
             }
             return false;
@@ -216,22 +248,18 @@ public class FractalMaster : MonoBehaviour
             {
                 b.IncresePrecision(a.precision);
             }
-
-
             for (int i = 0; i < a.precision; i++)
             {
-                if (b.digits[i] > a.digits[i])
+                if (a.digits[i] < b.digits[i])
                 {
                     return true;
                 }
-
+                if (a.digits[i]> b.digits[i])
+                {
+                    return false;
+                }
             }
-
             return false;
-
-
-
-
         }
         public static FixedPointNumber operator +(FixedPointNumber a, FixedPointNumber b){
             if (a.precision < b.precision) {
@@ -239,37 +267,47 @@ public class FractalMaster : MonoBehaviour
             }
             if (b.precision < a.precision) {
                 b.IncresePrecision(a.precision);
-            }            
+            }
+            bool negate = false;
             if (!a.IsPositive())
             {
                 if (!b.IsPositive())
                 {
                     a.Negate();
                     b.Negate();
+                    negate = true;
                 }
                 else
                 {
+                    a.Negate();
                     return b - a;
                 }
             }
             else if (!b.IsPositive()) {
+                b.Negate();
                 return a - b;
             }                      
             FixedPointNumber res = new FixedPointNumber(a.precision);
-            for (int i = res.precision - 1; i >= 0; i--) {
-                res.digits[i] +=  a.digits[i] +  b.digits[i];
-                if (i != 0)
-                {
-                    res.digits[i - 1] += res.digits[i] / digitBase;
-                }                
-                res.digits[i] %= digitBase;
-            }
-            if (!a.IsPositive())
+            res = a;
+            for (int i = 0; i < a.precision; i++)
             {
-                if (!b.IsPositive())
+                res.digits[i] += b.digits[i];
+
+            }
+            for (int x = a.precision - 1; x >= 0; x--)
+            {
+
+                if (x != 0)
                 {
-                   res.Negate();
+                    res.digits[x - 1] += res.digits[x] / digitBase;
                 }
+                res.digits[x] %= digitBase;
+            }
+            if (negate)
+            {
+                res.Negate();
+            
+
             }
             return res;
         }
@@ -301,22 +339,40 @@ public class FractalMaster : MonoBehaviour
                 b.Negate();
                 negate = true;            
             }
-            FixedPointNumber[] multiplicationResults = new FixedPointNumber[b.precision];                       
-            FixedPointNumber res = new FixedPointNumber(a.precision+b.precision);
-            for (int i = b.precision - 1; i >= 0; i--) {                              
-                multiplicationResults[i] = new FixedPointNumber(a.precision + b.precision);
-                multiplicationResults[i].Set(a);
-                multiplicationResults[i].MultiplyByInt(b.digits[i]);
-                multiplicationResults[i].Shift(-i);              
-            }           
-            for(int  i =0; i < b.precision; i++)
+            FixedPointNumber multiplicationResults = new FixedPointNumber(a.precision + b.precision);
+            FixedPointNumber temp = new FixedPointNumber(a.precision + b.precision);
+            FixedPointNumber res = new FixedPointNumber(a.precision);
+            for (int i = 0; i < a.precision; i++)
             {
-                res += multiplicationResults[i];                
-            }                        
-            if (negate) {
+                for (int k = 0; k < a.precision * 2; k++)
+                {
+                    if (k < a.precision)
+                    {
+                        temp.digits[k] = a.digits[k];
+                    }
+                    else
+                    {
+                        temp.digits[k] = 0;
+                    }
+
+                }
+                temp.Shift(-i);
+                temp.MultiplyByInt(b.digits[i]);
+                multiplicationResults += temp;
+ 
+            }
+      
+            for (int x = 0; x < a.precision; x++)
+            {
+                res.digits[x] = multiplicationResults.digits[x];
+            }
+            res.digits[a.precision - 1] += multiplicationResults.digits[fpPre] / (digitBase / 2);
+            if (negate)
+            {
                 res.Negate();
             }
             return res;
+
         }
         public static FixedPointNumber operator -(FixedPointNumber a, FixedPointNumber b)
         {
@@ -344,29 +400,26 @@ public class FractalMaster : MonoBehaviour
                 res = b - a;
                 res.Negate();
                 return res;                
-            }                       
-            for (int i = res.precision - 1; i >= 0; i--)
+            }
+            for (int i = 0; i < a.precision; i++)
             {
-                if (a.digits[i] >= b.digits[i] || i ==0)
+                res.digits[i] = a.digits[i] - b.digits[i];
+            }
+            res.digits[0]--;
+
+            for (int j = 1; j < a.precision; j++)
+            {
+                res.digits[j] += digitBase - 1;
+            }
+            res.digits[fpPre - 1]++;
+            for (int k = fpPre - 1; k >= 0; k--)
+            {
+
+                if (k != 0)
                 {
-                    res.digits[i] = a.digits[i] - b.digits[i];
+                    res.digits[k - 1] += res.digits[k] / digitBase;
                 }
-                else {                    
-                    int x = i-1;
-                    while (x >= 0) {
-                        Debug.Log(a.digits[x]);
-                        if (a.digits[x] > 0) {
-                            a.digits[x]--;
-                            for (int t = x + 1; t <= i; t++) {
-                                a.digits[t] += digitBase - 1;
-                            }
-                            a.digits[i] += 1;
-                            break;
-                        }
-                        x--;
-                    }
-                    res.digits[i] = a.digits[i] - b.digits[i];
-                }
+                res.digits[k] %= digitBase;
             }
             return res;
         }
@@ -378,7 +431,7 @@ public class FractalMaster : MonoBehaviour
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(double) * 2 + sizeof(int) * 2);
         ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(int) * 10);
-        PossionBuffer = new ComputeBuffer(12,sizeof(int));
+        PossionBuffer = new ComputeBuffer(3*fpPre,sizeof(int));
         _camera = GetComponent<Camera>();
         oldMousePosition = Input.mousePosition;
     
@@ -399,12 +452,11 @@ public class FractalMaster : MonoBehaviour
 
     private void Update()
     {
-        Debug.Log(register);
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height) {
             MultiFrameRenderBuffer.Dispose();
             MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height *2, sizeof(double) * 2 + sizeof(int) * 2);
             ExperimentalBuffer.Dispose();
-            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(int) * 10);
+            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height * 2, sizeof(int) * (fpPre * 2 + 2  ));
             reset = true;
         }
         PrevScreenX = Screen.width;
@@ -449,6 +501,7 @@ public class FractalMaster : MonoBehaviour
         double scale = length / Screen.width;
         double mousePosRealX = (mousePosPix.x - Screen.width/2) * scale + middleX;
         double mousePosRealY = (mousePosPix.y - Screen.height / 2) * scale + middleY;
+
 
         if (Input.mouseScrollDelta.y != 0)
         {
@@ -506,15 +559,13 @@ public class FractalMaster : MonoBehaviour
         Scale.setDouble(length/Screen.width);
 
 
-        for (int i = 0; i < 4; i++) {
-            //TestPosiotnArray[i] = MiddleX.digits[i];
-            TestPosiotnArray[4+i] = MiddleY.digits[i];
-            TestPosiotnArray[8+i] = Scale.digits[i];
+        for (int i = 0; i <fpPre; i++) {
+            TestPosiotnArray[i] = MiddleX.digits[i];
+            TestPosiotnArray[fpPre+i] = MiddleY.digits[i];
+            TestPosiotnArray[fpPre*2+i] = Scale.digits[i];
 
         }
-        for (int i = 0; i < 4; i++) {
-            TestPosiotnArray[i] = MiddleX.digits[i];
-        }
+      
 
         PossionBuffer.SetData(TestPosiotnArray);
         doubleDataArray[0] = length;
