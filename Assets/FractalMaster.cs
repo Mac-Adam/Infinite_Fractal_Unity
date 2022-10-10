@@ -28,7 +28,7 @@ public class FractalMaster : MonoBehaviour
 
     private int currIter = 0;
 
-    public bool Antialas = true;
+    public bool Antialas = false;
     private int maxAntiAliasyncReruns = 9;
     private Vector2[] AntiAliasLookupTable = {
         new Vector2(0,0),

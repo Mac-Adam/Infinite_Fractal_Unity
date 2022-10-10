@@ -318,6 +318,6 @@ MonoBehaviour:
   length: 4
   middleX: 0
   middleY: 0
-  maxIter: 2500
+  maxIter: 1000
   IterPecCycle: 1
   Antialas: 0

@@ -759,7 +759,7 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 
 	
 }
-
+//was 8 8 1
 [numthreads(8, 8, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
@@ -886,8 +886,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 			int(width - id.x) <= -_ShiftX || //rigth  border
 			int(id.y) <= _ShiftY || //top border
 			int(height - id.y) <= -_ShiftY ||//bottom border
-			oldBasePixelId<min|| oldBasePixelId>max
-			||oldBasePixelId % width <2) {//wierd edge bug
+			oldBasePixelId<min|| oldBasePixelId>max){ 
+			
 			
 			//this part  should be rerendered
 			for (int a = 0; a < PixelSize; a++) {
