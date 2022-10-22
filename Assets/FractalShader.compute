@@ -33,6 +33,10 @@ static const int finished = 2 * fpPre + 1;
 static const int PixelSize = 2 * fpPre + 2;
 
 
+int _ShiftX;
+int _ShiftY;
+
+uint _Register;
 
 RWStructuredBuffer<int> _ExperimentalBuffer;
 //4 int CurrentZX
@@ -41,43 +45,58 @@ RWStructuredBuffer<int> _ExperimentalBuffer;
 //int finished
 bool _reset;
 
-bool IsPositive(int a[fpPre]) {
+
+struct Pixel {
+	double CurrentZX;
+	double CurrentZY;
+	uint iter;
+	bool finished;
+};
+RWStructuredBuffer<Pixel> _MultiFrameData;
+
+
+struct digits {
+	int digits[fpPre];
+};
+struct digitsDP {
+	int digits[fpPre * 2];
+};
+
+bool IsPositive(digits a) {
 	bool res = true;
 	[fastopt]
 	for (int i = 0; i < fpPre; i++) {
-		if (a[i] < 0) {
+		if (a.digits[i] < 0) {
 			res = false;		
 		}
 	}
 	return res;
 }
-void Negate(inout int a[fpPre]) {
+digits Negate(digits a) {
 	bool done = false;
-	[fastopt]
+	[unroll]
 	for (int i = 0; i < fpPre; i++) {
-		if (a[i] != 0 && !done) {
-			a[i] = -a[i];
+		if (a.digits[i] != 0 && !done) {
+			a.digits[i] = -a.digits[i];
 			done = true;
-			
+
 		}
-	
+
 	}
-
-	
+	return a;
 }
-void MultiplyByInt(inout int a[fpPre], int num) {
+digits MultiplyByInt(digits a, int num) {
 	bool negate = false;
-
 	if (!IsPositive(a))
 	{
 		if (num<0)
 		{
-			Negate(a);
+			a = Negate(a);
 			num = -num;
 		}
 		else
 		{
-			Negate(a);
+			a = Negate(a);
 			negate = true;
 		}
 	}
@@ -85,30 +104,31 @@ void MultiplyByInt(inout int a[fpPre], int num) {
 		num = -num;
 		negate = true;
 	}
-	[fastopt]
+	[unroll]
 	for (int i = 0; i < fpPre; i++) {
-		a[ i] *= num;
+		a.digits[i] *= num;
 	}
-	[fastopt]
+	[unroll]
 	for (int x = fpPre - 1;x >= 0; x--) {
 
 		if (x != 0)
 		{
-			a[ x - 1] +=a[  x] / digitBase;
+			a.digits[x - 1] +=a.digits[x] / digitBase;
 		}
-		a[ x] %= digitBase;
+		a.digits[x] %= digitBase;
 	}
 
 
 	if (negate) {
-		Negate(a);
+		a = Negate(a);
 	}
+	return a;
 }
-void  Shift(inout int a[fpPre], int num) {
-	int temp[fpPre];
+digits  Shift(digits a, int num) {
+	digits res;
 	bool negate = false;
 	if (!IsPositive(a)) {
-		Negate(a);
+		a = Negate(a);
 		negate = true;
 	}
 	[fastopt]
@@ -116,41 +136,41 @@ void  Shift(inout int a[fpPre], int num) {
 	{
 		if (i + num >= 0 && i + num < fpPre)
 		{
-			temp[i] = a[i + num];
+			res.digits[i] = a.digits[i + num];
 		}
 		else {
-			temp[i] = 0;
+			res.digits[i] = 0;
 		}
 	}
 	if (negate) {
-		Negate(temp);
+		res = Negate(res);
 	} 
 	
-	a = temp;
+	return res;
 }
 
-bool isGrater(int a[fpPre], int b[fpPre])
+bool isGrater(digits a, digits b)
 {
 	[fastopt]
 	for (int i = 0; i < fpPre; i++) {
-		if (a[i] > b[i])
+		if (a.digits[i] > b.digits[i])
 		{
 			return true;
-		}if (a[i] < b[i]) {
+		}if (a.digits[i] < b.digits[i]) {
 			return false;
 		}
 	}
 	return false;
 }
 
-bool isGraterAbs(int a[fpPre], int b[fpPre])
+bool isGraterAbs(digits a, digits b)
 {
 	[fastopt]
 	for (int i = 0; i < fpPre; i++) {
-		if (abs(a[i]) > abs(b[i]))
+		if (abs(a.digits[i]) > abs(b.digits[i]))
 		{
 			return true;
-		}if (abs(a[i]) < abs(b[i])) {
+		}if (abs(a.digits[i]) < abs(b.digits[i])) {
 			return false;
 		}
 	}
@@ -159,62 +179,64 @@ bool isGraterAbs(int a[fpPre], int b[fpPre])
 
 
 
-void  absFpNum(inout int a[fpPre]) {
-	[fastopt]
+digits absFpNum(digits a) {
+	[unroll]
 	for (int i = 0; i < fpPre; i++) {
-		a[i] = abs(a[i]);
+		a.digits[i] = abs(a.digits[i]);
 	}
-
+	
+	return a;
 }
 
-void sub(int a[fpPre],int b[fpPre],inout int res[fpPre]) //res has to be differnt than a or b
+digits sub(digits a, digits b)
 {
-	[fastopt]
+	digits res;
+	[unroll]
 	for (int i = 0; i < fpPre; i++) {
-		res[i] = a[i] - b[i];
+		res.digits[i] = a.digits[i] - b.digits[i];
 	}
-	res[0]--;
-	[fastopt]
+	res.digits[0]--;
+	[unroll]
 	for (int j = 1; j < fpPre; j++) {
-		res[j] += digitBase - 1;
+		res.digits[j] += digitBase - 1;
 	}
-	res[fpPre - 1]++;
-	[fastopt]
+	res.digits[fpPre - 1]++;
+	[unroll]
 	for (int k = fpPre - 1; k >= 0; k--) {
 
 		if (k != 0)
 		{
-			res[k - 1] += res[k] / digitBase;
+			res.digits[k - 1] += res.digits[k] / digitBase;
 		}
-		res[k] %= digitBase;
+		res.digits[k] %= digitBase;
 	}
-	
+	return res;
 	
 }
 
-void add(int a[fpPre], int b[fpPre], inout int res[fpPre]) { //res has to be differnt than a or b
+digits add(digits a, digits b) { 
 	bool negate = false;
-	
+	digits res;
 	if (!IsPositive(a) && !IsPositive( b))
 	{
-		Negate( a);
-		Negate( b);
+		a = Negate( a);
+		b = Negate( b);
 		negate = true;
 
 	}else if (!IsPositive( a) && IsPositive( b)) {
 		//b-a
 		if (isGraterAbs(b, a)) {
-			absFpNum(a);
-			sub(b, a,res);
-			Negate( a);
-			return;
+			a = absFpNum(a);
+			res = sub(b, a);
+			a = Negate( a);
+			return res;
 		}
 		else {
-			absFpNum( a);
-			sub(a, b,res);
-			Negate( res);
-			Negate( a);
-			return;
+			a = absFpNum( a);
+			res = sub(a, b);
+			res = Negate( res);
+			a = Negate( a);
+			return res;
 			//reverse
 		}
 	
@@ -225,193 +247,222 @@ void add(int a[fpPre], int b[fpPre], inout int res[fpPre]) { //res has to be dif
 	else if (!IsPositive( b) && IsPositive( a)) {
 		//a-b
 		if (isGraterAbs( a, b)) {
-			absFpNum( b);
+			b = absFpNum( b);
 
-			sub( a, b,res);
-			Negate( b);
-			return;
+			res	= sub( a, b);
+			b = Negate( b);
+			return res;
 		}
 		else {
 			//reverse
-			absFpNum( b);
-			sub( b, a, res);
-			Negate( res);
-			Negate( b);
-			return;
+			b = absFpNum( b);
+			res = sub( b, a);
+			res = Negate( res);
+			b = Negate( b);
+			return res;
 		}
 
 	}
 
 	res = a;
-	[fastopt]
+	[unroll]
 	for (int i = 0; i < fpPre; i++) {
-		res[i] += b[i];
+		res.digits[i] += b.digits[i];
 	
 	}
-	[fastopt]
+	[unroll]
 	for (int x = fpPre - 1; x >= 0; x--) {
 
 		if (x != 0)
 		{
-			res[x - 1] += res[x] / digitBase;
+			res.digits[x - 1] += res.digits[x] / digitBase;
 		}
-		res[x] %= digitBase;
+		res.digits[x] %= digitBase;
 	}
 	if (negate)
 	{
-		Negate( res);
+		res = Negate( res);
 		
 	}
 
-
+	return res;
 }
-bool isGraterDP(int a[fpPre * 2], int b[fpPre * 2])
+bool isGraterDP(digitsDP a, digitsDP b)
 {
 	[fastopt]
-	for (int i = 0; i < fpPre * 2; i++) {
-		if (a[i] > b[i])
+	for (int i = 0; i < fpPre*2; i++) {
+		if (a.digits[i] > b.digits[i])
 		{
 			return true;
-		}if (a[i] < b[i]) {
+		}if (a.digits[i] < b.digits[i]) {
 			return false;
 		}
 	}
 	return false;
 }
 
-bool isGraterAbsDP(int a[fpPre * 2], int b[fpPre * 2])
+bool isGraterAbsDP(digitsDP a, digitsDP b)
 {
 	[fastopt]
 	for (int i = 0; i < fpPre * 2; i++) {
-		if (abs(a[i]) > abs(b[i]))
+		if (abs(a.digits[i]) > abs(b.digits[i]))
 		{
 			return true;
-		}if (abs(a[i]) < abs(b[i])) {
+		}if (abs(a.digits[i]) < abs(b.digits[i])) {
 			return false;
 		}
 	}
 	return false;
 }
-bool IsPositiveDP(int a[fpPre * 2]) {
+bool IsPositiveDP(digitsDP a) {
 	bool res = true;
 	[fastopt]
 	for (int i = 0; i < fpPre*2; i++) {
-		if (a[i] < 0) {
+		if (a.digits[i] < 0) {
 			res = false;
 		}
 	}
 	return res;
 }
 
-void NegateDP(inout int a[fpPre * 2]) {
+digitsDP NegateDP(digitsDP a) {
 	bool done = false;
-	[fastopt]
+	[unroll]
 	for (int i = 0; i < fpPre*2; i++) {
-		if (a[i] != 0 && !done) {
-			a[i] = -a[i];
+		if (a.digits[i] != 0 && !done) {
+			a.digits[i] = -a.digits[i];
 			done = true;
 
 		}
 
 	}
-
+	return a;
 }
-void  absFpNumDP(inout int a[fpPre * 2]) {
-	[fastopt]
+digitsDP  absFpNumDP(digitsDP a) {
+	[unroll]
 	for (int i = 0; i < fpPre*2; i++) {
-		a[i] = abs(a[i]);
+		a.digits[i] = abs(a.digits[i]);
 	}
+	return a;
 
 }
 
-void  ShiftDP(inout int a[fpPre*2], int num) {
-	int temp[fpPre*2];
+digitsDP  ShiftDP(digitsDP a, int num) {
+	digitsDP res;
 	bool negate = false;
 	if (!IsPositiveDP(a)) {
-		NegateDP(a);
+		a = NegateDP(a);
 		negate = true;
 	}
-	[fastopt]
+	[unroll]
 	for (int i = 0; i < fpPre*2; i++)
 	{
 		if (i + num >= 0 && i + num < fpPre*2)
 		{
-			temp[i] = a[i + num];
+			res.digits[i] = a.digits[i + num];
 		}
 		else {
-			temp[i] = 0;
+			res.digits[i] = 0;
 		}
 	}
 	if (negate) {
-		NegateDP(a);
+		res = NegateDP(res);
 	}
-	a = temp;
-}
-void MultiplyByIntDP(inout int a[fpPre*2], int num) {
 
-	[fastopt]
+	return res;
+}
+digitsDP MultiplyByIntDP(digitsDP a, int num) {
+
+	bool negate = false;
+	if (!IsPositiveDP(a))
+	{
+		if (num < 0)
+		{
+			a = NegateDP(a);
+			num = -num;
+		}
+		else
+		{
+			a = NegateDP(a);
+			negate = true;
+		}
+	}
+	else if (num < 0) {
+		num = -num;
+		negate = true;
+	}
+	[unroll]
 	for (int i = 0; i < fpPre*2; i++) {
-		a[i] *= num;
-	} 
-	[fastopt]
+		a.digits[i] *= num;
+	}
+	[unroll]
 	for (int x = fpPre*2 - 1; x >= 0; x--) {
 
 		if (x != 0)
 		{
-			a[x - 1] += a[x] / digitBase;
+			a.digits[x - 1] += a.digits[x] / digitBase;
 		}
-		a[x] %= digitBase;
+		a.digits[x] %= digitBase;
 	}
+
+
+	if (negate) {
+		a = NegateDP(a);
+	}
+	return a;
 }
 
 
-void subDP(int a[fpPre*2], int b[fpPre*2], inout int res[fpPre*2]) //res has to be differnt than a or b
+digitsDP subDP(digitsDP a, digitsDP b) 
 {
-	[fastopt]
+	digitsDP res;
+	[unroll]
 	for (int i = 0; i < fpPre*2; i++) {
-		res[i] = a[i] - b[i];
+		res.digits[i] = a.digits[i] - b.digits[i];
 	}
-	res[0]--;
-	[fastopt]
+	res.digits[0]--;
+	[unroll]
 	for (int j = 1; j < fpPre*2; j++) {
-		res[j] += digitBase - 1;
+		res.digits[j] += digitBase - 1;
 	}
-	res[fpPre - 1]++;
-	[fastopt]
+	res.digits[fpPre*2 - 1]++;
+	[unroll]
 	for (int k = fpPre*2 - 1; k >= 0; k--) {
 
 		if (k != 0)
 		{
-			res[k - 1] += res[k] / digitBase;
+			res.digits[k - 1] += res.digits[k] / digitBase;
 		}
-		res[k] %= digitBase;
+		res.digits[k] %= digitBase;
 	}
 
+	return res;
 
 }
-void addDP(int a[fpPre*2], int b[fpPre*2], inout int res[fpPre*2]) { //res has to be differnt than a or b
-
+digitsDP addDP(digitsDP a, digitsDP b) {
 	bool negate = false;
+	digitsDP res;
 	if (!IsPositiveDP(a) && !IsPositiveDP(b))
 	{
-		NegateDP(a);
-		NegateDP(b);
+		a = NegateDP(a);
+		b = NegateDP(b);
 		negate = true;
+
 	}
 	else if (!IsPositiveDP(a) && IsPositiveDP(b)) {
 		//b-a
 		if (isGraterAbsDP(b, a)) {
-			absFpNumDP(a);
-			subDP(b, a, res);
-			NegateDP(a);
-			return;
+			a = absFpNumDP(a);
+			res = subDP(b, a);
+			a = NegateDP(a);
+			return res;
 		}
 		else {
-			absFpNumDP(a);
-			subDP(a, b, res);
-			NegateDP(res);
-			NegateDP(a);
-			return;
+			a = absFpNumDP(a);
+			res = subDP(a, b);
+			res = NegateDP(res);
+			a = NegateDP(a);
+			return res;
 			//reverse
 		}
 
@@ -422,79 +473,78 @@ void addDP(int a[fpPre*2], int b[fpPre*2], inout int res[fpPre*2]) { //res has t
 	else if (!IsPositiveDP(b) && IsPositiveDP(a)) {
 		//a-b
 		if (isGraterAbsDP(a, b)) {
-			absFpNumDP(b);
+			b = absFpNumDP(b);
 
-			subDP(a, b, res);
-			NegateDP(b);
-			return;
+			res = subDP(a, b);
+			b = NegateDP(b);
+			return res;
 		}
 		else {
 			//reverse
-			absFpNumDP(b);
-			subDP(b, a, res);
-			NegateDP(res);
-			NegateDP(b);
-			return;
+			b = absFpNumDP(b);
+			res = subDP(b, a);
+			res = NegateDP(res);
+			b = NegateDP(b);
+			return res;
 		}
 
 	}
 
 	res = a;
-	[fastopt]
+	[unroll]
 	for (int i = 0; i < fpPre*2; i++) {
-		res[i] += b[i];
+		res.digits[i] += b.digits[i];
 
 	}
-	[fastopt]
+	[unroll]
 	for (int x = fpPre*2 - 1; x >= 0; x--) {
 
 		if (x != 0)
 		{
-			res[x - 1] += res[x] / digitBase;
+			res.digits[x - 1] += res.digits[x] / digitBase;
 		}
-		res[x] %= digitBase;
+		res.digits[x] %= digitBase;
 	}
 	if (negate)
 	{
-		NegateDP(res);
+		res = NegateDP(res);
 
 	}
 
-
+	return res;
 }
-void multiply(int a[fpPre], int b[fpPre], inout int res[fpPre])
+digits multiply(digits a, digits b)
 {
 	bool negate = false;
 	bool negatea = false;
 	bool negateb = false;
+	digits res;
+	digitsDP temp1;
+	digitsDP temp2;
 
-	int temp1[fpPre*2];
-	int temp2[fpPre*2];
-	int temp3[fpPre * 2];
-
-	[fastopt]
+	[unroll]
 	for (int j = 0; j < fpPre*2; j++) {
-		temp2[j] = 0;	
-		temp3[j] = 0;
+		temp2.digits[j] = 0;	
+
 	}
 	if (!IsPositive( a))
 	{
 		if (!IsPositive( b))
 		{
-			Negate( a);
+			a = Negate( a);
 			negatea = true;
-			Negate( b);
+			b = Negate( b);
 			negateb = true;
 		}
 		else
 		{
-			Negate( a);
+			a = Negate( a);
 			negatea = true;
 			negate = true;
 		}
 	}
 	else if (!IsPositive( b)) {
-		Negate( b);
+		b = Negate( b);
 		negateb = true;
 		negate = true;
 	}
@@ -502,42 +552,39 @@ void multiply(int a[fpPre], int b[fpPre], inout int res[fpPre])
 	for (int i =0; i < fpPre; i++) {
 		for (int k = 0; k < fpPre * 2; k++) {
 			if (k < fpPre) {
-				temp1[k] = a[k];
+				temp1.digits[k] = a.digits[k];
 			}
 			else {
-				temp1[k] = 0;
+				temp1.digits[k] = 0;
 			}
 		
 		}
 
-		ShiftDP(temp1, -i);
-		MultiplyByIntDP( temp1, b[i]);
-		addDP( temp1, temp2, temp3);
-		temp2 = temp3;
+		temp1 = ShiftDP(temp1, -i);
+		temp1 = MultiplyByIntDP( temp1, b.digits[i]);
+		temp2 = addDP( temp1, temp2);
 	}
 	if (negatea) {
-		Negate( a);
+		a = Negate( a);
 	}
 	if (negateb) 
 	{
-		Negate( b);
+		b = Negate( b);
 	}
-	[fastopt]
+	[unroll]
 	for (int x = 0; x < fpPre; x++) {
-		res[x] = temp3[x];
+		res.digits[x] = temp2.digits[x];
 	}
-	res[fpPre - 1] += temp3[fpPre] / (digitBase / 2);
+	res.digits[fpPre - 1] += temp2.digits[fpPre] / (digitBase / 2);
 	if (negate) {
-		Negate(res);
+		res = Negate(res);
 	}
+	return res;
 }
-void square(int a[fpPre], inout int res[fpPre]) {
-	int b[fpPre] = a;
-	multiply(a, b, res);
-
-
+digits square(digits a) {
+	return multiply(a, a);
 }
-void setDouble(inout int a[fpPre], double num) {
+digits setDouble(digits a, double num) {
 	bool negate = false;
 	if (num < 0) {
 		negate = true;
@@ -547,39 +594,29 @@ void setDouble(inout int a[fpPre], double num) {
 	[fastopt]
 	for (int i = 0; i < fpPre; i++)
 	{
-		a[i] = (int)temp;
-		temp = (temp - a[i]) * digitBase;
+		a.digits[i] = (int)temp;
+		temp = (temp - a.digits[i]) * digitBase;
 	}
 	if (negate) {
-		Negate(a);
+		a = Negate(a);
 	}
+	return a;
 }
 
-bool inBounds(int a[fpPre], int b[fpPre]) {
-	int x[fpPre];
-	int y[fpPre];
-	[fastopt]
-	for (int k = 0; k < fpPre; k++) {
-		x[k] = 0;
-		y[k] = 0;
-	}
-	square(a, x);
-
-	square(b, y);
-	int sum[fpPre];
-	[fastopt]
-	for (int j = 0; j < fpPre; j++) {
-		sum[j] = 0;
-	}
-	add(x, y, sum);
+bool inBounds(digits a,digits b) {
+	
+	a = square(a);
+	b = square(b);
+	a = add(a, b);
+	
 	bool res = true;
 
-	if (sum[0]>4) {
+	if (a.digits[0]>4) {
 		res = false;
 	}
-	else if(sum[0] == 4) {
+	else if(a.digits[0] == 4) {
 		for (int i = 1; i < fpPre; i++) {
-			if (sum[i] > 0)
+			if (a.digits[i] > 0)
 			{
 				res = false;
 			}
@@ -590,23 +627,9 @@ bool inBounds(int a[fpPre], int b[fpPre]) {
 	 
 }
 
-struct Pixel {
-	double CurrentZX;
-	double CurrentZY;
-	uint iter;
-	bool finished;
-};
-RWStructuredBuffer<Pixel> _MultiFrameData;
-
-int _ShiftX;
-int _ShiftY;
-
-uint _Register;
 
 
 
-//-------------------------------------
-//- KERNEL
 uint getIteration(double2 possition, double2 InitialZ, int idx) {
 	double2 c = possition;
 	uint iter = 0;
@@ -658,81 +681,60 @@ float4 getColor(uint iter, bool finished) {
 
 
 }
+
 uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
-	int cX[fpPre];
-	int cY[fpPre];
-	int zX[fpPre];
-	int zY[fpPre];
-	int temp1[fpPre];
-	int temp2[fpPre];
-	int temp3[fpPre];
-	int temp4[fpPre];
-	int zxsq[fpPre];
-	int zysq[fpPre];
+	digits cX;
+	digits cY;
+	digits zX;
+	digits zY;
+	digits zxsq;
+	digits zysq;
+	digits scale;
+	digits offset;
+	digits middle;
+	[unroll]
 	for (int j = 0; j < fpPre; j++) {
-		//load in data
-		zX[j] = _ExperimentalBuffer[idx + CurX  + j];
-		zY[j] = _ExperimentalBuffer[idx + CurY + j];
-		cX[j] = 0;
-		cY[j] = 0;
-		temp1[j] = 0;
-		temp2[j] = 0;
-		temp3[j] = _PossitionBuffer[Scale + j];
-		temp4[j] = 0;
+		
+		zX.digits[j] = _ExperimentalBuffer[idx + CurX  + j];
+		zY.digits[j] = _ExperimentalBuffer[idx + CurY + j];
+		cX.digits[j] = 0;
+		cY.digits[j] = 0;
+		scale.digits[j] = _PossitionBuffer[Scale + j];
+		offset.digits[j] = 0;
 	}
-	temp1[0] = pixel.x - width / 2;
-	
- 
-	multiply(temp1, temp3, temp2);
+	offset.digits[0] = pixel.x - width / 2;
+	offset = multiply(offset, scale);
+	[unroll]
 	for (int a = 0; a < fpPre; a++) {
-		temp1[a] = _PossitionBuffer[MiddleX + a];
+		middle.digits[a] = _PossitionBuffer[MiddleX + a];
 	}
-	add(temp2, temp1, cX);
-
+	cX = add(offset, middle);
 	for (int b = 0; b < fpPre; b++) {
-		temp1[b] = 0;
+		offset.digits[b] = 0;
 	}
 
-	temp1[0] = pixel.y - height / 2;
-	multiply(temp1, temp3, temp2);
+	offset.digits[0] = pixel.y - height / 2;
+	offset = multiply(offset, scale);
+	[unroll]
 	for (int c = 0; c < fpPre;c++) {
-		temp1[c] = _PossitionBuffer[MiddleY + c];
+		middle.digits[c] = _PossitionBuffer[MiddleY + c];
 	}
-	add(temp2, temp1, cY);
+	cY = add(offset,middle);
 
 
 	int iter = 0;
 		
 	for (uint i = 0; i < _IterPerCycle; i++) {
 		
-		
-		
-		[fastopt]
-		for (int k = 0; k < fpPre; k++) {
-			zxsq[k] = 0;
-			zysq[k] = 0;
 
-		}
-		square(zX, zxsq);
-		square(zY, zysq);
-
-		Negate(zysq);
-
-		add(zxsq, zysq, temp1);
-
-
-		add(cX, temp1, temp2);
-
-
+		zxsq = square(zX);
+		zysq = square(zY);
+		zysq = Negate(zysq);
 
 		
-		multiply(zX, zY, temp3);
-		MultiplyByInt(temp3, 2);
-		add(temp3, cY, temp4);
+		zX = add(add(zxsq, zysq), cX);
+		zY = add(cY, MultiplyByInt(multiply(zX, zY), 2));
 
-
-		zX = temp2;
-		zY = temp4;
 
 		if (!inBounds(zX, zY)) {
 			_ExperimentalBuffer[idx + finished] = true;
@@ -746,10 +748,10 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 
 	}
 	for (int  l = 0; l < fpPre; l++) {
-		_ExperimentalBuffer[idx + CurX + l] = zX[l];
+		_ExperimentalBuffer[idx + CurX + l] = zX.digits[l];
 	}
 	for (int k = 0; k < fpPre; k++) {
-		_ExperimentalBuffer[idx + CurY + k] = zY[k];
+		_ExperimentalBuffer[idx + CurY + k] = zY.digits[k];
 	}
 	
 	
