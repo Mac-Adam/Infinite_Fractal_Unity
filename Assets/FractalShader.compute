@@ -9,14 +9,14 @@ float4x4 _CameraInverseProjection;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 10;
+static const uint _IterPerCycle = 5;
 double _Length;
 double _OffsetX;
 double _OffsetY;
 StructuredBuffer<double> _DoubleDataBuffet;
 
 
-static const int fpPre =4;
+static const int fpPre =8;
 
 StructuredBuffer<int> _PossitionBuffer;
 
@@ -223,7 +223,7 @@ digits add(digits a, digits b) {
 		b = Negate( b);
 		negate = true;
 
-	}else if (!IsPositive( a) && IsPositive( b)) {
+	}else if (!IsPositive(a) && IsPositive(b)) {
 		//b-a
 		if (isGraterAbs(b, a)) {
 			a = absFpNum(a);
@@ -687,8 +687,7 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 	digits cY;
 	digits zX;
 	digits zY;
-	digits zxsq;
-	digits zysq;
+	digits temp1;
 	digits scale;
 	digits offset;
 	digits middle;
@@ -697,8 +696,6 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 		
 		zX.digits[j] = _ExperimentalBuffer[idx + CurX  + j];
 		zY.digits[j] = _ExperimentalBuffer[idx + CurY + j];
-		cX.digits[j] = 0;
-		cY.digits[j] = 0;
 		scale.digits[j] = _PossitionBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
@@ -727,13 +724,11 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 	for (uint i = 0; i < _IterPerCycle; i++) {
 		
 
-		zxsq = square(zX);
-		zysq = square(zY);
-		zysq = Negate(zysq);
 
-		
-		zX = add(add(zxsq, zysq), cX);
+		temp1 = add(add(square(zX), Negate(square(zY))), cX);
 		zY = add(cY, MultiplyByInt(multiply(zX, zY), 2));
+		zX = temp1;
+		iter++;
 
 
 		if (!inBounds(zX, zY)) {
@@ -938,6 +933,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
 	
+
+
 
 	
 

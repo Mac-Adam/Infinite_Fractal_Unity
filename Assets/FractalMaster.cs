@@ -24,7 +24,7 @@ public class FractalMaster : MonoBehaviour
 
 
     public int maxIter = 100;
-    public int IterPecCycle = 4; 
+    public int IterPecCycle = 5; 
 
     private int currIter = 0;
 
@@ -44,7 +44,7 @@ public class FractalMaster : MonoBehaviour
     };
 
 
-    const int fpPre =4;
+    const int fpPre =8;
 
     double[] doubleDataArray = new double[3];
     ComputeBuffer doubleDataBuffer;
@@ -451,7 +451,7 @@ public class FractalMaster : MonoBehaviour
     
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(double) * 2 + sizeof(int) * 2);
-        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(int) * 10);
+        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(int) * (fpPre*2 + 2));
         PossionBuffer = new ComputeBuffer(3*fpPre,sizeof(int));
         _camera = GetComponent<Camera>();
         oldMousePosition = Input.mousePosition;
