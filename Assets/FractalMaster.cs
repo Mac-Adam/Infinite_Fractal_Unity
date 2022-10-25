@@ -20,11 +20,11 @@ public class FractalMaster : MonoBehaviour
     public double middleX = -1.0f;
     public double middleY = 0.0f;
 
-
+    
 
 
     public int maxIter = 100;
-    public int IterPecCycle = 4; 
+    public int IterPecCycle = 5; 
 
     private int currIter = 0;
 
@@ -44,7 +44,7 @@ public class FractalMaster : MonoBehaviour
     };
 
 
-    const int fpPre =4;
+    const int fpPre =8;
 
     double[] doubleDataArray = new double[3];
     ComputeBuffer doubleDataBuffer;
@@ -60,17 +60,37 @@ public class FractalMaster : MonoBehaviour
     private int shiftY = 0;
     private int register = 0;
 
-    
 
-    private Vector2 oldMousePosition = new Vector2();
+    private int oldMouseTextureCoordinatesX;
+    private int oldMouseTextureCoordinatesY;
 
     private int PrevScreenX;
     private int PrevScreenY;
 
+    private int pixelizationBase = 2;
+    private int pixelizationLevel = 0;
+    private int lastPixelizationLevel;
+
     FixedPointNumber MiddleX = new FixedPointNumber(fpPre);
     FixedPointNumber MiddleY = new FixedPointNumber(fpPre);
     FixedPointNumber Scale = new FixedPointNumber(fpPre);
-
+    int pow(int baseNum, int exponent)
+    {
+        int res;
+        if (exponent == 0)
+        {
+            res = 1;
+        }
+        else
+        {
+            res = baseNum;
+        }
+        for(int i = 1; i < exponent; i++)
+        {
+            res *= baseNum;
+        }
+        return res;
+    }
 
     struct Pixel {
         public double x;
@@ -448,14 +468,15 @@ public class FractalMaster : MonoBehaviour
     private void Awake()
     {
         Application.targetFrameRate = -1;
-    
+        lastPixelizationLevel = pixelizationLevel;
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
-        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(double) * 2 + sizeof(int) * 2);
-        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height*2, sizeof(int) * 10);
+        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2);
+        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (fpPre * 2 + 2));
         PossionBuffer = new ComputeBuffer(3*fpPre,sizeof(int));
         _camera = GetComponent<Camera>();
-        oldMousePosition = Input.mousePosition;
-    
+        oldMouseTextureCoordinatesX = (int)Input.mousePosition.x;
+        oldMouseTextureCoordinatesY = (int)Input.mousePosition.y;
+
 
     }
 
@@ -466,7 +487,7 @@ public class FractalMaster : MonoBehaviour
         PrevScreenY = Screen.height;
         MiddleX.setDouble(middleX);
         MiddleY.setDouble(middleY);
-        Scale.setDouble(length / Screen.width);
+        Scale.setDouble(pow(pixelizationBase, pixelizationLevel) * length / Screen.width);
 
     }
     private void ResetParams() {
@@ -477,24 +498,46 @@ public class FractalMaster : MonoBehaviour
 
     private void Update()
     {
-     
-        
-        if (PrevScreenX != Screen.width || PrevScreenY != Screen.height) {
-            MultiFrameRenderBuffer.Dispose();
-            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height *2, sizeof(double) * 2 + sizeof(int) * 2);
-            ExperimentalBuffer.Dispose();
-            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height * 2, sizeof(int) * (fpPre * 2 + 2  ));
-            reset = true;
-        }
         PrevScreenX = Screen.width;
         PrevScreenY = Screen.height;
+        lastPixelizationLevel = pixelizationLevel;
+
+        if (Input.GetKeyDown("i"))
+        {
+
+            pixelizationLevel += 1;
+        }
+        if (Input.GetKeyDown("o"))
+        {
+            if (pixelizationLevel > 0)
+            {
+
+                pixelizationLevel -= 1;
+            }
+        }
 
 
+        if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel) {
+          
+            FixedPointNumber scaleFixer = new FixedPointNumber(fpPre);
+            scaleFixer.setDouble((double)pow(pixelizationBase, pixelizationLevel) / (double)pow(pixelizationBase, lastPixelizationLevel));
+       
+            Scale *= scaleFixer;
+        
+            MultiFrameRenderBuffer.Dispose();
+            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height *2/pow(pow(pixelizationBase, pixelizationLevel),2), sizeof(double) * 2 + sizeof(int) * 2);
+            ExperimentalBuffer.Dispose();
+            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height *2/ pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (fpPre * 2 + 2  ));
+            reset = true;
+        }
+      
 
 
         if (Input.GetKeyDown("r")) {
             ResetParams();
         }
+       
+
 
         if (Antialas)
         {
@@ -524,12 +567,17 @@ public class FractalMaster : MonoBehaviour
 
 
         Vector2 mousePosPix = Input.mousePosition;
+        int mouseTextureCoordinatesX = (int)mousePosPix.x / pow(pixelizationBase,pixelizationLevel);
+        int mouseTextureCoordinatesY = (int)mousePosPix.y / pow(pixelizationBase, pixelizationLevel);
+
         //Transform pixel coardinates to position;
         FixedPointNumber mousePosRealX = new FixedPointNumber(fpPre);
-        mousePosRealX.setDouble(mousePosPix.x - Screen.width / 2);
+       
+        mousePosRealX.setDouble(mouseTextureCoordinatesX - Screen.width/(2* pow(pixelizationBase, pixelizationLevel)));
         mousePosRealX = mousePosRealX*Scale+MiddleX;
         FixedPointNumber mousePosRealY = new FixedPointNumber(fpPre);
-        mousePosRealY.setDouble(mousePosPix.y - Screen.height / 2);
+       
+        mousePosRealY.setDouble(mouseTextureCoordinatesY - Screen.height / (2* pow(pixelizationBase, pixelizationLevel)));
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new FixedPointNumber(fpPre);
         if (Input.mouseScrollDelta.y != 0)
@@ -549,12 +597,12 @@ public class FractalMaster : MonoBehaviour
             maxIter -= maxIter * (int)Input.mouseScrollDelta.x /4;
             ResetParams();
         }
-        if (oldMousePosition != mousePosPix) {
+        if (mouseTextureCoordinatesX!= oldMouseTextureCoordinatesX || mouseTextureCoordinatesY != oldMouseTextureCoordinatesY) {
             if (Input.GetMouseButton(0)) {
 
 
-                shiftX = (int)(mousePosPix.x - oldMousePosition.x);
-                shiftY = (int)(mousePosPix.y - oldMousePosition.y);
+                shiftX = (int)(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
+                shiftY = (int)(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
                 
                 if (register == 0)
                 {
@@ -563,15 +611,17 @@ public class FractalMaster : MonoBehaviour
                 else { 
                     register = 0;
                 }
-                multiplyer.setDouble(mousePosPix.x - oldMousePosition.x);
+                multiplyer.setDouble(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
                 MiddleX -= multiplyer * Scale;
-                multiplyer.setDouble(mousePosPix.y - oldMousePosition.y);
+                multiplyer.setDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
                 MiddleY -= multiplyer * Scale;
                 ResetParams();
             }
             
         }
-        oldMousePosition = mousePosPix;
+        oldMouseTextureCoordinatesX = mouseTextureCoordinatesX;
+        oldMouseTextureCoordinatesY = mouseTextureCoordinatesY;
+      
 
 
 
@@ -623,14 +673,14 @@ public class FractalMaster : MonoBehaviour
 
     private void InitRenderTexture()
     {
-        if (_target == null || _target.width != Screen.width || _target.height != Screen.height)
+        if (_target == null || _target.width != Screen.width/ pow(pixelizationBase, pixelizationLevel) || _target.height != Screen.height/ pow(pixelizationBase, pixelizationLevel)||lastPixelizationLevel != pixelizationLevel)
         {
             // Release render texture if we already have one
             if (_target != null)
                 _target.Release();
 
             // Get a render target for Fractal
-            _target = new RenderTexture(Screen.width, Screen.height, 0,
+            _target = new RenderTexture(Screen.width/ pow(pixelizationBase, pixelizationLevel), Screen.height/ pow(pixelizationBase, pixelizationLevel), 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             _target.enableRandomWrite = true;
             _target.Create();
@@ -647,8 +697,8 @@ public class FractalMaster : MonoBehaviour
 
         // Set the target and dispatch the compute shader
         FractalShader.SetTexture(0, "Result", _target);
-        int threadGroupsX = Mathf.CeilToInt(Screen.width / 8.0f);
-        int threadGroupsY = Mathf.CeilToInt(Screen.height / 8.0f);
+        int threadGroupsX = Mathf.CeilToInt(Screen.width / (8* pow(pixelizationBase, pixelizationLevel)));
+        int threadGroupsY = Mathf.CeilToInt(Screen.height / (8* pow(pixelizationBase, pixelizationLevel)));
         FractalShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
         // Blit the result texture to the screen
