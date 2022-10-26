@@ -1,0 +1,190 @@
+#pragma kernel CSMain
+
+
+RWTexture2D<float4> Result;
+
+
+float2 _PixelOffset;
+
+uint _MaxIter;
+static const uint _IterPerCycle = 50;
+double _Length;
+double _OffsetX;
+double _OffsetY;
+StructuredBuffer<double> _DoubleDataBuffer;
+
+struct Pixel {
+	double CurrentZX;
+	double CurrentZY;
+	uint iter;
+	bool finished;
+};
+
+RWStructuredBuffer<Pixel> _MultiFrameData;
+
+
+int _ShiftX;
+int _ShiftY;
+
+uint _Register;
+
+bool _reset;
+
+
+
+
+uint getIteration(double2 possition, double2 InitialZ, int idx) {
+	double2 c = possition;
+	uint iter = 0;
+	double2 z = InitialZ;
+	while (z.x * z.x + z.y + z.y < 4) {
+		if (iter >= (_IterPerCycle)) {
+
+			_MultiFrameData[idx].CurrentZX = z.x;
+			_MultiFrameData[idx].CurrentZY = z.y;
+			if (_MultiFrameData[idx].iter >= _MaxIter) {
+				_MultiFrameData[idx].finished = true;
+			}
+			return iter;
+		}
+		z = double2(z.x * z.x - z.y * z.y + c.x, 2 * z.x * z.y + c.y);
+
+		iter++;
+	}
+	_MultiFrameData[idx].finished = true;
+	return iter;
+
+
+}
+float4 getColor(uint iter, bool finished) {
+	float4 InColor = float4(0.31, 0.427, 0.478, 1.0f);
+	float4 Colors[5];
+
+	Colors[0] = float4(0.086, 0.376, 0.533, 1.0);
+	Colors[1] = float4(0.29, 0.435, 0.647, 1.0);
+	Colors[2] = float4(0.753, 0.839, 0.875, 1.0);
+	Colors[3] = float4(0.859, 0.529, 0.239, 1.0);
+	Colors[4] = float4(0.71, 0.098, 0.525, 1.0);
+
+
+	if (!finished || iter >= _MaxIter) {
+		return InColor;
+	}
+	if (iter == 0) {
+		iter = 1;
+	}
+	float ratio = log(iter) / log(10);
+	int baseColorIdx = (int)(floor(ratio) % 5);
+	int upColorIdx = (int)((floor(ratio) + 1) % 5);
+	return float4(Colors[baseColorIdx] + (Colors[upColorIdx] - Colors[baseColorIdx]) * (ratio % 1));
+
+
+
+
+}
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+
+	uint width, height;
+	Result.GetDimensions(width, height);
+
+
+	 //OLD DOUBLE CODE
+	//Get double data form buffer
+	_Length = _DoubleDataBuffer[0];
+	_OffsetX = _DoubleDataBuffer[1];
+	_OffsetY = _DoubleDataBuffer[2];
+
+
+	// Get the dimensions of the RenderTexture
+
+	//Get id of pixel
+	uint pixelId = id.x + id.y * width + width * height * _Register;
+	int currentIter = 0;
+	if (_ShiftX != 0 || _ShiftY != 0) {
+		int oldPixelId;
+		int min;
+		int max;
+		if (_Register == 0) {
+			min = width * height;
+			max = width * height * 2;
+			oldPixelId = pixelId - _ShiftX - _ShiftY * width + width * height;
+		}
+		else if (_Register == 1) {
+			min = 0;
+			max = width * height;
+
+			oldPixelId = pixelId - _ShiftX - _ShiftY * width - width * height;
+		}		
+		if (int(id.x) <= _ShiftX || //left border
+			int(width - id.x) <= -_ShiftX || //rigth  border
+			int(id.y) <= _ShiftY || //top border
+			int(height - id.y) <= -_ShiftY ||//bottom border
+			oldPixelId<min || oldPixelId>max) {
+
+
+			//this part  should be rerendered
+			_MultiFrameData[pixelId].iter = 0;
+			_MultiFrameData[pixelId].CurrentZX = 0;
+			_MultiFrameData[pixelId].CurrentZY = 0;
+			_MultiFrameData[pixelId].finished = false;
+
+
+		}
+		else {
+			_MultiFrameData[pixelId].iter = _MultiFrameData[oldPixelId].iter;
+			_MultiFrameData[pixelId].CurrentZX = _MultiFrameData[oldPixelId].CurrentZX;
+			_MultiFrameData[pixelId].CurrentZY = _MultiFrameData[oldPixelId].CurrentZY;
+			_MultiFrameData[pixelId].finished = _MultiFrameData[oldPixelId].finished;
+
+		}
+
+
+
+
+
+
+
+
+	}
+
+	else if (_reset) {
+		_MultiFrameData[pixelId].iter = 0;
+		_MultiFrameData[pixelId].CurrentZX = 0;
+		_MultiFrameData[pixelId].CurrentZY = 0;
+		_MultiFrameData[pixelId].finished = false;
+
+
+	}
+
+
+
+	//check if further computation is nesesary
+	if (!_MultiFrameData[pixelId].finished) {
+		// Transform pixel to correct range
+		double2 scale = _Length / width;
+		double2 uv = ((double2)id.xy + _PixelOffset - double2(width / 2, height / 2)) * scale;
+		// add offset
+		uv += double2(_OffsetX, _OffsetY);
+
+		if (_MultiFrameData[pixelId].iter == 0) {
+			currentIter = getIteration(uv, double2(0.0, 0.0), pixelId);
+		}
+		else {
+			currentIter = getIteration(uv, double2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
+		}
+
+
+
+		_MultiFrameData[pixelId].iter += currentIter;
+
+	}
+
+
+	Result[id.xy] = getColor(_MultiFrameData[pixelId].iter, _MultiFrameData[pixelId].finished);
+	
+	
+
+}

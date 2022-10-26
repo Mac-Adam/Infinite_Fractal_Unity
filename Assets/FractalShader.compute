@@ -3,20 +3,14 @@
 
 RWTexture2D<float4> Result;
 
-float4x4 _CameraToWorld;
-float4x4 _CameraInverseProjection;
 
 float2 _PixelOffset;
 
 uint _MaxIter;
 static const uint _IterPerCycle = 5;
-double _Length;
-double _OffsetX;
-double _OffsetY;
-StructuredBuffer<double> _DoubleDataBuffet;
 
 
-static const int fpPre =8;
+static const int fpPre = 4;
 
 StructuredBuffer<int> _PossitionBuffer;
 
@@ -46,13 +40,6 @@ RWStructuredBuffer<int> _ExperimentalBuffer;
 bool _reset;
 
 
-struct Pixel {
-	double CurrentZX;
-	double CurrentZY;
-	uint iter;
-	bool finished;
-};
-RWStructuredBuffer<Pixel> _MultiFrameData;
 
 
 struct digits {
@@ -630,31 +617,6 @@ bool inBounds(digits a,digits b) {
 
 
 
-uint getIteration(double2 possition, double2 InitialZ, int idx) {
-	double2 c = possition;
-	uint iter = 0;
-	double2 z = InitialZ;
-
-
-	while (z.x * z.x + z.y + z.y < 4) {
-		if (iter >= (_IterPerCycle)) {
-
-			_MultiFrameData[idx].CurrentZX = z.x;
-			_MultiFrameData[idx].CurrentZY = z.y;
-			if (_MultiFrameData[idx].iter >= _MaxIter) {
-				_MultiFrameData[idx].finished = true;
-			}
-			return iter;
-		}
-		z = double2(z.x * z.x - z.y * z.y + c.x, 2 * z.x * z.y + c.y);
-
-		iter++;
-	}
-	_MultiFrameData[idx].finished = true;
-	return iter;
-
-
-}
 float4 getColor(uint iter, bool finished) {
 	float4 InColor = float4(0.31, 0.427, 0.478, 1.0f);
 	float4 Colors[5];
@@ -763,96 +725,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	uint width, height;
 	Result.GetDimensions(width, height);
-	/*if (id.x <= 5) {
-		Result[id.xy] = float4(1.0, 0.0, 0.0, 1.0);
-		return;
-	}*/
 	
-
-	/* //OLD DOUBLE CODE
-	//Get double data form buffer
-	_Length = _DoubleDataBuffet[0];
-	_OffsetX = _DoubleDataBuffet[1];
-	_OffsetY = _DoubleDataBuffet[2];
-
-
-	// Get the dimensions of the RenderTexture
-
-	//Get id of pixel
-	uint basePixelId = id.x + id.y * width;
-	uint pixelId = basePixelId + width * height * _Register;
-	int currentIter = 0;
-	if (_ShiftX != 0 || _ShiftY != 0) {
-
-		int oldPixelId = basePixelId - _ShiftX - _ShiftY * width + width * height * ((_Register + 1) % 2);
-		int oldPixelLowerBound = width * height * ((_Register + 1) % 2);
-		int oldPixelUpperBound = width * height * (((_Register + 1) % 2) + 1);
-
-		if (int(id.x) <= _ShiftX || -int(width - id.x) >= _ShiftX || int(id.y) <= _ShiftY || -int(height - id.y) >= _ShiftY) {
-			_MultiFrameData[pixelId].iter = 0;
-			_MultiFrameData[pixelId].CurrentZX = 0;
-			_MultiFrameData[pixelId].CurrentZY = 0;
-			_MultiFrameData[pixelId].finished = false;
-
-		}
-		else {
-			_MultiFrameData[pixelId].iter = _MultiFrameData[oldPixelId].iter;
-			_MultiFrameData[pixelId].CurrentZX = _MultiFrameData[oldPixelId].CurrentZX;
-			_MultiFrameData[pixelId].CurrentZY = _MultiFrameData[oldPixelId].CurrentZY;
-			_MultiFrameData[pixelId].finished = _MultiFrameData[oldPixelId].finished;
-
-		}
-
-
-
-
-
-
-	}
-
-	else if (_reset) {
-		_MultiFrameData[pixelId].iter = 0;
-		_MultiFrameData[pixelId].CurrentZX = 0;
-		_MultiFrameData[pixelId].CurrentZY = 0;
-		_MultiFrameData[pixelId].finished = false;
-
-
-	}
-
-
-
-	//check if further computatuin is nesesary
-	if (!_MultiFrameData[pixelId].finished) {
-		// Transform pixel to correct range
-		double2 scale = _Length / width;
-		double2 uv = ((double2)id.xy + _PixelOffset - double2(width / 2, height / 2)) * scale;
-		// add offset
-		uv += double2(_OffsetX, _OffsetY);
-
-		if (_MultiFrameData[pixelId].iter == 0) {
-			currentIter = getIteration(uv, double2(0.0, 0.0), pixelId);
-		}
-		else {
-			currentIter = getIteration(uv, double2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
-		}
-
-
-
-		_MultiFrameData[pixelId].iter += currentIter;
-
-	}
-
-
-
-	//Result[id.xy] = getColor(_MultiFrameData[pixelId].iter, _MultiFrameData[pixelId].finished);
-	*/
-
-
-
-
-	// Get the dimensions of the RenderTexture
-
-	//Get id of pixel
 
 
 	uint basePixelId = id.x + id.y * width + width * height * _Register;
@@ -925,7 +798,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
 	}
+
+
 	Result[id.xy] = getColor(_ExperimentalBuffer[pixelId + iter], _ExperimentalBuffer[pixelId + finished]);
+
+	
+
 
 
 	

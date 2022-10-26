@@ -4,6 +4,7 @@ using UnityEngine;
 public class FractalMaster : MonoBehaviour
 {
     public ComputeShader FractalShader;
+    public ComputeShader DoubleShader;
 
     private Camera _camera;
     private RenderTexture _target;
@@ -11,7 +12,6 @@ public class FractalMaster : MonoBehaviour
     private uint _currentSample = 0;
     private bool _frameFinished = false;
 
-    Texture testTexture;
 
     float scrollSlowness = 10.0f;
     float lerpStrength = 0.2f;
@@ -30,6 +30,9 @@ public class FractalMaster : MonoBehaviour
 
     public bool Antialas = false;
     private int maxAntiAliasyncReruns = 9;
+
+    bool doublePre = false;
+
     private Vector2[] AntiAliasLookupTable = {
         new Vector2(0,0),
         new Vector2((float)-2/3,(float)-2/3),
@@ -43,8 +46,8 @@ public class FractalMaster : MonoBehaviour
 
     };
 
-
-    const int fpPre =8;
+    const int shaderPre = 4;
+    const int fpPre =shaderPre*2;
 
     double[] doubleDataArray = new double[3];
     ComputeBuffer doubleDataBuffer;
@@ -53,7 +56,7 @@ public class FractalMaster : MonoBehaviour
     ComputeBuffer ExperimentalBuffer;
     ComputeBuffer PossionBuffer;
 
-    int[] TestPosiotnArray = new int[3*fpPre];
+    int[] TestPosiotnArray = new int[3*shaderPre];
 
     private bool reset = false;
     private int shiftX = 0;
@@ -239,6 +242,30 @@ public class FractalMaster : MonoBehaviour
                     digits[i] = 0;
                 }
             }
+        }
+        public double toDouble()
+        {
+            double res = 0;
+            bool negate = !IsPositive();
+            if (negate)
+            {
+                Negate();
+            }
+            for (int i = 0; i < precision; i++)
+            {
+                double multpiplyer = 1;
+                for(int x = 0; x < i; x++)
+                {
+                    multpiplyer /= digitBase;
+                }
+                res += (double)digits[i] * multpiplyer;
+            }
+            if (negate)
+            {
+                Negate();
+                res *= -1;
+            }
+            return res;
         }
         public static bool operator >(FixedPointNumber a, FixedPointNumber b)
         {
@@ -471,8 +498,8 @@ public class FractalMaster : MonoBehaviour
         lastPixelizationLevel = pixelizationLevel;
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2);
-        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (fpPre * 2 + 2));
-        PossionBuffer = new ComputeBuffer(3*fpPre,sizeof(int));
+        ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 2));
+        PossionBuffer = new ComputeBuffer(3*shaderPre,sizeof(int));
         _camera = GetComponent<Camera>();
         oldMouseTextureCoordinatesX = (int)Input.mousePosition.x;
         oldMouseTextureCoordinatesY = (int)Input.mousePosition.y;
@@ -498,6 +525,7 @@ public class FractalMaster : MonoBehaviour
 
     private void Update()
     {
+
         PrevScreenX = Screen.width;
         PrevScreenY = Screen.height;
         lastPixelizationLevel = pixelizationLevel;
@@ -515,7 +543,10 @@ public class FractalMaster : MonoBehaviour
                 pixelizationLevel -= 1;
             }
         }
-
+        if (Input.GetKeyDown("t"))
+        {
+            doublePre = !doublePre;
+        }
 
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel) {
           
@@ -527,7 +558,7 @@ public class FractalMaster : MonoBehaviour
             MultiFrameRenderBuffer.Dispose();
             MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height *2/pow(pow(pixelizationBase, pixelizationLevel),2), sizeof(double) * 2 + sizeof(int) * 2);
             ExperimentalBuffer.Dispose();
-            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height *2/ pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (fpPre * 2 + 2  ));
+            ExperimentalBuffer = new ComputeBuffer(Screen.width * Screen.height *2/ pow(pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 2  ));
             reset = true;
         }
       
@@ -582,20 +613,24 @@ public class FractalMaster : MonoBehaviour
         FixedPointNumber multiplyer = new FixedPointNumber(fpPre);
         if (Input.mouseScrollDelta.y != 0)
         {
+            if (Input.GetKey("p"))
+            {
+                maxIter -= maxIter * (int)Input.mouseScrollDelta.y / 4;
+                ResetParams();
+            }
+            else
+            {
+                multiplyer.setDouble(1 - Input.mouseScrollDelta.y / scrollSlowness);
+                Scale *= multiplyer;
+
+                FixedPointNumber differenceX = mousePosRealX - MiddleX;
+                FixedPointNumber differenceY = mousePosRealY - MiddleY;
+                multiplyer.setDouble(lerpStrength * Input.mouseScrollDelta.y);
+                MiddleX += differenceX * multiplyer;
+                MiddleY += differenceY * multiplyer;
+                ResetParams();
+            }
             
-            multiplyer.setDouble(1 - Input.mouseScrollDelta.y / scrollSlowness);
-            Scale *= multiplyer;
-       
-            FixedPointNumber differenceX = mousePosRealX - MiddleX;
-            FixedPointNumber differenceY = mousePosRealY - MiddleY;
-            multiplyer.setDouble(lerpStrength * Input.mouseScrollDelta.y);
-            MiddleX += differenceX * multiplyer;
-            MiddleY += differenceY * multiplyer;
-            ResetParams();
-        }
-        if (Input.mouseScrollDelta.x != 0) { 
-            maxIter -= maxIter * (int)Input.mouseScrollDelta.x /4;
-            ResetParams();
         }
         if (mouseTextureCoordinatesX!= oldMouseTextureCoordinatesX || mouseTextureCoordinatesY != oldMouseTextureCoordinatesY) {
             if (Input.GetMouseButton(0)) {
@@ -640,30 +675,43 @@ public class FractalMaster : MonoBehaviour
     private void SetShaderParameters()
     {
       
-        for (int i = 0; i <fpPre; i++) {
+        for (int i = 0; i <shaderPre; i++) {
             TestPosiotnArray[i] = MiddleX.digits[i];
-            TestPosiotnArray[fpPre+i] = MiddleY.digits[i];
-            TestPosiotnArray[fpPre*2+i] = Scale.digits[i];
+            TestPosiotnArray[shaderPre + i] = MiddleY.digits[i];
+            TestPosiotnArray[shaderPre * 2+i] = Scale.digits[i];
 
         }
       
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = length;
-        doubleDataArray[1] = middleX;
-        doubleDataArray[2] = middleY;
+        doubleDataArray[0] = Scale.toDouble() * Screen.width / pow(pixelizationBase, pixelizationLevel);
+        doubleDataArray[1] = MiddleX.toDouble();
+        doubleDataArray[2] = MiddleY.toDouble();
         doubleDataBuffer.SetData(doubleDataArray);
-        FractalShader.SetBuffer(0,"_DoubleDataBuffet", doubleDataBuffer);
-        FractalShader.SetBuffer(0, "_MultiFrameData",MultiFrameRenderBuffer);
-        FractalShader.SetBuffer(0, "_ExperimentalBuffer", ExperimentalBuffer);
-        FractalShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
-        FractalShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample%AntiAliasLookupTable.Length]);
-        FractalShader.SetInt("_MaxIter",maxIter);
-        FractalShader.SetInt("_IterPerCycle", IterPecCycle);
-        FractalShader.SetBool("_reset", reset);
-        FractalShader.SetInt("_ShiftX", shiftX);
-        FractalShader.SetInt("_ShiftY", shiftY);
-        FractalShader.SetInt("_Register", register);
+        if (doublePre)
+        {
+            DoubleShader.SetBuffer(0,"_DoubleDataBuffer", doubleDataBuffer);
+            DoubleShader.SetBuffer(0, "_MultiFrameData",MultiFrameRenderBuffer);
+            DoubleShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample % AntiAliasLookupTable.Length]);
+            DoubleShader.SetInt("_MaxIter", maxIter);
+            DoubleShader.SetBool("_reset", reset);
+            DoubleShader.SetInt("_ShiftX", shiftX);
+            DoubleShader.SetInt("_ShiftY", shiftY);
+            DoubleShader.SetInt("_Register", register);
+        }
+        else
+        {
+            FractalShader.SetBuffer(0, "_ExperimentalBuffer", ExperimentalBuffer);
+            FractalShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
+            FractalShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample%AntiAliasLookupTable.Length]);
+            FractalShader.SetInt("_MaxIter",maxIter);
+            FractalShader.SetBool("_reset", reset);
+            FractalShader.SetInt("_ShiftX", shiftX);
+            FractalShader.SetInt("_ShiftY", shiftY);
+            FractalShader.SetInt("_Register", register);
+        }
+
+       
         reset = false;
         shiftX = 0;
         shiftY = 0;
@@ -696,11 +744,22 @@ public class FractalMaster : MonoBehaviour
         InitRenderTexture();
 
         // Set the target and dispatch the compute shader
-        FractalShader.SetTexture(0, "Result", _target);
         int threadGroupsX = Mathf.CeilToInt(Screen.width / (8* pow(pixelizationBase, pixelizationLevel)));
         int threadGroupsY = Mathf.CeilToInt(Screen.height / (8* pow(pixelizationBase, pixelizationLevel)));
-        FractalShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
+        if (doublePre)
+        {
+            DoubleShader.SetTexture(0, "Result", _target);
+            DoubleShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+
+        }
+        else
+        {
+            FractalShader.SetTexture(0, "Result", _target);
+            FractalShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
+
+        }
+       
         // Blit the result texture to the screen
         
         if (true||(_currentSample == 0 && !_frameFinished)||Input.GetMouseButton(0) )
