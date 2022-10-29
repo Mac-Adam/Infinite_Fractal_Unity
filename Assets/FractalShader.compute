@@ -3,22 +3,19 @@
 
 RWTexture2D<float4> Result;
 
-
 float2 _PixelOffset;
 
 uint _MaxIter;
 static const uint _IterPerCycle = 5;
 
-
 static const int fpPre = 4;
+static const uint digitBase = 10000;
 
 StructuredBuffer<int> _PossitionBuffer;
-
 static const int MiddleX = 0;
 static const int MiddleY = fpPre;
 static const int Scale = fpPre * 2;
 
-static const uint digitBase = 10000;
 
 static const int CurX = 0;
 static const int CurY = fpPre;
@@ -32,7 +29,7 @@ int _ShiftY;
 
 uint _Register;
 
-RWStructuredBuffer<int> _ExperimentalBuffer;
+RWStructuredBuffer<int> _FpMultiframeBuffer;
 //4 int CurrentZX
 //4 int CurretZY 
 //int iter 
@@ -644,7 +641,7 @@ float4 getColor(uint iter, bool finished) {
 
 }
 
-uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
+uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits cX;
 	digits cY;
 	digits zX;
@@ -656,8 +653,8 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 	[unroll]
 	for (int j = 0; j < fpPre; j++) {
 		
-		zX.digits[j] = _ExperimentalBuffer[idx + CurX  + j];
-		zY.digits[j] = _ExperimentalBuffer[idx + CurY + j];
+		zX.digits[j] = _FpMultiframeBuffer[idx + CurX  + j];
+		zY.digits[j] = _FpMultiframeBuffer[idx + CurY + j];
 		scale.digits[j] = _PossitionBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
@@ -694,7 +691,7 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 
 
 		if (!inBounds(zX, zY)) {
-			_ExperimentalBuffer[idx + finished] = true;
+			_FpMultiframeBuffer[idx + finished] = true;
 			return iter;
 		}
 	
@@ -705,10 +702,10 @@ uint getIterExp(uint2 pixel, uint width, uint height, uint idx) {
 
 	}
 	for (int  l = 0; l < fpPre; l++) {
-		_ExperimentalBuffer[idx + CurX + l] = zX.digits[l];
+		_FpMultiframeBuffer[idx + CurX + l] = zX.digits[l];
 	}
 	for (int k = 0; k < fpPre; k++) {
-		_ExperimentalBuffer[idx + CurY + k] = zY.digits[k];
+		_FpMultiframeBuffer[idx + CurY + k] = zY.digits[k];
 	}
 	
 	
@@ -761,7 +758,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 			
 			//this part  should be rerendered
 			for (int a = 0; a < PixelSize; a++) {
-				_ExperimentalBuffer[pixelId + a] = 0;
+				_FpMultiframeBuffer[pixelId + a] = 0;
 			}
 
 		}
@@ -771,7 +768,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 			//this part can be salvaged
 			for (int b = 0; b < PixelSize; b++) {
-				_ExperimentalBuffer[pixelId + b] = _ExperimentalBuffer[oldPixelId + b];
+				_FpMultiframeBuffer[pixelId + b] = _FpMultiframeBuffer[oldPixelId + b];
 			}
 		}
 
@@ -781,26 +778,26 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	}
 	else if (_reset) {
 		for (int k = 0; k < PixelSize; k++) {
-			_ExperimentalBuffer[pixelId + k] = 0;
+			_FpMultiframeBuffer[pixelId + k] = 0;
 		}
 	}
 	
 
 	//check if further computatuin is nesesary
-	if (!_ExperimentalBuffer[pixelId + finished]) {
+	if (!_FpMultiframeBuffer[pixelId + finished]) {
 
-		currentIter = getIterExp(id.xy, width, height, pixelId);
+		currentIter = getIter(id.xy, width, height, pixelId);
 
-		_ExperimentalBuffer[pixelId + iter] += currentIter;
-		if ((uint)_ExperimentalBuffer[pixelId + iter] >= _MaxIter) {
-			_ExperimentalBuffer[pixelId + finished] = true;
+		_FpMultiframeBuffer[pixelId + iter] += currentIter;
+		if ((uint)_FpMultiframeBuffer[pixelId + iter] >= _MaxIter) {
+			_FpMultiframeBuffer[pixelId + finished] = true;
 		}
 
 
 	}
 
 
-	Result[id.xy] = getColor(_ExperimentalBuffer[pixelId + iter], _ExperimentalBuffer[pixelId + finished]);
+	Result[id.xy] = getColor(_FpMultiframeBuffer[pixelId + iter], _FpMultiframeBuffer[pixelId + finished]);
 
 	
 
