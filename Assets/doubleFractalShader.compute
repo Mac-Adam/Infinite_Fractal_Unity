@@ -13,6 +13,12 @@ double _OffsetX;
 double _OffsetY;
 StructuredBuffer<double> _DoubleDataBuffer;
 
+struct res {
+	uint iter;
+	bool finished;
+};
+RWStructuredBuffer<res> _IterBuffer;
+
 struct Pixel {
 	double CurrentZX;
 	double CurrentZY;
@@ -56,32 +62,7 @@ uint getIteration(double2 possition, double2 InitialZ, int idx) {
 
 
 }
-float4 getColor(uint iter, bool finished) {
-	float4 InColor = float4(0.31, 0.427, 0.478, 1.0f);
-	float4 Colors[5];
 
-	Colors[0] = float4(0.086, 0.376, 0.533, 1.0);
-	Colors[1] = float4(0.29, 0.435, 0.647, 1.0);
-	Colors[2] = float4(0.753, 0.839, 0.875, 1.0);
-	Colors[3] = float4(0.859, 0.529, 0.239, 1.0);
-	Colors[4] = float4(0.71, 0.098, 0.525, 1.0);
-
-
-	if (!finished || iter >= _MaxIter) {
-		return InColor;
-	}
-	if (iter == 0) {
-		iter = 1;
-	}
-	float ratio = log(iter) / log(10);
-	int baseColorIdx = (int)(floor(ratio) % 5);
-	int upColorIdx = (int)((floor(ratio) + 1) % 5);
-	return float4(Colors[baseColorIdx] + (Colors[upColorIdx] - Colors[baseColorIdx]) * (ratio % 1));
-
-
-
-
-}
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
@@ -182,9 +163,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	}
 
+	_IterBuffer[id.x + id.y * width].iter = _MultiFrameData[pixelId].iter;
+	_IterBuffer[id.x + id.y * width].finished = _MultiFrameData[pixelId].finished;
 
-	Result[id.xy] = getColor(_MultiFrameData[pixelId].iter, _MultiFrameData[pixelId].finished);
-	
-	
 
 }

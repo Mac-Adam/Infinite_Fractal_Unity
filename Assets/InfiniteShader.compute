@@ -9,7 +9,7 @@ uint _MaxIter;
 static const uint _IterPerCycle = 5;
 
 static const int fpPre = 4;
-static const uint digitBase = 10000;
+static const uint digitBase = 46300;
 
 StructuredBuffer<int> _PossitionBuffer;
 static const int MiddleX = 0;
@@ -36,7 +36,11 @@ RWStructuredBuffer<int> _FpMultiframeBuffer;
 //int finished
 bool _reset;
 
-
+struct res {
+	uint iter;
+	bool finished;
+};
+RWStructuredBuffer<res> _IterBuffer;
 
 
 struct digits {
@@ -614,33 +618,6 @@ bool inBounds(digits a,digits b) {
 
 
 
-float4 getColor(uint iter, bool finished) {
-	float4 InColor = float4(0.31, 0.427, 0.478, 1.0f);
-	float4 Colors[5];
-
-	Colors[0] = float4(0.086, 0.376, 0.533, 1.0);
-	Colors[1] = float4(0.29, 0.435, 0.647, 1.0);
-	Colors[2] = float4(0.753, 0.839, 0.875, 1.0);
-	Colors[3] = float4(0.859, 0.529, 0.239, 1.0);
-	Colors[4] = float4(0.71, 0.098, 0.525, 1.0);
-
-
-	if (!finished || iter >= _MaxIter) {
-		return InColor;
-	}
-	if (iter == 0) {
-		iter = 1;
-	}
-	float ratio = log(iter) / log(10);
-	int baseColorIdx = (int)(floor(ratio) % 5);
-	int upColorIdx = (int)((floor(ratio) + 1) % 5);
-	return float4(Colors[baseColorIdx] + (Colors[upColorIdx] - Colors[baseColorIdx]) * (ratio % 1));
-
-
-
-
-}
-
 uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits cX;
 	digits cY;
@@ -796,9 +773,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	}
 
-
-	Result[id.xy] = getColor(_FpMultiframeBuffer[pixelId + iter], _FpMultiframeBuffer[pixelId + finished]);
-
+	_IterBuffer[id.x + id.y * width].iter = _FpMultiframeBuffer[pixelId + iter];
+	_IterBuffer[id.x + id.y * width].finished = _FpMultiframeBuffer[pixelId + finished];
+	
 	
 
 
