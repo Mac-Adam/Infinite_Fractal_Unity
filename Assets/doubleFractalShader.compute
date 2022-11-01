@@ -43,7 +43,7 @@ uint getIteration(double2 possition, double2 InitialZ, int idx) {
 	double2 c = possition;
 	uint iter = 0;
 	double2 z = InitialZ;
-	while (z.x * z.x + z.y + z.y < 4) {
+	while (z.x * z.x + z.y * z.y < 4) {
 		if (iter >= (_IterPerCycle)) {
 
 			_MultiFrameData[idx].CurrentZX = z.x;
