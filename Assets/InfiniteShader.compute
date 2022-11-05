@@ -8,7 +8,8 @@ float2 _PixelOffset;
 uint _MaxIter;
 static const uint _IterPerCycle = 5;
 
-static const int fpPre = 4;
+
+static const int fpPre = 5;
 static const uint digitBase = 46300;
 
 StructuredBuffer<int> _PossitionBuffer;
@@ -671,12 +672,6 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 			_FpMultiframeBuffer[idx + finished] = true;
 			return iter;
 		}
-	
-
-
-		iter++;
-
-
 	}
 	for (int  l = 0; l < fpPre; l++) {
 		_FpMultiframeBuffer[idx + CurX + l] = zX.digits[l];

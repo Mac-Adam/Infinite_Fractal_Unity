@@ -12,11 +12,20 @@ struct res {
 RWStructuredBuffer<res> _IterBuffer;
 uint _MaxIter;
 
-bool _Log;
+bool _Sigmoid;
 int _ColorStrength;
-
+float sigmoid(float x) {
+	return(exp(x) / (1.0 + exp(x)));
+}
+float pow(float x, int exp) {
+	float res = x;
+	for (int i = 0; i < exp - 1; i++) {
+		res *= x;
+	}
+	return res;
+}
 float4 getColor(res res) {
-	float4 InColor = float4(0.31, 0.427, 0.478, 1.0f);
+	float4 InColor = float4(0.0, 0.0, 0.0, 1.0f);
 	float4 Colors[5];
 
 	Colors[0] = float4(0.086, 0.376, 0.533, 1.0);
@@ -32,22 +41,21 @@ float4 getColor(res res) {
 	if (res.iter == 0) {
 		res.iter = 1;
 	}
-	float ratio;
-	if (_Log) {
-		ratio = log(res.iter) / log(_ColorStrength);
+	float baseRatio = (float)res.iter / (_ColorStrength);
+	int baseColorIdx = (int)(floor(baseRatio) % 5);
+	int upColorIdx = (int)((floor(baseRatio) + 1) % 5);
+	float ratio = baseRatio % 1;
+	if (_Sigmoid) {
+		float red = Colors[baseColorIdx].x + (Colors[upColorIdx].x - Colors[baseColorIdx].x) * sigmoid(20 * ratio - 5);
+		float green = Colors[baseColorIdx].y + (Colors[upColorIdx].y - Colors[baseColorIdx].y) * sigmoid(20 * ratio - 10);
+		float blue = Colors[baseColorIdx].z + (Colors[upColorIdx].z - Colors[baseColorIdx].z) * sigmoid(20 * ratio - 15);
+		return float4(red, green, blue, 1.0);
 	}
 	else {
-		ratio = (float)res.iter / (_ColorStrength * 10.0);
+		return float4(Colors[baseColorIdx] + (Colors[upColorIdx] - Colors[baseColorIdx]) * (-2.0 * pow(ratio, 3) + 3.0 * pow(ratio, 2)));
 	}
-	
-	
-	int baseColorIdx = (int)(floor(ratio) % 5);
-	int upColorIdx = (int)((floor(ratio) + 1) % 5);
-	return float4(Colors[baseColorIdx] + (Colors[upColorIdx] - Colors[baseColorIdx]) * (ratio % 1));
 
-
-
-
+	 
 }
 
 [numthreads(8,8,1)]
@@ -55,7 +63,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 {
 	uint width, height;
 	Result.GetDimensions(width, height);
-
+	
 	int textureX = id.x / _PixelWidth;
 	int textureY = id.y / _PixelWidth;
 	int textureIdx = textureX + textureY * (width/ _PixelWidth);

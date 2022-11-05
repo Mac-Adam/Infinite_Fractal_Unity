@@ -11,7 +11,7 @@ public class FractalMaster : MonoBehaviour
     RenderTexture _target;
     RenderTexture _dummyTexture;
     Material _addMaterial;
-    bool doublePre = false;
+    bool doublePre = true;
     //Anti-Alias
     uint _currentSample = 0;
     bool _frameFinished = false;
@@ -42,7 +42,7 @@ public class FractalMaster : MonoBehaviour
     string toggleShaderControl = "t";
     string resetControl = "r";
     string maxIterContorl = "p";
-    string logContorl = "l";
+    string togleInterpolationTypeContorl = "l";
     string colorStrengthContorlUp = "k";
     string colorStrengthContorlDown = "j";
 
@@ -57,9 +57,9 @@ public class FractalMaster : MonoBehaviour
 
 
     //precision
-    int maxIter = 100;
+    int maxIter = 5000;
     int IterPecCycle = 5;
-    const int shaderPre = 4;
+    const int shaderPre = 5;
     const int fpPre = shaderPre * 2;
 
     //Pixelization
@@ -80,7 +80,7 @@ public class FractalMaster : MonoBehaviour
     //RenderShader
     ComputeBuffer IterBuffer;
     int colorStrength = 5;
-    bool log = true;
+    bool sigmoid = false;
 
 
     //Shader control
@@ -559,9 +559,9 @@ public class FractalMaster : MonoBehaviour
         {
             ResetParams();
         }
-        if (Input.GetKeyDown(logContorl))
+        if (Input.GetKeyDown(togleInterpolationTypeContorl))
         {
-            log = !log;
+            sigmoid = !sigmoid;
         }
         if (Input.GetKeyDown(colorStrengthContorlUp))
         {
@@ -755,7 +755,7 @@ public class FractalMaster : MonoBehaviour
         RenderShader.SetBuffer(0, "_IterBuffer", IterBuffer);
         RenderShader.SetInt("_MaxIter", maxIter);
         RenderShader.SetInt("_ColorStrength", colorStrength);
-        RenderShader.SetBool("_Log", log);
+        RenderShader.SetBool("_Sigmoid", sigmoid);
         RenderShader.SetInt("_PixelWidth", Pow(pixelizationBase, pixelizationLevel));
         reset = false;
         shiftX = 0;
