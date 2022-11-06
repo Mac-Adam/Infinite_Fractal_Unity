@@ -12,6 +12,9 @@ struct res {
 RWStructuredBuffer<res> _IterBuffer;
 uint _MaxIter;
 
+
+int _ColorArrayLength;
+StructuredBuffer<float4> _Colors;
 bool _Sigmoid;
 int _ColorStrength;
 float sigmoid(float x) {
@@ -26,13 +29,6 @@ float pow(float x, int exp) {
 }
 float4 getColor(res res) {
 	float4 InColor = float4(0.0, 0.0, 0.0, 1.0f);
-	float4 Colors[5];
-
-	Colors[0] = float4(0.086, 0.376, 0.533, 1.0);
-	Colors[1] = float4(0.29, 0.435, 0.647, 1.0);
-	Colors[2] = float4(0.753, 0.839, 0.875, 1.0);
-	Colors[3] = float4(0.859, 0.529, 0.239, 1.0);
-	Colors[4] = float4(0.71, 0.098, 0.525, 1.0);
 
 
 	if (!res.finished || res.iter >= _MaxIter) {
@@ -42,17 +38,17 @@ float4 getColor(res res) {
 		res.iter = 1;
 	}
 	float baseRatio = (float)res.iter / (_ColorStrength);
-	int baseColorIdx = (int)(floor(baseRatio) % 5);
-	int upColorIdx = (int)((floor(baseRatio) + 1) % 5);
+	int baseColorIdx = (int)(floor(baseRatio) % _ColorArrayLength);
+	int upColorIdx = (int)((floor(baseRatio) + 1) % _ColorArrayLength);
 	float ratio = baseRatio % 1;
 	if (_Sigmoid) {
-		float red = Colors[baseColorIdx].x + (Colors[upColorIdx].x - Colors[baseColorIdx].x) * sigmoid(20 * ratio - 5);
-		float green = Colors[baseColorIdx].y + (Colors[upColorIdx].y - Colors[baseColorIdx].y) * sigmoid(20 * ratio - 10);
-		float blue = Colors[baseColorIdx].z + (Colors[upColorIdx].z - Colors[baseColorIdx].z) * sigmoid(20 * ratio - 15);
+		float red = _Colors[baseColorIdx].x + (_Colors[upColorIdx].x - _Colors[baseColorIdx].x) * sigmoid(20 * ratio - 5);
+		float green = _Colors[baseColorIdx].y + (_Colors[upColorIdx].y - _Colors[baseColorIdx].y) * sigmoid(20 * ratio - 10);
+		float blue = _Colors[baseColorIdx].z + (_Colors[upColorIdx].z - _Colors[baseColorIdx].z) * sigmoid(20 * ratio - 15);
 		return float4(red, green, blue, 1.0);
 	}
 	else {
-		return float4(Colors[baseColorIdx] + (Colors[upColorIdx] - Colors[baseColorIdx]) * (-2.0 * pow(ratio, 3) + 3.0 * pow(ratio, 2)));
+		return float4(_Colors[baseColorIdx] + (_Colors[upColorIdx] - _Colors[baseColorIdx]) * (-2.0 * pow(ratio, 3) + 3.0 * pow(ratio, 2)));
 	}
 
 	 

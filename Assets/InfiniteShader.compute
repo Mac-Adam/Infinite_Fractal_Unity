@@ -6,10 +6,10 @@ RWTexture2D<float4> Result;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 5;
+static const uint _IterPerCycle = 3;
 
 
-static const int fpPre = 5;
+static const int fpPre = 8;
 static const uint digitBase = 46300;
 
 StructuredBuffer<int> _PossitionBuffer;
@@ -573,7 +573,8 @@ digits multiply(digits a, digits b)
 digits square(digits a) {
 	return multiply(a, a);
 }
-digits setDouble(digits a, double num) {
+digits setDouble( double num) {
+	digits a;
 	bool negate = false;
 	if (num < 0) {
 		negate = true;
@@ -593,9 +594,6 @@ digits setDouble(digits a, double num) {
 }
 
 bool inBounds(digits a,digits b) {
-	
-	a = square(a);
-	b = square(b);
 	a = add(a, b);
 	
 	bool res = true;
@@ -624,20 +622,20 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits cY;
 	digits zX;
 	digits zY;
-	digits temp1;
+	digits squareX;
+	digits squareY;
 	digits scale;
 	digits offset;
 	digits middle;
 	[unroll]
 	for (int j = 0; j < fpPre; j++) {
-		
 		zX.digits[j] = _FpMultiframeBuffer[idx + CurX  + j];
 		zY.digits[j] = _FpMultiframeBuffer[idx + CurY + j];
 		scale.digits[j] = _PossitionBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
 	offset.digits[0] = pixel.x - width / 2;
-	offset = multiply(offset, scale);
+	offset = multiply(add(offset,setDouble((double)_PixelOffset.x)), scale);
 	[unroll]
 	for (int a = 0; a < fpPre; a++) {
 		middle.digits[a] = _PossitionBuffer[MiddleX + a];
@@ -648,7 +646,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	}
 
 	offset.digits[0] = pixel.y - height / 2;
-	offset = multiply(offset, scale);
+	offset = multiply(add(offset, setDouble((double)_PixelOffset.y)), scale);
 	[unroll]
 	for (int c = 0; c < fpPre;c++) {
 		middle.digits[c] = _PossitionBuffer[MiddleY + c];
@@ -657,18 +655,18 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 
 	int iter = 0;
-		
+	squareX = square(zX);
+	squareY = square(zY);
+	[fastopt]
 	for (uint i = 0; i < _IterPerCycle; i++) {
-		
-
-
-		temp1 = add(add(square(zX), Negate(square(zY))), cX);
 		zY = add(cY, MultiplyByInt(multiply(zX, zY), 2));
-		zX = temp1;
+		zX = add(add(squareX, Negate(squareY)), cX);
+		squareX = square(zX);
+		squareY = square(zY);
 		iter++;
 
 
-		if (!inBounds(zX, zY)) {
+		if (!inBounds(squareX, squareY)) {
 			_FpMultiframeBuffer[idx + finished] = true;
 			return iter;
 		}

@@ -7,7 +7,7 @@ RWTexture2D<float4> Result;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 50;
+static const uint _IterPerCycle = 10;
 double _Length;
 double _OffsetX;
 double _OffsetY;
@@ -43,7 +43,8 @@ uint getIteration(double2 possition, double2 InitialZ, int idx) {
 	double2 c = possition;
 	uint iter = 0;
 	double2 z = InitialZ;
-	while (z.x * z.x + z.y * z.y < 4) {
+	double2 squares = double2(z.x*z.x,z.y*z.y);
+	while (squares.x + squares.y < 4.0) {
 		if (iter >= (_IterPerCycle)) {
 
 			_MultiFrameData[idx].CurrentZX = z.x;
@@ -53,8 +54,10 @@ uint getIteration(double2 possition, double2 InitialZ, int idx) {
 			}
 			return iter;
 		}
-		z = double2(z.x * z.x - z.y * z.y + c.x, 2 * z.x * z.y + c.y);
-
+		z.y = 2 * z.x * z.y + c.y;
+		z.x = squares.x - squares.y + c.x;
+		squares.x = z.x * z.x;
+		squares.y = z.y * z.y;
 		iter++;
 	}
 	_MultiFrameData[idx].finished = true;

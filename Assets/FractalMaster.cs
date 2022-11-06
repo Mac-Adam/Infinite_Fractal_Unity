@@ -7,6 +7,8 @@ public class FractalMaster : MonoBehaviour
     public ComputeShader InfiniteShader;
     public ComputeShader DoubleShader;
     public ComputeShader RenderShader;
+    public Shader AddShader;
+
     Camera _camera;
     RenderTexture _target;
     RenderTexture _dummyTexture;
@@ -16,7 +18,7 @@ public class FractalMaster : MonoBehaviour
     uint _currentSample = 0;
     bool _frameFinished = false;
     int currIter = 0;
-    public bool Antialas = false;
+    bool Antialas = false;
     int maxAntiAliasyncReruns = 9;
     private Vector2[] AntiAliasLookupTable = {
         new Vector2(0,0),
@@ -45,6 +47,9 @@ public class FractalMaster : MonoBehaviour
     string togleInterpolationTypeContorl = "l";
     string colorStrengthContorlUp = "k";
     string colorStrengthContorlDown = "j";
+    string colorPaletteTogleContorl = "c";
+    string antialiasTogleContorl = "a";
+
 
     //Controlls Handleing
     int oldMouseTextureCoordinatesX;
@@ -57,10 +62,12 @@ public class FractalMaster : MonoBehaviour
 
 
     //precision
-    int maxIter = 5000;
-    int IterPecCycle = 5;
-    const int shaderPre = 5;
+    int maxIter = 1000;
+    const int IterPerDoubleCycle = 10;
+    const int IterPerInfiniteCycle = 3;
+    const int shaderPre = 8;
     const int fpPre = shaderPre * 2;
+    int IterPecCycle; 
 
     //Pixelization
     int pixelizationBase = 2;
@@ -81,7 +88,37 @@ public class FractalMaster : MonoBehaviour
     ComputeBuffer IterBuffer;
     int colorStrength = 5;
     bool sigmoid = false;
-
+    ComputeBuffer ColorBuffer;
+    ColorPalette[] colorPalettes = new ColorPalette[] {
+        new ColorPalette(
+            new Vector4[] { 
+                new Vector4(0.086f, 0.376f, 0.533f, 1.0f),
+                new Vector4(0.29f, 0.435f, 0.647f, 1.0f),
+                new Vector4(0.753f, 0.839f, 0.875f, 1.0f),
+                new Vector4(0.859f, 0.529f, 0.239f, 1.0f),
+                new Vector4(0.71f, 0.098f, 0.525f, 1.0f),
+            }),
+        new ColorPalette(
+            new Vector4[] { 
+                new Vector4(0.012f, 0.008f, 0.188f, 1.0f),
+                new Vector4(0.168f, 0.392f, 0.756f, 1.0f),
+                new Vector4(1.0f, 1.0f, 1.0f, 1.0f),
+                new Vector4(0.828f, 0.652f, 0.040f, 1.0f),
+                new Vector4(0.184f, 0.112f, 0.008f, 1.0f)
+            }),
+        new ColorPalette(
+            new Vector4[] {
+                new Vector4(0.816f, 0.056f, 0.056f, 1.0f),
+                new Vector4(0.880f, 0.0456f, 0.052f, 1.0f),
+                new Vector4(0.948f, 0.960f, 0.220f, 1.0f),
+                new Vector4(0.028f, 0.732f, 0.028f, 1.0f),
+                new Vector4(0.132f, 0.840f, 0.920f, 1.0f),
+                new Vector4(0.024f, 0.036f, 0.268f, 1.0f),
+                new Vector4(0.364f, 0.040f, 0.552f, 1.0f),
+            }), 
+    };
+    int currColorPalette = 0;
+    
 
     //Shader control
     bool reset = false;
@@ -89,7 +126,7 @@ public class FractalMaster : MonoBehaviour
     int shiftY = 0;
     int register = 0;
 
-
+  
 
 
     int Pow(int baseNum, int exponent)
@@ -109,13 +146,14 @@ public class FractalMaster : MonoBehaviour
         }
         return res;
     }
-
-    struct Pixel {
-        public double x;
-        public double y;
-        public int iter;
-        public int finished;
-
+    public struct ColorPalette
+    {
+        public Vector4[] colors;
+        public int length;
+        public ColorPalette(Vector4[] col) {
+            colors = col;
+            length = col.Length;
+        }
     }
     public struct FixedPointNumber {
         public static int digitBase = 46300;
@@ -516,13 +554,16 @@ public class FractalMaster : MonoBehaviour
         MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2);
         FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 2));
         PossionBuffer = new ComputeBuffer(3*shaderPre,sizeof(int));
-        
+        ColorBuffer = new ComputeBuffer(colorPalettes[currColorPalette].length, 4 * sizeof(float));
+
         _camera = GetComponent<Camera>();
 
         MiddleX.setDouble(middleX);
         MiddleY.setDouble(middleY);
         Scale.setDouble(Pow(pixelizationBase, pixelizationLevel) * length / Screen.width);
         
+        IterPecCycle = doublePre ? IterPerDoubleCycle : IterPerInfiniteCycle;
+
         handleLastValues();
       
         ResetParams();
@@ -533,12 +574,27 @@ public class FractalMaster : MonoBehaviour
         PrevScreenX = Screen.width;
         PrevScreenY = Screen.height;
     }
+    void resetAntialias()
+    {
+        _currentSample = 0;
+        currIter = 0;
+        _frameFinished = false;
+    }
     void handleKeyInput()
     {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Application.Quit();
+        }
         if (Input.GetKeyDown(pixelizationLevelUpControl))
         {
 
             pixelizationLevel += 1;
+        }
+        if (Input.GetKeyDown(antialiasTogleContorl))
+        {
+            Antialas = !Antialas;
+            resetAntialias();
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
         {
@@ -552,12 +608,22 @@ public class FractalMaster : MonoBehaviour
         {
             reset = true;
             doublePre = !doublePre;
+            resetAntialias();
         }
-
+        if (Input.GetKeyDown(colorPaletteTogleContorl))
+        {
+            currColorPalette++;
+            if (currColorPalette >= colorPalettes.Length) {
+                currColorPalette = 0;
+            }
+            ColorBuffer.Dispose();
+            ColorBuffer = new ComputeBuffer(colorPalettes[currColorPalette].length, 4 * sizeof(float));
+        }
 
         if (Input.GetKeyDown(resetControl))
         {
             ResetParams();
+            resetAntialias();
         }
         if (Input.GetKeyDown(togleInterpolationTypeContorl))
         {
@@ -589,7 +655,6 @@ public class FractalMaster : MonoBehaviour
             MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2);
             FpMultiframeBuffer.Dispose();
             FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 2));
-           
             reset = true;
         }
 
@@ -603,6 +668,7 @@ public class FractalMaster : MonoBehaviour
             {
                 if (currIter > maxIter)
                 {
+               
                     _frameFinished = true;
                     currIter = 0;
                 }
@@ -613,6 +679,7 @@ public class FractalMaster : MonoBehaviour
 
             }
         }
+      
     }
     void handleMouseInput()
     {
@@ -656,7 +723,7 @@ public class FractalMaster : MonoBehaviour
         {
             if (Input.GetMouseButton(0))
             {
-
+                resetAntialias();
 
                 shiftX = (int)(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
                 shiftY = (int)(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
@@ -707,6 +774,7 @@ public class FractalMaster : MonoBehaviour
         IterBuffer.Dispose();
         doubleDataBuffer.Dispose();
         MultiFrameRenderBuffer.Dispose();
+        ColorBuffer.Dispose();
         FpMultiframeBuffer.Dispose();
         PossionBuffer.Dispose();
     }
@@ -721,13 +789,16 @@ public class FractalMaster : MonoBehaviour
             TestPosiotnArray[shaderPre * 2+i] = Scale.digits[i];
 
         }
-      
 
+        IterPecCycle = doublePre ? IterPerDoubleCycle : IterPerInfiniteCycle;
+        
         PossionBuffer.SetData(TestPosiotnArray);
         doubleDataArray[0] = Scale.toDouble() * Screen.width / Pow(pixelizationBase, pixelizationLevel);
         doubleDataArray[1] = MiddleX.toDouble();
         doubleDataArray[2] = MiddleY.toDouble();
         doubleDataBuffer.SetData(doubleDataArray);
+        ColorBuffer.SetData(colorPalettes[currColorPalette].colors);
+
         if (doublePre)
         {
             DoubleShader.SetBuffer(0,"_DoubleDataBuffer", doubleDataBuffer);
@@ -757,6 +828,8 @@ public class FractalMaster : MonoBehaviour
         RenderShader.SetInt("_ColorStrength", colorStrength);
         RenderShader.SetBool("_Sigmoid", sigmoid);
         RenderShader.SetInt("_PixelWidth", Pow(pixelizationBase, pixelizationLevel));
+        RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
+        RenderShader.SetInt("_ColorArrayLength", colorPalettes[currColorPalette].length);
         reset = false;
         shiftX = 0;
         shiftY = 0;
@@ -822,8 +895,8 @@ public class FractalMaster : MonoBehaviour
         RenderShader.SetTexture(0, "Result", _target);
         RenderShader.Dispatch(0, RenderThreadGrupsX, RenderThreadGrupsY, 1);
         // Blit the result texture to the screen
-
-        if (true||(_currentSample == 0 && !_frameFinished)||Input.GetMouseButton(0) )
+       
+        if ((_currentSample == 0 && !_frameFinished)||Input.GetMouseButton(0) )
         {
             Graphics.Blit(_target, destination);
 
@@ -831,11 +904,12 @@ public class FractalMaster : MonoBehaviour
         }
         else if (_frameFinished)
         {
+
             if (_addMaterial == null)
             {
-                _addMaterial = new Material(Shader.Find("Hidden/AddShader"));
+                _addMaterial = new Material(AddShader);
             }
-            
+
             _addMaterial.SetFloat("_Sample", _currentSample);
             Graphics.Blit(_target, destination, _addMaterial);
             _frameFinished = false;
