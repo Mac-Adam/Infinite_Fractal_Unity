@@ -65,7 +65,7 @@ public class FractalMaster : MonoBehaviour
     int maxIter = 1000;
     const int IterPerDoubleCycle = 10;
     const int IterPerInfiniteCycle = 3;
-    const int shaderPre = 8;
+    const int shaderPre = 3;
     const int fpPre = shaderPre * 2;
     int IterPecCycle; 
 
