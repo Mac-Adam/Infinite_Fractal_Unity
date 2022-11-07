@@ -6,56 +6,8 @@ static const uint digitBase = 46300;
 struct digits {
 	int digits[fpPre];
 };
-struct digitsDP {
-	int digits[fpPre * 2];
-};
 
-bool IsPositive(digits a) {
-	bool res = true;
-	[fastopt]
-	for (int i = 0; i < fpPre; i++) {
-		if (a.digits[i] < 0) {
-			res = false;
-		}
-	}
-	return res;
-}
-digits Negate(digits a) {
-	bool done = false;
-	[unroll]
-	for (int i = 0; i < fpPre; i++) {
-		if (a.digits[i] != 0 && !done) {
-			a.digits[i] = -a.digits[i];
-			done = true;
-
-		}
-
-	}
-	return a;
-}
-digits MultiplyByInt(digits a, int num) {
-	bool negate = false;
-	if (!IsPositive(a))
-	{
-		if (num < 0)
-		{
-			a = Negate(a);
-			num = -num;
-		}
-		else
-		{
-			a = Negate(a);
-			negate = true;
-		}
-	}
-	else if (num < 0) {
-		num = -num;
-		negate = true;
-	}
-	[unroll]
-	for (int i = 0; i < fpPre; i++) {
-		a.digits[i] *= num;
-	}
+digits Normalize(digits a) {
 	[unroll]
 	for (int x = fpPre - 1; x >= 0; x--) {
 
@@ -65,38 +17,51 @@ digits MultiplyByInt(digits a, int num) {
 		}
 		a.digits[x] %= digitBase;
 	}
+	return a;
+}
 
-
-	if (negate) {
-		a = Negate(a);
+bool IsPositive(digits a) {
+	[fastopt]
+	for (int i = 0; i < fpPre; i++) {
+		if (a.digits[i] < 0) {
+			return false;
+		}
+	}
+	return true;
+}
+digits Negate(digits a) {
+	[unroll]
+	for (int i = 0; i < fpPre; i++) {
+		if (a.digits[i] != 0) {
+			a.digits[i] = -a.digits[i];
+			break;
+		}
 	}
 	return a;
 }
-digits  Shift(digits a, int num) {
-	digits res;
-	bool negate = false;
-	if (!IsPositive(a)) {
-		a = Negate(a);
-		negate = true;
+digits PrepareForAdding(digits a, int num,int shiftAmount) {//Multiplies shifts and normalizes
+	[unroll]
+	for (int j = 0; j < fpPre; j++) {
+		a.digits[j] *= num;
 	}
-	[fastopt]
+	//normalize last digit to prevent precision loss
+	a.digits[fpPre - 2] += a.digits[fpPre-1] / digitBase;
+	digits shifted;
+	[unroll]
 	for (int i = 0; i < fpPre; i++)
 	{
-		if (i + num >= 0 && i + num < fpPre)
+		if (i + shiftAmount >= 0 && i + shiftAmount < fpPre)
 		{
-			res.digits[i] = a.digits[i + num];
+			shifted.digits[i] = a.digits[i + shiftAmount];
 		}
 		else {
-			res.digits[i] = 0;
+			shifted.digits[i] = 0;
 		}
 	}
-	if (negate) {
-		res = Negate(res);
-	}
+	a = Normalize(shifted);
 
-	return res;
+	return a;
 }
-
 bool isGrater(digits a, digits b)
 {
 	[fastopt]
@@ -236,245 +201,20 @@ digits add(digits a, digits b) {
 
 	return res;
 }
-bool isGraterDP(digitsDP a, digitsDP b)
-{
-	[fastopt]
-	for (int i = 0; i < fpPre * 2; i++) {
-		if (a.digits[i] > b.digits[i])
-		{
-			return true;
-		}if (a.digits[i] < b.digits[i]) {
-			return false;
-		}
-	}
-	return false;
-}
 
-bool isGraterAbsDP(digitsDP a, digitsDP b)
-{
-	[fastopt]
-	for (int i = 0; i < fpPre * 2; i++) {
-		if (abs(a.digits[i]) > abs(b.digits[i]))
-		{
-			return true;
-		}if (abs(a.digits[i]) < abs(b.digits[i])) {
-			return false;
-		}
-	}
-	return false;
-}
-bool IsPositiveDP(digitsDP a) {
-	bool res = true;
-	[fastopt]
-	for (int i = 0; i < fpPre * 2; i++) {
-		if (a.digits[i] < 0) {
-			res = false;
-		}
-	}
-	return res;
-}
-
-digitsDP NegateDP(digitsDP a) {
-	bool done = false;
-	[unroll]
-	for (int i = 0; i < fpPre * 2; i++) {
-		if (a.digits[i] != 0 && !done) {
-			a.digits[i] = -a.digits[i];
-			done = true;
-
-		}
-
-	}
-	return a;
-}
-digitsDP  absFpNumDP(digitsDP a) {
-	[unroll]
-	for (int i = 0; i < fpPre * 2; i++) {
-		a.digits[i] = abs(a.digits[i]);
-	}
-	return a;
-
-}
-
-digitsDP  ShiftDP(digitsDP a, int num) {
-	digitsDP res;
-	bool negate = false;
-	if (!IsPositiveDP(a)) {
-		a = NegateDP(a);
-		negate = true;
-	}
-	[unroll]
-	for (int i = 0; i < fpPre * 2; i++)
-	{
-		if (i + num >= 0 && i + num < fpPre * 2)
-		{
-			res.digits[i] = a.digits[i + num];
-		}
-		else {
-			res.digits[i] = 0;
-		}
-	}
-	if (negate) {
-		res = NegateDP(res);
-	}
-
-	return res;
-}
-digitsDP MultiplyByIntDP(digitsDP a, int num) {
-
-	bool negate = false;
-	if (!IsPositiveDP(a))
-	{
-		if (num < 0)
-		{
-			a = NegateDP(a);
-			num = -num;
-		}
-		else
-		{
-			a = NegateDP(a);
-			negate = true;
-		}
-	}
-	else if (num < 0) {
-		num = -num;
-		negate = true;
-	}
-	[unroll]
-	for (int i = 0; i < fpPre * 2; i++) {
-		a.digits[i] *= num;
-	}
-	[unroll]
-	for (int x = fpPre * 2 - 1; x >= 0; x--) {
-
-		if (x != 0)
-		{
-			a.digits[x - 1] += a.digits[x] / digitBase;
-		}
-		a.digits[x] %= digitBase;
-	}
-
-
-	if (negate) {
-		a = NegateDP(a);
-	}
-	return a;
-}
-
-
-digitsDP subDP(digitsDP a, digitsDP b)
-{
-	digitsDP res;
-	[unroll]
-	for (int i = 0; i < fpPre * 2; i++) {
-		res.digits[i] = a.digits[i] - b.digits[i];
-	}
-	res.digits[0]--;
-	[unroll]
-	for (int j = 1; j < fpPre * 2; j++) {
-		res.digits[j] += digitBase - 1;
-	}
-	res.digits[fpPre * 2 - 1]++;
-	[unroll]
-	for (int k = fpPre * 2 - 1; k >= 0; k--) {
-
-		if (k != 0)
-		{
-			res.digits[k - 1] += res.digits[k] / digitBase;
-		}
-		res.digits[k] %= digitBase;
-	}
-
-	return res;
-
-}
-digitsDP addDP(digitsDP a, digitsDP b) {
-	bool negate = false;
-	digitsDP res;
-	if (!IsPositiveDP(a) && !IsPositiveDP(b))
-	{
-		a = NegateDP(a);
-		b = NegateDP(b);
-		negate = true;
-
-	}
-	else if (!IsPositiveDP(a) && IsPositiveDP(b)) {
-		//b-a
-		if (isGraterAbsDP(b, a)) {
-			a = absFpNumDP(a);
-			res = subDP(b, a);
-			a = NegateDP(a);
-			return res;
-		}
-		else {
-			a = absFpNumDP(a);
-			res = subDP(a, b);
-			res = NegateDP(res);
-			a = NegateDP(a);
-			return res;
-			//reverse
-		}
-
-
-
-
-	}
-	else if (!IsPositiveDP(b) && IsPositiveDP(a)) {
-		//a-b
-		if (isGraterAbsDP(a, b)) {
-			b = absFpNumDP(b);
-
-			res = subDP(a, b);
-			b = NegateDP(b);
-			return res;
-		}
-		else {
-			//reverse
-			b = absFpNumDP(b);
-			res = subDP(b, a);
-			res = NegateDP(res);
-			b = NegateDP(b);
-			return res;
-		}
-
-	}
-
-	res = a;
-	[unroll]
-	for (int i = 0; i < fpPre * 2; i++) {
-		res.digits[i] += b.digits[i];
-
-	}
-	[unroll]
-	for (int x = fpPre * 2 - 1; x >= 0; x--) {
-
-		if (x != 0)
-		{
-			res.digits[x - 1] += res.digits[x] / digitBase;
-		}
-		res.digits[x] %= digitBase;
-	}
-	if (negate)
-	{
-		res = NegateDP(res);
-
-	}
-
-	return res;
-}
 digits multiply(digits a, digits b)
 {
 	bool negate = false;
 	bool negatea = false;
 	bool negateb = false;
 	digits res;
-	digitsDP temp1;
-	digitsDP temp2;
-
+	digits temp1;
+	digits temp2;
+	digits additionalStuff;
 	[unroll]
-	for (int j = 0; j < fpPre * 2; j++) {
+	for (int j = 0; j < fpPre; j++) {
 		temp2.digits[j] = 0;
-
+		additionalStuff.digits[j]=0;
 	}
 	if (!IsPositive(a))
 	{
@@ -499,19 +239,12 @@ digits multiply(digits a, digits b)
 	}
 	[fastopt]
 	for (int i = 0; i < fpPre; i++) {
-		for (int k = 0; k < fpPre * 2; k++) {
-			if (k < fpPre) {
-				temp1.digits[k] = a.digits[k];
-			}
-			else {
-				temp1.digits[k] = 0;
-			}
-
+		[unroll]
+		for (int k = 0; k < fpPre; k++) {
+			temp1.digits[k] = a.digits[k];		
 		}
-
-		temp1 = ShiftDP(temp1, -i);
-		temp1 = MultiplyByIntDP(temp1, b.digits[i]);
-		temp2 = addDP(temp1, temp2);
+		temp1 = PrepareForAdding(temp1, b.digits[i],-i);
+		temp2 = add(temp1, temp2);
 	}
 	if (negatea) {
 		a = Negate(a);
@@ -524,7 +257,6 @@ digits multiply(digits a, digits b)
 	for (int x = 0; x < fpPre; x++) {
 		res.digits[x] = temp2.digits[x];
 	}
-	res.digits[fpPre - 1] += temp2.digits[fpPre] / (digitBase / 2);
 	if (negate) {
 		res = Negate(res);
 	}
