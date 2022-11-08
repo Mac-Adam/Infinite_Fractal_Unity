@@ -6,7 +6,7 @@ RWTexture2D<float4> Result;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 2;
+static const uint _IterPerCycle = 5;
 
 
 StructuredBuffer<int> _PossitionBuffer;
@@ -267,29 +267,29 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_IterBuffer[id.x + id.y * width].finished = _FpMultiframeBuffer[pixelId + finished];
 	
 	
+	/*  
+	digits test1;
+	digits test2;
+	digits test3;
+	for (int i = 0; i < fpPre; i++) {
+		test1.digits[i] = 0;
+		test2.digits[i] = 0;
+		test3.digits[i] = 0;
+	}
+	test1.digits[0] = 1;
+	test1.digits[1] = 4143;
+	test2.digits[0] = 1;
+	test2.digits[1] = 7327;
+	test3 = multiply(test2, test1);
+	if (test3.digits[1] == 4506) {
+		_IterBuffer[id.x + id.y * width].iter = 5;
+	
+	}
+	else {
+		_IterBuffer[id.x + id.y * width].iter = 20;
 
-	//digits test1;
-	//digits test2;
-	//digits test3;
-	//for (int i = 0; i < fpPre; i++) {
-	//	test1.digits[i] = 0;
-	//	test2.digits[i] = 0;
-	//	test3.digits[i] = 0;
-	//}
-	//test1.digits[0] = 1;
-	//test1.digits[1] = 4142;
-	//test2.digits[0] = 1;
-	//test2.digits[1] = 7320;
-	//test3 = multiply(test2, test1);
-	//if (abs(test3.digits[1] - 4493)<=10) {
-	//	_IterBuffer[id.x + id.y * width].iter = 5;
-	//
-	//}
-	//else {
-	//	_IterBuffer[id.x + id.y * width].iter = 20;
-
-	//}
-	//_IterBuffer[id.x + id.y * width].finished = true;
-	//
+	}
+	_IterBuffer[id.x + id.y * width].finished = true;
+	*/
 
 }

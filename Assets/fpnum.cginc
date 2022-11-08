@@ -1,5 +1,5 @@
 
-static const int fpPre = 3;
+static const int fpPre = 4;
 static const uint digitBase = 46300;
 
 
@@ -14,8 +14,9 @@ digits Normalize(digits a) {
 		if (x != 0)
 		{
 			a.digits[x - 1] += a.digits[x] / digitBase;
+			a.digits[x] %= digitBase;
 		}
-		a.digits[x] %= digitBase;
+		
 	}
 	return a;
 }
@@ -39,24 +40,26 @@ digits Negate(digits a) {
 	}
 	return a;
 }
-digits PrepareForAdding(digits a, int num,int shiftAmount) {//Multiplies shifts and normalizes
+digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//Multiplies shifts and normalizes
 	[unroll]
 	for (int j = 0; j < fpPre; j++) {
 		a.digits[j] *= num;
 	}
-	//normalize last digit to prevent precision loss
-	a.digits[fpPre - 2] += a.digits[fpPre-1] / digitBase;
+	a = Normalize(a);
 	digits shifted;
 	[unroll]
 	for (int i = 0; i < fpPre; i++)
 	{
-		if (i + shiftAmount >= 0 && i + shiftAmount < fpPre)
+		if (i - shiftAmount >= 0)
 		{
-			shifted.digits[i] = a.digits[i + shiftAmount];
+			shifted.digits[i] = a.digits[i - shiftAmount];
 		}
 		else {
 			shifted.digits[i] = 0;
 		}
+	}
+	if (shiftAmount != 0) {
+		bonus += shifted.digits[fpPre - shiftAmount];
 	}
 	a = Normalize(shifted);
 
@@ -184,15 +187,7 @@ digits add(digits a, digits b) {
 		res.digits[i] += b.digits[i];
 
 	}
-	[unroll]
-	for (int x = fpPre - 1; x >= 0; x--) {
-
-		if (x != 0)
-		{
-			res.digits[x - 1] += res.digits[x] / digitBase;
-		}
-		res.digits[x] %= digitBase;
-	}
+	res = Normalize(res);
 	if (negate)
 	{
 		res = Negate(res);
@@ -210,11 +205,10 @@ digits multiply(digits a, digits b)
 	digits res;
 	digits temp1;
 	digits temp2;
-	digits additionalStuff;
+	int bonus = 0;
 	[unroll]
 	for (int j = 0; j < fpPre; j++) {
 		temp2.digits[j] = 0;
-		additionalStuff.digits[j]=0;
 	}
 	if (!IsPositive(a))
 	{
@@ -243,7 +237,7 @@ digits multiply(digits a, digits b)
 		for (int k = 0; k < fpPre; k++) {
 			temp1.digits[k] = a.digits[k];		
 		}
-		temp1 = PrepareForAdding(temp1, b.digits[i],-i);
+		temp1 = PrepareForAdding(temp1,bonus, b.digits[i],i);
 		temp2 = add(temp1, temp2);
 	}
 	if (negatea) {
@@ -256,6 +250,10 @@ digits multiply(digits a, digits b)
 	[unroll]
 	for (int x = 0; x < fpPre; x++) {
 		res.digits[x] = temp2.digits[x];
+	}
+	res.digits[fpPre - 1] += bonus / digitBase;
+	if (bonus % digitBase >= digitBase / 2) {
+		res.digits[fpPre - 1]++;
 	}
 	if (negate) {
 		res = Negate(res);
