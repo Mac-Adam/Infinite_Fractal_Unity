@@ -117,15 +117,7 @@ digits sub(digits a, digits b)
 		res.digits[j] += digitBase - 1;
 	}
 	res.digits[fpPre - 1]++;
-	[unroll]
-	for (int k = fpPre - 1; k >= 0; k--) {
-
-		if (k != 0)
-		{
-			res.digits[k - 1] += res.digits[k] / digitBase;
-		}
-		res.digits[k] %= digitBase;
-	}
+	res = Normalize(res);
 	return res;
 
 }
@@ -138,7 +130,6 @@ digits add(digits a, digits b) {
 		a = Negate(a);
 		b = Negate(b);
 		negate = true;
-
 	}
 	else if (!IsPositive(a) && IsPositive(b)) {
 		//b-a
@@ -156,16 +147,11 @@ digits add(digits a, digits b) {
 			return res;
 			//reverse
 		}
-
-
-
-
 	}
 	else if (!IsPositive(b) && IsPositive(a)) {
 		//a-b
 		if (isGraterAbs(a, b)) {
 			b = absFpNum(b);
-
 			res = sub(a, b);
 			b = Negate(b);
 			return res;
@@ -200,8 +186,6 @@ digits add(digits a, digits b) {
 digits multiply(digits a, digits b)
 {
 	bool negate = false;
-	bool negatea = false;
-	bool negateb = false;
 	digits res;
 	digits temp1;
 	digits temp2;
@@ -214,21 +198,17 @@ digits multiply(digits a, digits b)
 	{
 		if (!IsPositive(b))
 		{
-			a = Negate(a);
-			negatea = true;
+			a = Negate(a);		
 			b = Negate(b);
-			negateb = true;
 		}
 		else
 		{
 			a = Negate(a);
-			negatea = true;
 			negate = true;
 		}
 	}
 	else if (!IsPositive(b)) {
 		b = Negate(b);
-		negateb = true;
 		negate = true;
 	}
 	[fastopt]
@@ -239,13 +219,6 @@ digits multiply(digits a, digits b)
 		}
 		temp1 = PrepareForAdding(temp1,bonus, b.digits[i],i);
 		temp2 = add(temp1, temp2);
-	}
-	if (negatea) {
-		a = Negate(a);
-	}
-	if (negateb)
-	{
-		b = Negate(b);
 	}
 	[unroll]
 	for (int x = 0; x < fpPre; x++) {
