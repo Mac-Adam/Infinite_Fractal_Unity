@@ -112,81 +112,8 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	return iter;
 
 
-
-
 }
 
-//uint getIter(uint2 pixel, uint width, uint height, uint idx) {
-//	digits cX;
-//	digits cY;
-//	digits zX;
-//	digits zY;
-//	digits squareX;
-//	digits squareY;
-//	digits scale;
-//	digits offset;
-//	digits middle;
-//	[unroll]
-//	for (int j = 0; j < fpPre; j++) {
-//		zX.digits[j] = _FpMultiframeBuffer[idx + CurX + j];
-//		zY.digits[j] = _FpMultiframeBuffer[idx + CurY + j];
-//		scale.digits[j] = 0;
-//		offset.digits[j] = 0;
-//	}
-//	scale.digits[1] = 50;
-//	offset.digits[0] = pixel.x - width / 2;
-//	offset = multiply(offset, scale);
-//	[unroll]
-//	for (int a = 0; a < fpPre; a++) {
-//		middle.digits[a] =0;
-//	}
-//	cX = add(offset, middle);
-//	for (int b = 0; b < fpPre; b++) {
-//		offset.digits[b] = 0;
-//	}
-//
-//	offset.digits[0] = pixel.y - height / 2;
-//	offset = multiply(offset, scale);
-//	[unroll]
-//	for (int c = 0; c < fpPre; c++) {
-//		middle.digits[c] = 0;
-//	}
-//	cY = add(offset, middle);
-//
-//	int iter = 0;
-//	squareX = square(zX);
-//	squareY = square(zY);
-//	[fastopt]
-//	for (uint i = 0; i < _IterPerCycle; i++) {
-//
-//		zY = add(cY, multiply(add(zX, zX), zY));
-//		zX = add(add(squareX, Negate(squareY)), cX);
-//		squareX = square(zX);
-//		squareY = square(zY);
-//		iter++;
-//
-//
-//		if (!inBounds(squareX, squareY)) {
-//			_FpMultiframeBuffer[idx + finished] = true;
-//			return iter;
-//		}
-//	}
-//	for (int l = 0; l < fpPre; l++) {
-//		_FpMultiframeBuffer[idx + CurX + l] = zX.digits[l];
-//	}
-//	for (int k = 0; k < fpPre; k++) {
-//		_FpMultiframeBuffer[idx + CurY + k] = zY.digits[k];
-//	}
-//
-//
-//	return iter;
-//
-//
-//
-//
-//}
-
-//was 8 8 1
 [numthreads(8, 8, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
@@ -268,33 +195,5 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	_IterBuffer[id.x + id.y * width].iter = _FpMultiframeBuffer[pixelId + iter];
 	_IterBuffer[id.x + id.y * width].finished = _FpMultiframeBuffer[pixelId + finished];
-	
-	
-	/*
-	digits test1;
-	digits test2;
-	digits test3;
-	for (int i = 0; i < fpPre; i++) {
-		test1.digits[i] = 0;
-		test2.digits[i] = 0;
-		test3.digits[i] = 0;
-	}
-	test1.digits[0] = 1;
-	test1.digits[1] = 4143;
-	test2.digits[0] = 1;
-	test2.digits[1] = 7327;
-
-	test3 = multiply(test1, Negate(test2));
-
-	if (test3.digits[1] == -4506) {
-		_IterBuffer[id.x + id.y * width].iter = 5;
-	
-	}
-	else {
-		_IterBuffer[id.x + id.y * width].iter = 20;
-
-	}
-	_IterBuffer[id.x + id.y * width].finished = true;
-	*/
 
 }
