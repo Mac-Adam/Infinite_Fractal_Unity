@@ -6,7 +6,7 @@ RWTexture2D<float4> Result;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 10;
+static const uint _IterPerCycle = 5;
 
 
 StructuredBuffer<int> _PossitionBuffer;
@@ -58,12 +58,14 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		scale.digits[j] = _PossitionBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
+	scale = Convert(scale);
 	offset.digits[0] = pixel.x - width / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
 	[unroll]
 	for (int a = 0; a < fpPre; a++) {
 		middle.digits[a] = _PossitionBuffer[MiddleX + a];
 	}
+	middle = Convert(middle);
 	cX = add(offset, middle);
 	for (int b = 0; b < fpPre; b++) {
 		offset.digits[b] = 0;
@@ -75,6 +77,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	for (int c = 0; c < fpPre; c++) {
 		middle.digits[c] = _PossitionBuffer[MiddleY + c];
 	}
+	middle = Convert(middle);
 	cY = add(offset, middle);
 
 
@@ -83,7 +86,10 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	squareY = square(zY);
 	[fastopt]
 	for (uint i = 0; i < _IterPerCycle; i++) {
-		zY = add(cY, MultiplyByInt(multiply(zX, zY), 2));
+
+
+
+		zY = add(cY, multiply(add(zX,zX), zY));
 		zX = add(add(squareX, Negate(squareY)), cX);
 		squareX = square(zX);
 		squareY = square(zY);
@@ -106,21 +112,16 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	return iter;
 
 
-
-
 }
 
-
-//was 8 8 1
 [numthreads(8, 8, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
 
 	uint width, height;
 	Result.GetDimensions(width, height);
+	 
 	
-
-
 	uint basePixelId = id.x + id.y * width + width * height * _Register;
 
 	uint pixelId = basePixelId * PixelSize;
@@ -194,8 +195,5 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	_IterBuffer[id.x + id.y * width].iter = _FpMultiframeBuffer[pixelId + iter];
 	_IterBuffer[id.x + id.y * width].finished = _FpMultiframeBuffer[pixelId + finished];
-	
-	
-
 
 }
