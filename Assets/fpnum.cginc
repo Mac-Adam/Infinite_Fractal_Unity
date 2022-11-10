@@ -1,42 +1,77 @@
 
-static const int fpPre = 4;
+static const int fpPre = 10;
 static const uint digitBase = 46300;
 
 
 struct digits {
 	int digits[fpPre];
-};
-
-digits Normalize(digits a) {
-	[unroll]
-	for (int x = fpPre - 1; x >= 0; x--) {
-
-		if (x != 0)
-		{
-			a.digits[x - 1] += a.digits[x] / digitBase;
-			a.digits[x] %= digitBase;
-		}
-		
-	}
-	return a;
-}
-
+}; 
 bool IsPositive(digits a) {
 	[fastopt]
 	for (int i = 0; i < fpPre; i++) {
-		if (a.digits[i] < 0) {
-			return false;
+		if (a.digits[i] != 0) {
+			return a.digits[i]>0;
 		}
 	}
 	return true;
 }
+digits borrowUp(digits a) {
+	a.digits[0]--;
+	[unroll]
+	for (int j = 1; j < fpPre; j++) {
+		a.digits[j] += digitBase - 1;
+	}
+	a.digits[fpPre - 1]++;
+	return a;
+}
+digits borrowDown(digits a) {
+	a.digits[0]++;
+	[unroll]
+	for (int j = 1; j < fpPre; j++) {
+		a.digits[j] -= digitBase - 1;
+	}
+	a.digits[fpPre - 1]--;
+	return a;
+}
+//All digits has to be the same sign
+digits normalizePositive(digits a) {
+	[unroll]
+	for (int x = fpPre - 1; x > 0; x--) {
+		a.digits[x - 1] += a.digits[x] / digitBase;
+		a.digits[x] %= digitBase;
+	}
+	return a;
+}
+digits normalizeNegative(digits a) {
+	[unroll]
+	for (int x = fpPre - 1; x > 0; x--) {
+		if (a.digits[x] > 0) {
+			a.digits[x - 1] += a.digits[x] / digitBase;
+		}
+		else {
+			a.digits[x - 1] -= abs(a.digits[x]) / digitBase;
+		}
+		
+		a.digits[x] = -(int)(abs(a.digits[x]) % digitBase);
+	}
+	return a;
+}
+digits Normalize(digits a) {
+	if (IsPositive(a)) {
+		a = borrowUp(a);
+		a = normalizePositive(a);
+	}
+	else {
+		a = borrowDown(a);
+		a = normalizeNegative(a);
+	}
+	return a;
+}
+
 digits Negate(digits a) {
 	[unroll]
 	for (int i = 0; i < fpPre; i++) {
-		if (a.digits[i] != 0) {
-			a.digits[i] = -a.digits[i];
-			break;
-		}
+		a.digits[i] = -a.digits[i];
 	}
 	return a;
 }
@@ -45,7 +80,7 @@ digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//M
 	for (int j = 0; j < fpPre; j++) {
 		a.digits[j] *= num;
 	}
-	a = Normalize(a);
+	a = normalizePositive(a);
 	digits shifted;
 	[unroll]
 	for (int i = 0; i < fpPre; i++)
@@ -61,11 +96,11 @@ digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//M
 	if (shiftAmount != 0) {
 		bonus += shifted.digits[fpPre - shiftAmount];
 	}
-	a = Normalize(shifted);
+	a = normalizePositive(shifted);
 
 	return a;
 }
-bool isGrater(digits a, digits b)
+bool IsGreater(digits a, digits b)
 {
 	[fastopt]
 	for (int i = 0; i < fpPre; i++) {
@@ -78,109 +113,14 @@ bool isGrater(digits a, digits b)
 	}
 	return false;
 }
-
-bool isGraterAbs(digits a, digits b)
-{
-	[fastopt]
-	for (int i = 0; i < fpPre; i++) {
-		if (abs(a.digits[i]) > abs(b.digits[i]))
-		{
-			return true;
-		}if (abs(a.digits[i]) < abs(b.digits[i])) {
-			return false;
-		}
-	}
-	return false;
-}
-
-
-
-digits absFpNum(digits a) {
-	[unroll]
-	for (int i = 0; i < fpPre; i++) {
-		a.digits[i] = abs(a.digits[i]);
-	}
-
-	return a;
-}
-
-digits sub(digits a, digits b)
-{
-	digits res;
-	[unroll]
-	for (int i = 0; i < fpPre; i++) {
-		res.digits[i] = a.digits[i] - b.digits[i];
-	}
-	res.digits[0]--;
-	[unroll]
-	for (int j = 1; j < fpPre; j++) {
-		res.digits[j] += digitBase - 1;
-	}
-	res.digits[fpPre - 1]++;
-	res = Normalize(res);
-	return res;
-
-}
-
 digits add(digits a, digits b) {
-	bool negate = false;
-	digits res;
-	if (!IsPositive(a) && !IsPositive(b))
-	{
-		a = Negate(a);
-		b = Negate(b);
-		negate = true;
-	}
-	else if (!IsPositive(a) && IsPositive(b)) {
-		//b-a
-		if (isGraterAbs(b, a)) {
-			a = absFpNum(a);
-			res = sub(b, a);
-			a = Negate(a);
-			return res;
-		}
-		else {
-			a = absFpNum(a);
-			res = sub(a, b);
-			res = Negate(res);
-			a = Negate(a);
-			return res;
-			//reverse
-		}
-	}
-	else if (!IsPositive(b) && IsPositive(a)) {
-		//a-b
-		if (isGraterAbs(a, b)) {
-			b = absFpNum(b);
-			res = sub(a, b);
-			b = Negate(b);
-			return res;
-		}
-		else {
-			//reverse
-			b = absFpNum(b);
-			res = sub(b, a);
-			res = Negate(res);
-			b = Negate(b);
-			return res;
-		}
-
-	}
-
-	res = a;
 	[unroll]
 	for (int i = 0; i < fpPre; i++) {
-		res.digits[i] += b.digits[i];
+		a.digits[i] += b.digits[i];
 
 	}
-	res = Normalize(res);
-	if (negate)
-	{
-		res = Negate(res);
-
-	}
-
-	return res;
+	a = Normalize(a);
+	return a;
 }
 
 digits multiply(digits a, digits b)
@@ -255,27 +195,22 @@ digits setDouble(double num) {
 	}
 	return a;
 }
-
 bool inBounds(digits a, digits b) {
 	a = add(a, b);
-
-	bool res = true;
-
-	if (a.digits[0] > 4) {
-		res = false;
+	for (int c = 0; c < fpPre; c++) {
+		b.digits[c] = 0;
 	}
-	else if (a.digits[0] == 4) {
+	b.digits[0] = 4;
+	return IsGreater(b, a);
+}
+//should be useless after cpu code is updated
+digits Convert(digits a) {
+	if (!IsPositive(a)) {
 		[unroll]
-		for (int i = 1; i < fpPre; i++) {
-			if (a.digits[i] > 0)
-			{
-				res = false;
-			}
-
+		for (int i = 0; i < fpPre; i++) {
+			a.digits[i] = -abs(a.digits[i]);
 		}
 	}
-	return res;
-
+	return a;
 }
-
 
