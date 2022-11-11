@@ -67,6 +67,15 @@ digits Normalize(digits a) {
 	}
 	return a;
 }
+digits NormalizeNonBorrow(digits a) {
+	if (IsPositive(a)) {
+		a = normalizePositive(a);
+	}
+	else {
+		a = normalizeNegative(a);
+	}
+	return a;
+}
 
 digits Negate(digits a) {
 	[unroll]
@@ -126,9 +135,16 @@ digits add(digits a, digits b) {
 	[unroll]
 	for (int i = 0; i < fpPre; i++) {
 		a.digits[i] += b.digits[i];
-
 	}
 	a = Normalize(a);
+	return a;
+}
+digits addPositives(digits a, digits b) {
+	[unroll]
+	for (int i = 0; i < fpPre; i++) {
+		a.digits[i] += b.digits[i];
+	}
+	a = normalizePositive(a);
 	return a;
 }
 
@@ -167,7 +183,7 @@ digits multiply(digits a, digits b)
 			temp1.digits[k] = a.digits[k];		
 		}
 		temp1 = PrepareForAdding(temp1,bonus, b.digits[i],i);
-		temp2 = add(temp1, temp2);
+		temp2 = addPositives(temp1, temp2);
 	}
 	[unroll]
 	for (int x = 0; x < fpPre; x++) {
