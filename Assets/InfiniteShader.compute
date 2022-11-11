@@ -19,7 +19,8 @@ static const int CurX = 0;
 static const int CurY = fpPre;
 static const int iter = 2 * fpPre;
 static const int finished = 2 * fpPre + 1;
-static const int PixelSize = 2 * fpPre + 2;
+static const int iterOffset = 2 * fpPre + 2;
+static const int PixelSize = 2 * fpPre + 3;
 
 
 int _ShiftX;
@@ -37,10 +38,16 @@ bool _reset;
 struct res {
 	uint iter;
 	bool finished;
+	float offset;
 };
 RWStructuredBuffer<res> _IterBuffer;
 
-
+float getOffset(float2 squares) {
+	float logz = log(squares.x + squares.y) / 2.0;
+	float res = log(logz / log(2.0)) / log(2.0);
+	res = clamp(res, 0.0, 1.0);
+	return res;
+}
 uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits cX;
 	digits cY;
@@ -97,6 +104,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 
 		if (!inBounds(squareX, squareY)) {
+			_FpMultiframeBuffer[idx + iterOffset] = digitBase * getOffset(float2(toFloat(squareX), toFloat(squareY)));
 			_FpMultiframeBuffer[idx + finished] = true;
 			return iter;
 		}
@@ -195,5 +203,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	_IterBuffer[id.x + id.y * width].iter = _FpMultiframeBuffer[pixelId + iter];
 	_IterBuffer[id.x + id.y * width].finished = _FpMultiframeBuffer[pixelId + finished];
+	_IterBuffer[id.x + id.y * width].offset = (float)(_FpMultiframeBuffer[pixelId + iterOffset]) / digitBase;
+
 
 }

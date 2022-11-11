@@ -203,6 +203,13 @@ bool inBounds(digits a, digits b) {
 	b.digits[0] = 4;
 	return IsGreater(b, a);
 }
+float toFloat(digits num){
+	float res = 0.0;
+	for (int i = 0; i < fpPre; i++) {
+		res += num.digits[i] * pow(digitBase,-i);
+	}
+	return res;
+}
 //should be useless after cpu code is updated
 digits Convert(digits a) {
 	if (!IsPositive(a)) {
@@ -213,4 +220,5 @@ digits Convert(digits a) {
 	}
 	return a;
 }
+
 

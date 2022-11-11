@@ -87,7 +87,7 @@ public class FractalMaster : MonoBehaviour
     //RenderShader
     ComputeBuffer IterBuffer;
     int colorStrength = 5;
-    bool sigmoid = false;
+    bool smoothGradient = true;
     ComputeBuffer ColorBuffer;
     ColorPalette[] colorPalettes = new ColorPalette[] {
         new ColorPalette(
@@ -549,10 +549,10 @@ public class FractalMaster : MonoBehaviour
     {
         Application.targetFrameRate = -1;
        
-        IterBuffer = new ComputeBuffer(Screen.width * Screen.height  / Pow(Pow(pixelizationBase, pixelizationLevel),2),sizeof(int)*2);
+        IterBuffer = new ComputeBuffer(Screen.width * Screen.height  / Pow(Pow(pixelizationBase, pixelizationLevel),2),sizeof(int)*2+sizeof(float));
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
-        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2);
-        FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 2));
+        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float)*2);
+        FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 3));
         PossionBuffer = new ComputeBuffer(3*shaderPre,sizeof(int));
         ColorBuffer = new ComputeBuffer(colorPalettes[currColorPalette].length, 4 * sizeof(float));
 
@@ -627,7 +627,7 @@ public class FractalMaster : MonoBehaviour
         }
         if (Input.GetKeyDown(togleInterpolationTypeContorl))
         {
-            sigmoid = !sigmoid;
+            smoothGradient = !smoothGradient;
         }
         if (Input.GetKeyDown(colorStrengthContorlUp))
         {
@@ -650,11 +650,11 @@ public class FractalMaster : MonoBehaviour
             scaleFixer.setDouble((double)Pow(pixelizationBase, pixelizationLevel) / (double)Pow(pixelizationBase, lastPixelizationLevel));
             Scale *= scaleFixer;
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int)*2);
+            IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int)*2 + sizeof(float));
             MultiFrameRenderBuffer.Dispose();
-            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2);
+            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2+ sizeof(float)*2);
             FpMultiframeBuffer.Dispose();
-            FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 2));
+            FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 3));
             reset = true;
         }
 
@@ -756,8 +756,8 @@ public class FractalMaster : MonoBehaviour
     }
 
     private void Update()
-    {   
-
+    {
+       
         handleLastValues();
 
         handleKeyInput();
@@ -826,7 +826,7 @@ public class FractalMaster : MonoBehaviour
         RenderShader.SetBuffer(0, "_IterBuffer", IterBuffer);
         RenderShader.SetInt("_MaxIter", maxIter);
         RenderShader.SetInt("_ColorStrength", colorStrength);
-        RenderShader.SetBool("_Sigmoid", sigmoid);
+        RenderShader.SetBool("_Smooth", smoothGradient);
         RenderShader.SetInt("_PixelWidth", Pow(pixelizationBase, pixelizationLevel));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", colorPalettes[currColorPalette].length);
