@@ -113,6 +113,15 @@ bool IsGreater(digits a, digits b)
 	}
 	return false;
 }
+digits subtract(digits a, digits b) {
+	[unroll]
+	for (int i = 0; i < fpPre; i++) {
+		a.digits[i] -= b.digits[i];
+
+	}
+	a = Normalize(a);
+	return a;
+}
 digits add(digits a, digits b) {
 	[unroll]
 	for (int i = 0; i < fpPre; i++) {

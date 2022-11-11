@@ -97,7 +97,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 
 		zY = add(cY, multiply(add(zX,zX), zY));
-		zX = add(add(squareX, Negate(squareY)), cX);
+		zX = add(subtract(squareX, squareY), cX);
 		squareX = square(zX);
 		squareY = square(zY);
 		iter++;
