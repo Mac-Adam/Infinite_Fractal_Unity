@@ -57,28 +57,30 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	int textureIdx = textureX + textureY * (width/ _PixelWidth);
 
     Result[id.xy] = getColor(_IterBuffer[textureIdx]);
-	
 	//
-	//float4 Color1 = float4(1.0,0,0,1.0);
-	//float4 Color2 = float4(0, 1.0, 1.0, 1.0);
-	//if (id.y > height*2 / 3) { //top
-	//	float4 c = Color1 + (Color2 - Color1) * ((float)id.x / (float)width);
-	//	Result[id.xy] = c;
+	//float baseRatio = (float)id.x* _ColorArrayLength / (float)width;
+	//int baseColorIdx = (int)(floor(baseRatio) % _ColorArrayLength);
+	//int upColorIdx = (int)((floor(baseRatio) + 1) % _ColorArrayLength);
+	//float ratio = baseRatio % 1;
+
+	//float4 Color1 = _Colors[baseColorIdx];
+	//float4 Color2 = _Colors[upColorIdx];
+
+	//if (id.y > height*4 / 5) { //top -> bottom
+	//	Result[id.xy] = lerpColors(Color1,Color2,ratio,0, _Smooth);
 	//}
-	//else if (id.y > height / 3) {
-	//	float3 c0 = rgb2lch(Color1.xyz);
-	//	float3 c1 = rgb2lch(Color2.xyz);
-	//	float3 clch = c0 + (c1 - c0) * ((float)id.x / (float)width);
-	//	float3 crgb = lch2rgb(clch);
-	//	Result[id.xy] = float4(crgb.x, crgb.y, crgb.z, 1.0);
+	//else if (id.y > height*3 / 5) {
+	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 1, _Smooth);
+	//}
+	//else if (id.y > height * 2 / 5) {
+	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 2, _Smooth);
+	//}
+	//else if (id.y > height / 5) {
+	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 3, _Smooth);
 	//}
 	//else {
-	//	float3 c0 = rgb2lab(Color1.xyz);
-	//	float3 c1 = rgb2lab(Color2.xyz);
-	//	float3 clab = c0 + (c1 - c0) * ((float)id.x / (float)width);
-	//	float3 crgb = lab2rgb(clab);
-	//	
-	//	Result[id.xy] = float4(crgb.x, crgb.y, crgb.z, 1.0);
+	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 4, _Smooth);
 	//}
 
+	
 }

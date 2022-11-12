@@ -115,7 +115,12 @@ public class FractalMaster : MonoBehaviour
                 new Vector4(0.132f, 0.840f, 0.920f, 1.0f),
                 new Vector4(0.024f, 0.036f, 0.268f, 1.0f),
                 new Vector4(0.364f, 0.040f, 0.552f, 1.0f),
-            }), 
+            }),    
+        new ColorPalette(
+            new Vector4[] {
+                new Vector4(0.024f, 0.032f, 0.396f, 1.0f),
+                new Vector4(0.764f, 0.596f, 0.040f, 1.0f)
+            }),
     };
     int currColorPalette = 0;
     
