@@ -9,7 +9,7 @@ struct res {
 	uint iter;
 	bool finished;
 	float offset;
-};
+}; 
 RWStructuredBuffer<res> _IterBuffer;
 uint _MaxIter;
 
@@ -17,6 +17,7 @@ uint _MaxIter;
 int _ColorArrayLength;
 StructuredBuffer<float4> _Colors;
 bool _Smooth;
+int _Type;
 int _ColorStrength;
 float4 getColor(res res) {
 	float4 InColor = float4(0.0, 0.0, 0.0, 1.0f);
@@ -40,7 +41,7 @@ float4 getColor(res res) {
 	int upColorIdx = (int)((floor(baseRatio) + 1) % _ColorArrayLength);
 	float ratio = baseRatio % 1;
 	
-	return float4(_Colors[baseColorIdx] + (_Colors[upColorIdx] - _Colors[baseColorIdx]) * (-2.0 * pow(ratio, 3) + 3.0 * pow(ratio, 2)));
+	return lerpColors(_Colors[baseColorIdx],_Colors[upColorIdx], ratio,_Type,_Smooth);
 	
 
 	 

@@ -175,16 +175,17 @@ float3 lch2rgb(float3 c) {
 	return lab2rgb(lch2lab(c));
 }
 float4 lerpColors(float4 c0, float4 c1, float t, int type,bool cubic) {
+	float4 color = c0;
 	if (cubic) {
 		t = -2.0 * pow(t, 3) + 3.0 * pow(t, 2);
 	}
 	if (type == 0) {
-		return c0 + (c1 - c0) * t;
+		color = c0 + (c1 - c0) * t;
 	}
 	else if (type == 1) {
 		c0.xyz = rgb2lab(c0.xyz);
 		c1.xyz = rgb2lab(c1.xyz);
-		return float4(lab2rgb( c0.xyz + (c1.xyz - c0.xyz) * t ),1.0);
+		color = float4(lab2rgb( c0.xyz + (c1.xyz - c0.xyz) * t ),1.0);
 	}
 	else if (type == 2) {
 		c0.xyz = rgb2lch(c0.xyz);
@@ -204,7 +205,7 @@ float4 lerpColors(float4 c0, float4 c1, float t, int type,bool cubic) {
 			angle = (c0.z + (c1.z - c0.z) * t)%360;
 		}
 		c0.xyz = lch2rgb(float3(lc, angle));
-		return float4(c0);
+		color = float4(c0);
 	}
 	else if (type == 3) {
 		c0.xyz = rgb2lch(c0.xyz);
@@ -218,7 +219,7 @@ float4 lerpColors(float4 c0, float4 c1, float t, int type,bool cubic) {
 		angle = (c0.z + (c1.z - c0.z) * t) % 360;
 	
 		c0.xyz = lch2rgb(float3(lc, angle));
-		return float4(c0);
+		color = float4(c0);
 	}
 	else if (type == 4) {
 		c0.xyz = rgb2lch(c0.xyz);
@@ -232,6 +233,7 @@ float4 lerpColors(float4 c0, float4 c1, float t, int type,bool cubic) {
 		angle = (c0.z + (c1.z - c0.z) * t) % 360;
 		
 		c0.xyz = lch2rgb(float3(lc, angle));
-		return float4(c0);
+		color = float4(c0);
 	}
+	return color;;
 }

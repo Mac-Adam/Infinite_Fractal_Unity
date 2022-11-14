@@ -49,6 +49,7 @@ public class FractalMaster : MonoBehaviour
     string colorStrengthContorlDown = "j";
     string colorPaletteTogleContorl = "c";
     string antialiasTogleContorl = "a";
+   
 
 
     //Controlls Handleing
@@ -90,37 +91,57 @@ public class FractalMaster : MonoBehaviour
     bool smoothGradient = true;
     ComputeBuffer ColorBuffer;
     ColorPalette[] colorPalettes = new ColorPalette[] {
-        new ColorPalette(
-            new Vector4[] { 
-                new Vector4(0.086f, 0.376f, 0.533f, 1.0f),
-                new Vector4(0.29f, 0.435f, 0.647f, 1.0f),
-                new Vector4(0.753f, 0.839f, 0.875f, 1.0f),
-                new Vector4(0.859f, 0.529f, 0.239f, 1.0f),
-                new Vector4(0.71f, 0.098f, 0.525f, 1.0f),
-            }),
-        new ColorPalette(
-            new Vector4[] { 
-                new Vector4(0.012f, 0.008f, 0.188f, 1.0f),
-                new Vector4(0.168f, 0.392f, 0.756f, 1.0f),
-                new Vector4(1.0f, 1.0f, 1.0f, 1.0f),
-                new Vector4(0.828f, 0.652f, 0.040f, 1.0f),
-                new Vector4(0.184f, 0.112f, 0.008f, 1.0f)
-            }),
+          new ColorPalette(
+            new Vector4[] {
+                hexColor("#155e80"),
+                hexColor("#91b8c4"),
+                hexColor("#d67b27"),
+                hexColor("#03074d")
+            },1),
         new ColorPalette(
             new Vector4[] {
-                new Vector4(0.816f, 0.056f, 0.056f, 1.0f),
-                new Vector4(0.880f, 0.0456f, 0.052f, 1.0f),
-                new Vector4(0.948f, 0.960f, 0.220f, 1.0f),
-                new Vector4(0.028f, 0.732f, 0.028f, 1.0f),
-                new Vector4(0.132f, 0.840f, 0.920f, 1.0f),
-                new Vector4(0.024f, 0.036f, 0.268f, 1.0f),
-                new Vector4(0.364f, 0.040f, 0.552f, 1.0f),
-            }),    
+                hexColor("#000764"),
+                hexColor("#206bcb"),
+                hexColor("#edffff"),
+                hexColor("#ffaa00"),
+                 hexColor("#000200"),
+            },1),
+      new ColorPalette(
+            new Vector4[] {
+                hexColor("#060864"),
+                hexColor("#310c54"),
+                hexColor("#b4950a"),
+            },1),
+       new ColorPalette(
+            new Vector4[] {
+                hexColor("#7F7FD5"),
+                hexColor("#91eae4"),
+                hexColor("#4de893"),
+            },2),
+       new ColorPalette(
+            new Vector4[] {
+                hexColor("#7F7FD5"),
+                hexColor("#91eae4")
+            },3),
         new ColorPalette(
             new Vector4[] {
-                new Vector4(0.024f, 0.032f, 0.396f, 1.0f),
-                new Vector4(0.764f, 0.596f, 0.040f, 1.0f)
-            }),
+                hexColor("#59C173"),
+                 hexColor("#520645"),
+                hexColor("#5D26C1")
+            },1),
+        new ColorPalette(
+            new Vector4[] {
+                hexColor("#40E0D0"),
+                hexColor("#FF8C00"),
+                hexColor("#5D26C1"),
+            },1),
+        new ColorPalette(
+            new Vector4[] {
+                hexColor("#155e80"),
+                hexColor("#91b8c4"),
+                hexColor("#d67b27"),
+                hexColor("#03074d")
+            },2),
     };
     int currColorPalette = 0;
     
@@ -131,9 +152,40 @@ public class FractalMaster : MonoBehaviour
     int shiftY = 0;
     int register = 0;
 
-  
 
 
+    static Vector4 hexColor(string hex)
+    {
+        Dictionary<char, float> lookupTabe = new Dictionary<char, float>();
+        lookupTabe.Add('0', 0.0f);
+        lookupTabe.Add('1', 1.0f);
+        lookupTabe.Add('2', 2.0f);
+        lookupTabe.Add('3', 3.0f);
+        lookupTabe.Add('4', 4.0f);
+        lookupTabe.Add('5', 5.0f);
+        lookupTabe.Add('6', 6.0f);
+        lookupTabe.Add('7', 7.0f);
+        lookupTabe.Add('8', 8.0f);
+        lookupTabe.Add('9', 9.0f);
+        lookupTabe.Add('a', 10.0f);
+        lookupTabe.Add('b', 11.0f);
+        lookupTabe.Add('c', 12.0f);
+        lookupTabe.Add('d', 13.0f);
+        lookupTabe.Add('e', 14.0f);
+        lookupTabe.Add('f', 15.0f);
+        lookupTabe.Add('A', 10.0f);
+        lookupTabe.Add('B', 11.0f);
+        lookupTabe.Add('C', 12.0f);
+        lookupTabe.Add('D', 13.0f);
+        lookupTabe.Add('E', 14.0f);
+        lookupTabe.Add('F', 15.0f);
+        return new Vector4(
+            (lookupTabe[hex[1]] * 16.0f + lookupTabe[hex[2]]) / 256.0f,
+            (lookupTabe[hex[3]] * 16.0f + lookupTabe[hex[4]]) / 256.0f,
+            (lookupTabe[hex[5]] * 16.0f + lookupTabe[hex[6]]) / 256.0f,
+            1.0f
+       );
+    }
     int Pow(int baseNum, int exponent)
     {
         int res;
@@ -155,9 +207,11 @@ public class FractalMaster : MonoBehaviour
     {
         public Vector4[] colors;
         public int length;
-        public ColorPalette(Vector4[] col) {
+        public int gradientType;
+        public ColorPalette(Vector4[] col,int t) {
             colors = col;
             length = col.Length;
+            gradientType = t;
         }
     }
     public struct FixedPointNumber {
@@ -832,6 +886,7 @@ public class FractalMaster : MonoBehaviour
         RenderShader.SetInt("_MaxIter", maxIter);
         RenderShader.SetInt("_ColorStrength", colorStrength);
         RenderShader.SetBool("_Smooth", smoothGradient);
+        RenderShader.SetInt("_Type", colorPalettes[currColorPalette].gradientType);
         RenderShader.SetInt("_PixelWidth", Pow(pixelizationBase, pixelizationLevel));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", colorPalettes[currColorPalette].length);
