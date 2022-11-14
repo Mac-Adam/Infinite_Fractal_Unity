@@ -35,7 +35,7 @@ public class FractalMaster : MonoBehaviour
 
     //Controls
     float scrollSlowness = 10.0f;
-    float lerpStrength = 0.2f;
+
     double length = 4.0f;
     double middleX = -1.0f;
     double middleY = 0.0f;
@@ -766,12 +766,13 @@ public class FractalMaster : MonoBehaviour
             }
             else
             {
-                multiplyer.setDouble(1 - Input.mouseScrollDelta.y / scrollSlowness);
+                double scaleDifference = 1 - Input.mouseScrollDelta.y / scrollSlowness;
+                multiplyer.setDouble(scaleDifference);
                 Scale *= multiplyer;
 
                 FixedPointNumber differenceX = mousePosRealX - MiddleX;
                 FixedPointNumber differenceY = mousePosRealY - MiddleY;
-                multiplyer.setDouble(lerpStrength * Input.mouseScrollDelta.y);
+                multiplyer.setDouble(1.0 - scaleDifference);
                 MiddleX += differenceX * multiplyer;
                 MiddleY += differenceY * multiplyer;
                 ResetParams();
