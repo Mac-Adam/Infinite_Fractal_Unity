@@ -29,12 +29,11 @@ int _ShiftY;
 uint _Register;
 
 RWStructuredBuffer<int> _FpMultiframeBuffer;
-//4 int CurrentZX
-//4 int CurretZY 
-//int iter 
-//int finished
-bool _reset;
+RWStructuredBuffer<int> _LastMultiframeData;
 
+bool _reset;
+bool _pixelized;
+bool _pixelizationBase;
 struct res {
 	uint iter;
 	bool finished;
@@ -180,6 +179,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
 
+	}
+	else if (_pixelized) {
+		uint prePixelIdx = (id.x + id.y * width) * PixelSize;
+		for (int b = 0; b < PixelSize; b++) {
+			_FpMultiframeBuffer[pixelId + b] = _LastMultiframeData[prePixelIdx + b];
+		}
 	}
 	else if (_reset) {
 		for (int k = 0; k < PixelSize; k++) {

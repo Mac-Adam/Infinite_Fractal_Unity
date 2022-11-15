@@ -66,12 +66,13 @@ public class FractalMaster : MonoBehaviour
     int maxIter = 1000;
     const int IterPerDoubleCycle = 10;
     const int IterPerInfiniteCycle = 5;
-    const int shaderPre = 10;
+    const int shaderPre = 8;
     const int fpPre = shaderPre * 2;
+    const int shaderPixelSize = 2 * shaderPre + 3;
     int IterPecCycle; 
 
     //Pixelization
-    int pixelizationBase = 2;
+    int pixelizationBase = 3;
     int pixelizationLevel = 0;
     int lastPixelizationLevel;
 
@@ -80,8 +81,10 @@ public class FractalMaster : MonoBehaviour
     ComputeBuffer doubleDataBuffer;
     ComputeBuffer MultiFrameRenderBuffer;
 
+
     //InfiShader
     ComputeBuffer FpMultiframeBuffer;
+    ComputeBuffer LastMultiFrameRenderBuffer;
     ComputeBuffer PossionBuffer;
     int[] TestPosiotnArray = new int[3 * shaderPre];
 
@@ -151,6 +154,7 @@ public class FractalMaster : MonoBehaviour
     int shiftX = 0;
     int shiftY = 0;
     int register = 0;
+    bool pixelized = false;
 
 
 
@@ -611,7 +615,8 @@ public class FractalMaster : MonoBehaviour
         IterBuffer = new ComputeBuffer(Screen.width * Screen.height  / Pow(Pow(pixelizationBase, pixelizationLevel),2),sizeof(int)*2+sizeof(float));
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float)*2);
-        FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 3));
+        LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+        FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
         PossionBuffer = new ComputeBuffer(3*shaderPre,sizeof(int));
         ColorBuffer = new ComputeBuffer(colorPalettes[currColorPalette].length, 4 * sizeof(float));
 
@@ -649,6 +654,7 @@ public class FractalMaster : MonoBehaviour
         {
 
             pixelizationLevel += 1;
+            pixelized = true;
         }
         if (Input.GetKeyDown(antialiasTogleContorl))
         {
@@ -705,15 +711,45 @@ public class FractalMaster : MonoBehaviour
     void handleScreenSizeChange() {
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel)
         {
-            FixedPointNumber scaleFixer = new FixedPointNumber(fpPre);
-            scaleFixer.setDouble((double)Pow(pixelizationBase, pixelizationLevel) / (double)Pow(pixelizationBase, lastPixelizationLevel));
-            Scale *= scaleFixer;
             IterBuffer.Dispose();
             IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int)*2 + sizeof(float));
             MultiFrameRenderBuffer.Dispose();
-            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2+ sizeof(float)*2);
+            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
+            LastMultiFrameRenderBuffer.Dispose();
+            LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+            if (lastPixelizationLevel < pixelizationLevel)
+            {
+                int[] arr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize];
+                int[] cutOfarr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
+                FpMultiframeBuffer.GetData(arr);
+                int width = Screen.width / Pow(pixelizationBase, pixelizationLevel);
+                int heigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
+                int oldwidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
+                int oldheigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
+
+                for (int x = 0; x < width; x++)
+                {
+                    for (int y = 0; y < heigth; y++)
+                    {
+                        int baseIdx = x + y * width;
+                        baseIdx *= shaderPixelSize;
+                        int oldbaseIdx = x + width + (y + heigth) * oldwidth;
+                        oldbaseIdx += oldwidth*oldheigth * register;
+                        oldbaseIdx *= shaderPixelSize;
+                        for (int i = 0; i < shaderPixelSize; i++)
+                        {
+                            cutOfarr[baseIdx + i] = arr[oldbaseIdx + i];
+                        }
+                    
+
+                    }
+                }
+                LastMultiFrameRenderBuffer.SetData(cutOfarr);
+            }
+           
+            
             FpMultiframeBuffer.Dispose();
-            FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * (shaderPre * 2 + 3));
+            FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
             reset = true;
         }
 
@@ -817,7 +853,6 @@ public class FractalMaster : MonoBehaviour
 
     private void Update()
     {
-       
         handleLastValues();
 
         handleKeyInput();
@@ -834,6 +869,7 @@ public class FractalMaster : MonoBehaviour
         IterBuffer.Dispose();
         doubleDataBuffer.Dispose();
         MultiFrameRenderBuffer.Dispose();
+        LastMultiFrameRenderBuffer.Dispose();
         ColorBuffer.Dispose();
         FpMultiframeBuffer.Dispose();
         PossionBuffer.Dispose();
@@ -862,7 +898,7 @@ public class FractalMaster : MonoBehaviour
         if (doublePre)
         {
             DoubleShader.SetBuffer(0,"_DoubleDataBuffer", doubleDataBuffer);
-            DoubleShader.SetBuffer(0, "_MultiFrameData",MultiFrameRenderBuffer);
+            DoubleShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
             DoubleShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample % AntiAliasLookupTable.Length]);
             DoubleShader.SetInt("_MaxIter", maxIter);
             DoubleShader.SetBool("_reset", reset);
@@ -870,14 +906,18 @@ public class FractalMaster : MonoBehaviour
             DoubleShader.SetInt("_ShiftY", shiftY);
             DoubleShader.SetInt("_Register", register);
             DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+
         }
         else
         {
             InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
+            InfiniteShader.SetBuffer(0, "_LastMultiframeData", LastMultiFrameRenderBuffer);
             InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
             InfiniteShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample%AntiAliasLookupTable.Length]);
             InfiniteShader.SetInt("_MaxIter",maxIter);
             InfiniteShader.SetBool("_reset", reset);
+            InfiniteShader.SetBool("_pixelized", pixelized);
+            InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
             InfiniteShader.SetInt("_ShiftX", shiftX);
             InfiniteShader.SetInt("_ShiftY", shiftY);
             InfiniteShader.SetInt("_Register", register);
@@ -894,6 +934,7 @@ public class FractalMaster : MonoBehaviour
         reset = false;
         shiftX = 0;
         shiftY = 0;
+        pixelized = false;
         
         
     }
