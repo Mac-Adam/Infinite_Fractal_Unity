@@ -6,13 +6,15 @@
 RWTexture2D<float4> Result;
 int _PixelWidth;
 struct res {
-	uint iter;
+	uint iter; 
 	bool finished;
 	float offset;
 }; 
 RWStructuredBuffer<res> _IterBuffer;
+RWStructuredBuffer<res> _OldIterBuffer;
 uint _MaxIter;
-
+int _OldPixelWidth;
+bool _Upscaling;
 
 int _ColorArrayLength;
 StructuredBuffer<float4> _Colors;
@@ -56,32 +58,21 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	int textureX = id.x / _PixelWidth;
 	int textureY = id.y / _PixelWidth;
 	int textureIdx = textureX + textureY * (width/ _PixelWidth);
-
-    Result[id.xy] = getColor(_IterBuffer[textureIdx]);
-	//
-	//float baseRatio = (float)id.x* _ColorArrayLength / (float)width;
-	//int baseColorIdx = (int)(floor(baseRatio) % _ColorArrayLength);
-	//int upColorIdx = (int)((floor(baseRatio) + 1) % _ColorArrayLength);
-	//float ratio = baseRatio % 1;
-
-	//float4 Color1 = _Colors[baseColorIdx];
-	//float4 Color2 = _Colors[upColorIdx];
-
-	//if (id.y > height*4 / 5) { //top -> bottom
-	//	Result[id.xy] = lerpColors(Color1,Color2,ratio,0, _Smooth);
-	//}
-	//else if (id.y > height*3 / 5) {
-	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 1, _Smooth);
-	//}
-	//else if (id.y > height * 2 / 5) {
-	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 2, _Smooth);
-	//}
-	//else if (id.y > height / 5) {
-	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 3, _Smooth);
-	//}
-	//else {
-	//	Result[id.xy] = lerpColors(Color1, Color2, ratio, 4, _Smooth);
-	//}
-
+	if (_Upscaling) {
+		if (_IterBuffer[textureIdx].finished) {
+			Result[id.xy] = getColor(_IterBuffer[textureIdx]);
+		}
+		else {
+			int oldTextureX = id.x / _OldPixelWidth;
+			int oldTextureY = id.y / _OldPixelWidth;
+			int oldTextureIdx = oldTextureX + oldTextureY * (width / _OldPixelWidth);
+			Result[id.xy] = getColor(_OldIterBuffer[oldTextureIdx]);
+		}
+	}
+	else {
+		Result[id.xy] = getColor(_IterBuffer[textureIdx]);
+	}
+    
+	
 	
 }

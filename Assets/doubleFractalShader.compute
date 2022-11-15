@@ -84,7 +84,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	Result.GetDimensions(width, height);
 
 
-	 //OLD DOUBLE CODE
+
 	//Get double data form buffer
 	_Length = _DoubleDataBuffer[0];
 	_OffsetX = _DoubleDataBuffer[1];
