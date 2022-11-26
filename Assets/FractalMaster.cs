@@ -615,7 +615,7 @@ public class FractalMaster : MonoBehaviour
     }
     private void Awake()
     {
-        Application.targetFrameRate = 1;
+        Application.targetFrameRate = -1;
        
         IterBuffer = new ComputeBuffer(Screen.width * Screen.height  / Pow(Pow(pixelizationBase, pixelizationLevel),2),sizeof(int)*2+sizeof(float));
         OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
@@ -745,19 +745,15 @@ public class FractalMaster : MonoBehaviour
             LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
             if(lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
-                int[] oldArr;
+                int[] oldArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize]; ;
                 int[] newArr;
                 int dataWidth;
                 int dataHeigth;
                 int otherWidth;
                 int otherHeigth;
-                int cornerX;
-                int cornerY;
                 if (lastPixelizationLevel < pixelizationLevel)//zoom in
                 {
-                    oldArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize];
                     newArr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];                   
-                    
                     dataWidth = Screen.width / Pow(pixelizationBase, pixelizationLevel);
                     dataHeigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
                     
@@ -767,7 +763,7 @@ public class FractalMaster : MonoBehaviour
                 }
                 else //zoom out
                 {
-                    oldArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize];
+                   
                     newArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
 
 
@@ -778,12 +774,11 @@ public class FractalMaster : MonoBehaviour
                     dataWidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
                     dataHeigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
                 }
+ 
                 FpMultiframeBuffer.GetData(oldArr);
 
-                double ratio = ((double)(pixelizationBase - 1) / 2.0);
-                cornerX = (int)(dataWidth * ratio);
-                cornerY = (int)(dataHeigth * ratio);
-
+                int cornerX = dataWidth * (pixelizationBase - 1) / 2;
+                int cornerY = dataHeigth * (pixelizationBase - 1) / 2;
                 for (int x = 0; x < dataWidth; x++)
                 {
                     for (int y = 0; y < dataHeigth; y++)
@@ -791,15 +786,12 @@ public class FractalMaster : MonoBehaviour
 
                         int smallId = x + y * dataWidth;
                         int bigId = x + cornerX + (y + cornerY) * otherWidth;
-
+                        bigId += otherWidth * otherHeigth * register;
                         if (lastPixelizationLevel > pixelizationLevel)
                         {
-                            bigId += otherWidth * otherHeigth * register;
-                           
+                            smallId += dataWidth * dataHeigth * register;     
                         }
-                        else {
-                            smallId += dataWidth * dataHeigth * register;
-                        }
+                       
                         smallId *= shaderPixelSize;
                         bigId *= shaderPixelSize;
                         for (int i = 0; i < shaderPixelSize; i++)
