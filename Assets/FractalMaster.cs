@@ -743,90 +743,96 @@ public class FractalMaster : MonoBehaviour
             MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
             LastMultiFrameRenderBuffer.Dispose();
             LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
-            if(lastPixelizationLevel != pixelizationLevel)
+            if(lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
-                if (lastPixelizationLevel < pixelizationLevel)
+                int[] oldArr;
+                int[] newArr;
+                int dataWidth;
+                int dataHeigth;
+                int otherWidth;
+                int otherHeigth;
+                int cornerX;
+                int cornerY;
+                if (lastPixelizationLevel < pixelizationLevel)//zoom in
                 {
-                    int[] arr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize];
-                    int[] cutOfarr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
-                    FpMultiframeBuffer.GetData(arr);
-                    int width = Screen.width / Pow(pixelizationBase, pixelizationLevel);
-                    int heigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
-                    int oldwidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
-                    int oldheigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
-
-                    for (int x = 0; x < width; x++)
-                    {
-                        for (int y = 0; y < heigth; y++)
-                        {
-
-                            double ratio = ((double)(pixelizationBase - 1) / 2.0);
-                            int cornerX = (int)(width * ratio);
-                            int cornerY = (int)(heigth * ratio);
-                            int baseIdx = x + y * width;
-                            baseIdx *= shaderPixelSize;
-                            int oldbaseIdx = x + cornerX + (y + cornerY) * oldwidth;
-                            oldbaseIdx += oldwidth * oldheigth * register;
-                            oldbaseIdx *= shaderPixelSize;
-                            for (int i = 0; i < shaderPixelSize; i++)
-                            {
-                                cutOfarr[baseIdx + i] = arr[oldbaseIdx + i];
-                            }
-
-
-                        }
-                    }
-                    LastMultiFrameRenderBuffer.SetData(cutOfarr);
-                    FpMultiframeBuffer.Dispose();
-                    FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
-
+                    oldArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize];
+                    newArr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];                   
+                    
+                    dataWidth = Screen.width / Pow(pixelizationBase, pixelizationLevel);
+                    dataHeigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
+                    
+                    otherWidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
+                    otherHeigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
 
                 }
-                else if (!upscaling)
+                else //zoom out
+                {
+                    oldArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize];
+                    newArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
+
+
+                    otherWidth = Screen.width / Pow(pixelizationBase, pixelizationLevel);
+                    otherHeigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
+
+
+                    dataWidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
+                    dataHeigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
+                }
+                FpMultiframeBuffer.GetData(oldArr);
+
+                double ratio = ((double)(pixelizationBase - 1) / 2.0);
+                cornerX = (int)(dataWidth * ratio);
+                cornerY = (int)(dataHeigth * ratio);
+
+                for (int x = 0; x < dataWidth; x++)
+                {
+                    for (int y = 0; y < dataHeigth; y++)
+                    {
+
+                        int smallId = x + y * dataWidth;
+                        int bigId = x + cornerX + (y + cornerY) * otherWidth;
+
+                        if (lastPixelizationLevel > pixelizationLevel)
+                        {
+                            bigId += otherWidth * otherHeigth * register;
+                           
+                        }
+                        else {
+                            smallId += dataWidth * dataHeigth * register;
+                        }
+                        smallId *= shaderPixelSize;
+                        bigId *= shaderPixelSize;
+                        for (int i = 0; i < shaderPixelSize; i++)
+                        {
+                            if (lastPixelizationLevel > pixelizationLevel)
+                            {
+                                newArr[bigId + i] = oldArr[smallId + i];
+                            }
+                            else
+                            {
+                                newArr[smallId + i] = oldArr[bigId + i];
+                            }
+                        }
+                    }
+                }
+                FpMultiframeBuffer.Dispose();
+                FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+
+                if (lastPixelizationLevel > pixelizationLevel)
                 {
                     reset = false;
-                    int[] arr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize];
-                    int[] extenderArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
-                    FpMultiframeBuffer.GetData(arr);
-                    int width = Screen.width / Pow(pixelizationBase, pixelizationLevel);
-                    int heigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
-                    int oldwidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
-                    int oldheigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
-
-                    for (int x = 0; x < oldwidth; x++)
-                    {
-                        for (int y = 0; y < oldheigth; y++)
-                        {
-
-                            double ratio = ((double)(pixelizationBase - 1) / 2.0);
-                            int cornerX = (int)(oldwidth * ratio);
-                            int cornerY = (int)(oldheigth * ratio);
-                            int baseIdx = x + y * oldwidth;
-                            baseIdx += oldwidth * oldheigth * register;
-                            baseIdx *= shaderPixelSize;
-                            int exrendedId = x + cornerX + (y + cornerY) * width;
-                            exrendedId *= shaderPixelSize;
-                            for (int i = 0; i < shaderPixelSize; i++)
-                            {
-                                extenderArr[exrendedId + i] = arr[baseIdx + i];
-                            }
-                        }
-                    }
-
-                    FpMultiframeBuffer.Dispose();
-                    FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
-                    FpMultiframeBuffer.SetData(extenderArr);
-
+                    FpMultiframeBuffer.SetData(newArr);
                 }
-                
+                else
+                {
+                    LastMultiFrameRenderBuffer.SetData(newArr);
+                }
 
             }
             else
             {
                 FpMultiframeBuffer.Dispose();
                 FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
-
-
             }
 
 
