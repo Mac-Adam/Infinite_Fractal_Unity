@@ -20,7 +20,7 @@ int _ColorArrayLength;
 StructuredBuffer<float4> _Colors;
 bool _Smooth;
 int _Type;
-int _ColorStrength;
+float _ColorStrength;
 float4 getColor(res res) {
 	float4 InColor = float4(0.0, 0.0, 0.0, 1.0f);
 
@@ -38,7 +38,7 @@ float4 getColor(res res) {
 	else {
 		iter = (float)res.iter;
 	}
-	float baseRatio = iter/(float)_ColorStrength;
+	float baseRatio = iter/_ColorStrength;
 	int baseColorIdx = (int)(floor(baseRatio) % _ColorArrayLength);
 	int upColorIdx = (int)((floor(baseRatio) + 1) % _ColorArrayLength);
 	float ratio = baseRatio % 1;

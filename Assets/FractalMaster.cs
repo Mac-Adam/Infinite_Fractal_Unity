@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.UI;
 public class FractalMaster : MonoBehaviour
 {
     //Shaders
@@ -9,17 +9,21 @@ public class FractalMaster : MonoBehaviour
     public ComputeShader RenderShader;
     public Shader AddShader;
 
+
     Camera _camera;
     RenderTexture _target;
     RenderTexture _dummyTexture;
     Material _addMaterial;
-    bool doublePre = true;
+    public GameObject gui;
+    bool infinitePre = false;
     //Anti-Alias
     uint _currentSample = 0;
     bool _frameFinished = false;
     int currIter = 0;
     bool Antialas = false;
     int maxAntiAliasyncReruns = 9;
+
+    bool guiOn = true;
     private Vector2[] AntiAliasLookupTable = {
         new Vector2(0,0),
         new Vector2((float)-2/3,(float)-2/3),
@@ -45,11 +49,10 @@ public class FractalMaster : MonoBehaviour
     string resetControl = "r";
     string maxIterContorl = "p";
     string togleInterpolationTypeContorl = "l";
-    string colorStrengthContorlUp = "k";
-    string colorStrengthContorlDown = "j";
     string colorPaletteTogleContorl = "c";
     string antialiasTogleContorl = "a";
     string upscaleControl = "u";
+    string guiToggleControl = "g";
    
 
 
@@ -62,6 +65,14 @@ public class FractalMaster : MonoBehaviour
     FixedPointNumber MiddleY = new FixedPointNumber(fpPre);
     FixedPointNumber Scale = new FixedPointNumber(fpPre);
 
+    //gui
+    int guiWidth = 300;
+    public Toggle precisionToggle;
+    public Toggle smoothGradientToggle;
+    public Toggle antialiasingToggle;
+    public Slider colorStrengthSlider;
+    public Slider maxIterSlider;
+    public  TMPro.TMP_Dropdown colorPaletteDropdown;
 
     //precision
     int maxIter = 1000;
@@ -93,7 +104,9 @@ public class FractalMaster : MonoBehaviour
     //RenderShader
     ComputeBuffer IterBuffer;
     ComputeBuffer OldIterBuffer;
-    int colorStrength = 5;
+    float colorStrength = 5;
+    const float ColorStrengthMax = 25;
+    const float ColorStrengthMin = 1;
     bool smoothGradient = true;
     ComputeBuffer ColorBuffer;
     bool upscaling;
@@ -105,51 +118,51 @@ public class FractalMaster : MonoBehaviour
                 hexColor("#91b8c4"),
                 hexColor("#d67b27"),
                 hexColor("#03074d")
-            },1),
+            },1,"Sunset"),
         new ColorPalette(
             new Vector4[] {
                 hexColor("#000764"),
                 hexColor("#206bcb"),
                 hexColor("#edffff"),
                 hexColor("#ffaa00"),
-                 hexColor("#000200"),
-            },1),
+                hexColor("#000200"),
+            },1,"Wikipedia"),
       new ColorPalette(
             new Vector4[] {
                 hexColor("#060864"),
                 hexColor("#310c54"),
                 hexColor("#b4950a"),
-            },1),
+            },1,"Blue Yellow"),
        new ColorPalette(
             new Vector4[] {
                 hexColor("#7F7FD5"),
                 hexColor("#91eae4"),
                 hexColor("#4de893"),
-            },2),
+            },2,"Green Pastel"),
        new ColorPalette(
             new Vector4[] {
                 hexColor("#7F7FD5"),
                 hexColor("#91eae4")
-            },3),
+            },3,"Pasetel"),
         new ColorPalette(
             new Vector4[] {
                 hexColor("#59C173"),
                  hexColor("#520645"),
                 hexColor("#5D26C1")
-            },1),
+            },1,"Green Purple"),
         new ColorPalette(
             new Vector4[] {
                 hexColor("#40E0D0"),
                 hexColor("#FF8C00"),
                 hexColor("#5D26C1"),
-            },1),
+            },1,"Bright Rainbow"),
         new ColorPalette(
             new Vector4[] {
                 hexColor("#155e80"),
                 hexColor("#91b8c4"),
                 hexColor("#d67b27"),
                 hexColor("#03074d")
-            },2),
+            },2,"Dark Rainbow"),
     };
     int currColorPalette = 0;
     
@@ -217,10 +230,12 @@ public class FractalMaster : MonoBehaviour
         public Vector4[] colors;
         public int length;
         public int gradientType;
-        public ColorPalette(Vector4[] col,int t) {
+        public string name;
+        public ColorPalette(Vector4[] col,int t,string n) {
             colors = col;
             length = col.Length;
             gradientType = t;
+            name = n;
         }
     }
     public struct FixedPointNumber {
@@ -632,14 +647,14 @@ public class FractalMaster : MonoBehaviour
         MiddleY.setDouble(middleY);
         Scale.setDouble(Pow(pixelizationBase, pixelizationLevel) * length / Screen.width);
         
-        IterPecCycle = doublePre ? IterPerDoubleCycle : IterPerInfiniteCycle;
+        IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
 
         handleLastValues();
       
         ResetParams();
+        InitializeGui();
     }
-    void handleLastValues() {
-    
+    void handleLastValues() {    
         lastPixelizationLevel = pixelizationLevel;
         PrevScreenX = Screen.width;
         PrevScreenY = Screen.height;
@@ -650,12 +665,78 @@ public class FractalMaster : MonoBehaviour
         currIter = 0;
         _frameFinished = false;
     }
+    public void SetPrecision(bool val)
+    {
+        reset = true;
+        infinitePre = val;
+        resetAntialias();
+
+    }
+    public void SetSmoothGradient(bool val)
+    {
+        smoothGradient = val;
+    }
+    public void SetAnitialiasing(bool val)
+    {
+        Antialas = val;
+        resetAntialias();
+    }
+    public void SetColorPalette(int val)
+    {
+        currColorPalette = val % colorPalettes.Length;
+        ColorBuffer.Dispose();
+        ColorBuffer = new ComputeBuffer(colorPalettes[currColorPalette].length, 4 * sizeof(float));
+
+    }
+    public void SetMaxIter(int iter)
+    {
+        maxIter = iter;
+        reset = true;
+    }
+    void InitializeGui()
+    {
+        precisionToggle.isOn = infinitePre;
+        antialiasingToggle.isOn = Antialas;
+        smoothGradientToggle.isOn = smoothGradient;
+        colorStrengthSlider.maxValue = ColorStrengthMax;
+        colorStrengthSlider.minValue = ColorStrengthMin;
+        colorStrengthSlider.value = colorStrength;
+
+        colorPaletteDropdown.options.Clear();
+        foreach (ColorPalette palete in colorPalettes)
+        {
+            colorPaletteDropdown.options.Add(new TMPro.TMP_Dropdown.OptionData() {text = palete.name });
+        }
+        colorPaletteDropdown.value = currColorPalette;
+        maxIterSlider.value = Mathf.Log10(maxIter);
+        SetGuiActive(guiOn);
+
+    }
+    public void Exit()
+    {
+        Application.Quit();
+    }
+    public void SetGuiActive(bool val)
+    {
+        guiOn = val;
+        gui.SetActive(val);
+    }
+    public void SetColorStrenght(float val)
+    {
+        colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
+    }
+
     void handleKeyInput()
     {
-       
+
+        if (Input.GetKeyDown(guiToggleControl))
+        {
+            SetGuiActive(!guiOn);
+           
+        }
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            Application.Quit();
+            Exit();
         }
         if (Input.GetKeyDown(pixelizationLevelUpControl))
         {
@@ -665,8 +746,8 @@ public class FractalMaster : MonoBehaviour
         }
         if (Input.GetKeyDown(antialiasTogleContorl))
         {
-            Antialas = !Antialas;
-            resetAntialias();
+            SetAnitialiasing(!Antialas);
+            antialiasingToggle.isOn = Antialas; 
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
         {
@@ -678,20 +759,13 @@ public class FractalMaster : MonoBehaviour
         }
         if (Input.GetKeyDown(toggleShaderControl))
         {
-            reset = true;
-            doublePre = !doublePre;
-            resetAntialias();
+            SetPrecision(!infinitePre);
+            precisionToggle.isOn = infinitePre;
         }
         if (Input.GetKeyDown(colorPaletteTogleContorl))
         {
-            currColorPalette++;
-            if (currColorPalette >= colorPalettes.Length) {
-                currColorPalette = 0;
-            }
-            ColorBuffer.Dispose();
-            ColorBuffer = new ComputeBuffer(colorPalettes[currColorPalette].length, 4 * sizeof(float));
+            SetColorPalette(currColorPalette + 1);
         }
-
         if (Input.GetKeyDown(resetControl))
         {
             ResetParams();
@@ -699,18 +773,8 @@ public class FractalMaster : MonoBehaviour
         }
         if (Input.GetKeyDown(togleInterpolationTypeContorl))
         {
-            smoothGradient = !smoothGradient;
-        }
-        if (Input.GetKeyDown(colorStrengthContorlUp))
-        {
-            colorStrength++;
-        }
-        if (Input.GetKeyDown(colorStrengthContorlDown))
-        {
-            if (colorStrength > 2)
-            {
-                colorStrength--;
-            }
+            SetSmoothGradient(!smoothGradient);
+            smoothGradientToggle.isOn = smoothGradient;
         }
         if (Input.GetKeyDown(upscaleControl))
         {
@@ -936,7 +1000,10 @@ public class FractalMaster : MonoBehaviour
         handleLastValues();
 
         handleKeyInput();
-        handleMouseInput();
+        if (!guiOn || Input.mousePosition.x < Screen.width - guiWidth)
+        {
+            handleMouseInput();
+        }
 
         handleScreenSizeChange();
         
@@ -967,8 +1034,8 @@ public class FractalMaster : MonoBehaviour
 
         }
 
-        IterPecCycle = doublePre ? IterPerDoubleCycle : IterPerInfiniteCycle;
-        
+        IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
+
         PossionBuffer.SetData(TestPosiotnArray);
         doubleDataArray[0] = Scale.toDouble() * Screen.width / Pow(pixelizationBase, pixelizationLevel);
         doubleDataArray[1] = MiddleX.toDouble();
@@ -976,9 +1043,25 @@ public class FractalMaster : MonoBehaviour
         doubleDataBuffer.SetData(doubleDataArray);
         ColorBuffer.SetData(colorPalettes[currColorPalette].colors);
 
-        if (doublePre)
+        if (infinitePre)
         {
-            DoubleShader.SetBuffer(0,"_DoubleDataBuffer", doubleDataBuffer);
+            InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
+            InfiniteShader.SetBuffer(0, "_LastMultiframeData", LastMultiFrameRenderBuffer);
+            InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
+            InfiniteShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample % AntiAliasLookupTable.Length]);
+            InfiniteShader.SetInt("_MaxIter", maxIter);
+            InfiniteShader.SetBool("_reset", reset);
+            InfiniteShader.SetBool("_pixelized", pixelized);
+            InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
+            InfiniteShader.SetInt("_ShiftX", shiftX);
+            InfiniteShader.SetInt("_ShiftY", shiftY);
+            InfiniteShader.SetInt("_Register", register);
+            InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+
+        }
+        else
+        {
+            DoubleShader.SetBuffer(0, "_DoubleDataBuffer", doubleDataBuffer);
             DoubleShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
             DoubleShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample % AntiAliasLookupTable.Length]);
             DoubleShader.SetInt("_MaxIter", maxIter);
@@ -988,26 +1071,12 @@ public class FractalMaster : MonoBehaviour
             DoubleShader.SetInt("_Register", register);
             DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
 
-        }
-        else
-        {
-            InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
-            InfiniteShader.SetBuffer(0, "_LastMultiframeData", LastMultiFrameRenderBuffer);
-            InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
-            InfiniteShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample%AntiAliasLookupTable.Length]);
-            InfiniteShader.SetInt("_MaxIter",maxIter);
-            InfiniteShader.SetBool("_reset", reset);
-            InfiniteShader.SetBool("_pixelized", pixelized);
-            InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
-            InfiniteShader.SetInt("_ShiftX", shiftX);
-            InfiniteShader.SetInt("_ShiftY", shiftY);
-            InfiniteShader.SetInt("_Register", register);
-            InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+         
         }
         RenderShader.SetBuffer(0, "_IterBuffer", IterBuffer);
         RenderShader.SetBuffer(0, "_OldIterBuffer", OldIterBuffer);
         RenderShader.SetInt("_MaxIter", maxIter);
-        RenderShader.SetInt("_ColorStrength", colorStrength);
+        RenderShader.SetFloat("_ColorStrength", colorStrength);
         RenderShader.SetBool("_Smooth", smoothGradient);
         RenderShader.SetBool("_Upscaling", upscaling);
         RenderShader.SetInt("_Type", colorPalettes[currColorPalette].gradientType);
@@ -1066,15 +1135,18 @@ public class FractalMaster : MonoBehaviour
         int CalculatethreadGroupsX = Mathf.CeilToInt(Screen.width / (8* Pow(pixelizationBase, pixelizationLevel)));
         int CalculatethreadGroupsY = Mathf.CeilToInt(Screen.height / (8* Pow(pixelizationBase, pixelizationLevel)));
 
-        if (doublePre)
+        if (infinitePre)
         {
-            DoubleShader.SetTexture(0, "Result", _dummyTexture);
-            DoubleShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
+
+            InfiniteShader.SetTexture(0, "Result", _dummyTexture);
+            InfiniteShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
+
         }
         else
         {
-            InfiniteShader.SetTexture(0, "Result", _dummyTexture);
-            InfiniteShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
+
+            DoubleShader.SetTexture(0, "Result", _dummyTexture);
+            DoubleShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
         }
 
         RenderShader.SetTexture(0, "Result", _target);
