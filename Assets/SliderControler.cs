@@ -27,7 +27,7 @@ public class SliderControler : MonoBehaviour
         switch (sliderVal)
         {
             case ValueToControl.ColorStrenght:
-                GameMasterComponent.SetColorStrenght(change.value);
+                GameMasterComponent.SetColorStrenght(Mathf.Pow(10,change.value));
                 break;
             case ValueToControl.MaxIter:
                 GameMasterComponent.SetMaxIter((int)Mathf.Pow(10, change.value));

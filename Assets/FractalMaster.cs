@@ -53,8 +53,8 @@ public class FractalMaster : MonoBehaviour
     string antialiasTogleContorl = "a";
     string upscaleControl = "u";
     string guiToggleControl = "g";
-   
 
+    bool renderFinished = false;
 
     //Controlls Handleing
     int oldMouseTextureCoordinatesX;
@@ -73,6 +73,7 @@ public class FractalMaster : MonoBehaviour
     public Slider colorStrengthSlider;
     public Slider maxIterSlider;
     public  TMPro.TMP_Dropdown colorPaletteDropdown;
+    public progresBarContorler iterProgresBarControler;
 
     //precision
     int maxIter = 1000;
@@ -105,7 +106,7 @@ public class FractalMaster : MonoBehaviour
     ComputeBuffer IterBuffer;
     ComputeBuffer OldIterBuffer;
     float colorStrength = 5;
-    const float ColorStrengthMax = 25;
+    const float ColorStrengthMax = 1000;
     const float ColorStrengthMin = 1;
     bool smoothGradient = true;
     ComputeBuffer ColorBuffer;
@@ -664,6 +665,7 @@ public class FractalMaster : MonoBehaviour
         _currentSample = 0;
         currIter = 0;
         _frameFinished = false;
+        renderFinished = false;
     }
     public void SetPrecision(bool val)
     {
@@ -698,9 +700,9 @@ public class FractalMaster : MonoBehaviour
         precisionToggle.isOn = infinitePre;
         antialiasingToggle.isOn = Antialas;
         smoothGradientToggle.isOn = smoothGradient;
-        colorStrengthSlider.maxValue = ColorStrengthMax;
-        colorStrengthSlider.minValue = ColorStrengthMin;
-        colorStrengthSlider.value = colorStrength;
+        colorStrengthSlider.maxValue = Mathf.Log10(ColorStrengthMax);
+        colorStrengthSlider.minValue = Mathf.Log10(ColorStrengthMin);
+        colorStrengthSlider.value = Mathf.Log10(colorStrength);
 
         colorPaletteDropdown.options.Clear();
         foreach (ColorPalette palete in colorPalettes)
@@ -710,6 +712,7 @@ public class FractalMaster : MonoBehaviour
         colorPaletteDropdown.value = currColorPalette;
         maxIterSlider.value = Mathf.Log10(maxIter);
         SetGuiActive(guiOn);
+        iterProgresBarControler.setProgres(0);
 
     }
     public void Exit()
@@ -778,22 +781,29 @@ public class FractalMaster : MonoBehaviour
         }
         if (Input.GetKeyDown(upscaleControl))
         {
-            int[] arr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2)*3];
-            IterBuffer.GetData(arr);
-            OldIterBuffer.Dispose();
-            OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
-            OldIterBuffer.SetData(arr);
-            IterBuffer.Dispose();
+           
             if (pixelizationLevel > 0)
             {
+                int[] arr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * 3];
+                IterBuffer.GetData(arr);
+                OldIterBuffer.Dispose();
+                OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
+                OldIterBuffer.SetData(arr);
+                IterBuffer.Dispose();
+
+
                 preUpscalePixLvl = pixelizationLevel;
                 pixelizationLevel -= 1;
+
+                IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
+                FixedPointNumber scaleFixer = new FixedPointNumber(fpPre);
+                scaleFixer.setDouble((double)Pow(pixelizationBase, pixelizationLevel) / (double)Pow(pixelizationBase, lastPixelizationLevel));
+                Scale *= scaleFixer;
+                upscaling = true;
+                renderFinished = false;
+                currIter = 0;
             }
-            IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
-            FixedPointNumber scaleFixer = new FixedPointNumber(fpPre);
-            scaleFixer.setDouble((double)Pow(pixelizationBase, pixelizationLevel) / (double)Pow(pixelizationBase, lastPixelizationLevel));
-            Scale *= scaleFixer;
-            upscaling = true;
+           
         }
 
     }
@@ -898,6 +908,11 @@ public class FractalMaster : MonoBehaviour
     }
     void handleAntialias()
     {
+        if (!renderFinished)
+        {
+            currIter += IterPecCycle;
+        }
+
 
         if (Antialas)
         {
@@ -909,12 +924,15 @@ public class FractalMaster : MonoBehaviour
                     _frameFinished = true;
                     currIter = 0;
                 }
-                else
-                {
-                    currIter += IterPecCycle;
-                }
 
             }
+            else
+            {
+                renderFinished=true;
+            }
+        }else if (currIter > maxIter)
+        {
+            renderFinished = true;
         }
       
     }
@@ -993,8 +1011,32 @@ public class FractalMaster : MonoBehaviour
         _currentSample = 0;
         currIter = 0;
         upscaling = false;
+        renderFinished = false;
     }
+    void handleGuiUpdates()
+    {
+        if (renderFinished)
+        {
+            iterProgresBarControler.setProgres(1);
+        }
+        else if (Antialas)
+        {
+            if (_frameFinished)
+            {
+                iterProgresBarControler.setProgres(((float)_currentSample+1) / (float)maxAntiAliasyncReruns + ((float)currIter) / ((float)maxIter * (float)maxAntiAliasyncReruns));
+            }
+            else
+            {
+                iterProgresBarControler.setProgres((float)_currentSample / (float)maxAntiAliasyncReruns + (float)currIter / ((float)maxIter * (float)maxAntiAliasyncReruns));
+            }
+            
+        }
+        else
+        {
+            iterProgresBarControler.setProgres((float)currIter / (float)maxIter);
+        }
 
+    }
     private void Update()
     {
         handleLastValues();
@@ -1008,7 +1050,8 @@ public class FractalMaster : MonoBehaviour
         handleScreenSizeChange();
         
         handleAntialias();
-
+        handleGuiUpdates();
+        
     }
     void OnDestroy()
     {
