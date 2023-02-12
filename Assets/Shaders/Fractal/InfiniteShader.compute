@@ -1,5 +1,5 @@
 #pragma kernel CSMain
-#include "Assets/fpnum.cginc"
+#include "Assets/Shaders/General/fpnum.cginc"
 
 RWTexture2D<float4> Result;
 

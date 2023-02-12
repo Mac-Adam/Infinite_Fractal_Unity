@@ -1,0 +1,111 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Colors
+{
+    public static class MyColoringSystem{
+        static Vector4 HexTo01Color(string hex)
+        {
+            Dictionary<char, float> lookupTabe = new Dictionary<char, float>()
+            {
+                {'0', 0.0f},
+                {'1', 1.0f},
+                {'2', 2.0f},
+                {'3', 3.0f},
+                {'4', 4.0f},
+                {'5', 5.0f},
+                {'6', 6.0f},
+                {'7', 7.0f},
+                {'8', 8.0f},
+                {'9', 9.0f},
+                {'a', 10.0f},
+                {'b', 11.0f},
+                {'c', 12.0f},
+                {'d', 13.0f},
+                {'e', 14.0f},
+                {'f', 15.0f},
+                {'A', 10.0f},
+                {'B', 11.0f},
+                {'C', 12.0f},
+                {'D', 13.0f},
+                {'E', 14.0f},
+                {'F', 15.0f}
+            };
+            return new Vector4(
+                (lookupTabe[hex[1]] * 16.0f + lookupTabe[hex[2]]) / 256.0f,
+                (lookupTabe[hex[3]] * 16.0f + lookupTabe[hex[4]]) / 256.0f,
+                (lookupTabe[hex[5]] * 16.0f + lookupTabe[hex[6]]) / 256.0f,
+                1.0f
+           );
+        }
+
+        static public ColorPalette[] colorPalettes = new ColorPalette[] {
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
+            },1,"Sunset"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#000764"),
+                HexTo01Color("#206bcb"),
+                HexTo01Color("#edffff"),
+                HexTo01Color("#ffaa00"),
+                HexTo01Color("#000200"),
+            },1,"Wikipedia"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#060864"),
+                HexTo01Color("#310c54"),
+                HexTo01Color("#b4950a"),
+            },1,"Blue Yellow"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#7F7FD5"),
+                HexTo01Color("#91eae4"),
+                HexTo01Color("#4de893"),
+            },2,"Green Pastel"),
+        new ColorPalette(
+             new Vector4[] {
+                HexTo01Color("#7F7FD5"),
+                HexTo01Color("#91eae4")
+            },3,"Pasetel"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#59C173"),
+                HexTo01Color("#520645"),
+                HexTo01Color("#5D26C1")
+            },1,"Green Purple"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#40E0D0"),
+                HexTo01Color("#FF8C00"),
+                HexTo01Color("#5D26C1"),
+            },1,"Bright Rainbow"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
+            },2,"Dark Rainbow"),
+        };
+    }
+    public struct ColorPalette
+    {
+        public Vector4[] colors;
+        public int length;
+        public int gradientType;
+        public string name;
+        public ColorPalette(Vector4[] col, int t, string n)
+        {
+            colors = col;
+            length = col.Length;
+            gradientType = t;
+            name = n;
+        }
+    }
+   
+}
