@@ -7,7 +7,7 @@ public class DropdownControler : MonoBehaviour
 {
     TMPro.TMP_Dropdown dropdown;
 
-    public FractalMaster GameMasterComponent;
+    public MandelbrotContoroler GameMasterComponent;
 
     void Start()
     {

@@ -13,7 +13,7 @@ public class ToggleControler : MonoBehaviour
         SmoothGradient
     }
     public ValueToToggle valToToggle;
-    public FractalMaster GameMasterComponent;
+    public MandelbrotContoroler GameMasterComponent;
 
     void Start()
     {

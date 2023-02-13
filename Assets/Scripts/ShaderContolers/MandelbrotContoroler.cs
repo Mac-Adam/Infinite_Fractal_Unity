@@ -1,9 +1,11 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using FixedPointNumberSystem;
 using Colors;
-public class FractalMaster : MonoBehaviour
+
+public class MandelbrotContoroler : ShadeContoler
 {
     //Shaders
     public ComputeShader InfiniteShader;
@@ -11,86 +13,8 @@ public class FractalMaster : MonoBehaviour
     public ComputeShader RenderShader;
     public Shader AddShader;
 
-
-    Camera _camera;
-    RenderTexture _target;
-    RenderTexture _dummyTexture;
-    Material _addMaterial;
-    public GameObject gui;
-    bool infinitePre = false;
-    //Anti-Alias
-    uint _currentSample = 0;
-    bool _frameFinished = false;
-    int currIter = 0;
-    bool Antialas = false;
-    int maxAntiAliasyncReruns = 9;
-
-    bool guiOn = true;
-    private Vector2[] AntiAliasLookupTable = {
-        new Vector2(0,0),
-        new Vector2((float)-2/3,(float)-2/3),
-        new Vector2((float)-2/3,0),
-        new Vector2((float)-2/3,(float)2/3),
-        new Vector2(0,(float)2/3),
-        new Vector2((float)2/3,(float)2/3),
-        new Vector2((float)2/3,0),
-        new Vector2((float)2/3,(float)-2/3),
-        new Vector2(0,(float)-2/3),
-
-    };
-
-    //Controls
-    float scrollSlowness = 10.0f;
-
-    double length = 4.0f;
-    double middleX = -1.0f;
-    double middleY = 0.0f;
-    string pixelizationLevelUpControl = "i";
-    string pixelizationLevelDownControl = "o";
-    string toggleShaderControl = "t";
-    string resetControl = "r";
-    string maxIterContorl = "p";
-    string togleInterpolationTypeContorl = "l";
-    string colorPaletteTogleContorl = "c";
-    string antialiasTogleContorl = "a";
-    string upscaleControl = "u";
-    string guiToggleControl = "g";
-
-    bool renderFinished = false;
-
-    //Controlls Handleing
-    int oldMouseTextureCoordinatesX;
-    int oldMouseTextureCoordinatesY;
-    int PrevScreenX;
-    int PrevScreenY;
-    FixedPointNumber MiddleX = new FixedPointNumber(fpPre);
-    FixedPointNumber MiddleY = new FixedPointNumber(fpPre);
-    FixedPointNumber Scale = new FixedPointNumber(fpPre);
-
-    //gui
-    int guiWidth = 300;
-    public Toggle precisionToggle;
-    public Toggle smoothGradientToggle;
-    public Toggle antialiasingToggle;
-    public Slider colorStrengthSlider;
-    public Slider maxIterSlider;
-    public  TMPro.TMP_Dropdown colorPaletteDropdown;
-    public progresBarContorler iterProgresBarControler;
-
-    //precision
-    int maxIter = 1000;
-    const int IterPerDoubleCycle = 10;
-    const int IterPerInfiniteCycle = 5;
-    const int shaderPre = 8;
-    const int fpPre = shaderPre * 2;
-    const int shaderPixelSize = 2 * shaderPre + 3;
-    int IterPecCycle; 
-
-    //Pixelization
-    int pixelizationBase = 2;
-    int pixelizationLevel = 0;
-    int lastPixelizationLevel;
-    int preUpscalePixLvl;
+    RenderTexture dummyTexture;
+    Material addMaterial;
 
     //DoubleShader
     double[] doubleDataArray = new double[3];
@@ -113,9 +37,8 @@ public class FractalMaster : MonoBehaviour
     bool smoothGradient = true;
     ComputeBuffer ColorBuffer;
     bool upscaling;
-
     int currColorPalette = 0;
-    
+
 
     //Shader control
     bool reset = false;
@@ -126,7 +49,87 @@ public class FractalMaster : MonoBehaviour
 
 
 
-  
+    //gui
+    public GameObject gui;
+    bool guiOn = true;
+    bool renderFinished = false;
+    int guiWidth = 300;
+    public Toggle precisionToggle;
+    public Toggle smoothGradientToggle;
+    public Toggle antialiasingToggle;
+    public Slider colorStrengthSlider;
+    public Slider maxIterSlider;
+    public TMPro.TMP_Dropdown colorPaletteDropdown;
+    public progresBarContorler iterProgresBarControler;
+
+    //shader settings
+    bool infinitePre = false;
+
+
+
+    //Anti-Alias
+    uint currentSample = 0;
+    bool frameFinished = false;
+    int currIter = 0;
+    bool doAntialasing = false;
+    int maxAntiAliasyncReruns = 9;
+    private Vector2[] antialiasLookupTable = {
+        new Vector2(0,0),
+        new Vector2((float)-2/3,(float)-2/3),
+        new Vector2((float)-2/3,0),
+        new Vector2((float)-2/3,(float)2/3),
+        new Vector2(0,(float)2/3),
+        new Vector2((float)2/3,(float)2/3),
+        new Vector2((float)2/3,0),
+        new Vector2((float)2/3,(float)-2/3),
+        new Vector2(0,(float)-2/3),
+
+    };
+
+
+    //Controls
+    float scrollSlowness = 10.0f;
+    double length = 4.0f;
+    double middleX = -1.0f;
+    double middleY = 0.0f;
+
+    string pixelizationLevelUpControl = "i";
+    string pixelizationLevelDownControl = "o";
+    string toggleShaderControl = "t";
+    string resetControl = "r";
+    string maxIterContorl = "p";
+    string togleInterpolationTypeContorl = "l";
+    string colorPaletteTogleContorl = "c";
+    string antialiasTogleContorl = "a";
+    string upscaleControl = "u";
+    string guiToggleControl = "g";
+
+
+    //Controlls Handleing
+    int oldMouseTextureCoordinatesX;
+    int oldMouseTextureCoordinatesY;
+    int PrevScreenX;
+    int PrevScreenY;
+    FixedPointNumber MiddleX = new FixedPointNumber(fpPre);
+    FixedPointNumber MiddleY = new FixedPointNumber(fpPre);
+    FixedPointNumber Scale = new FixedPointNumber(fpPre);
+
+    //precision
+    int maxIter = 1000;
+    const int IterPerDoubleCycle = 10;
+    const int IterPerInfiniteCycle = 5;
+    const int shaderPre = 8;
+    const int fpPre = shaderPre * 2;
+    const int shaderPixelSize = 2 * shaderPre + 3;
+    int IterPecCycle;
+
+
+    //Pixelization
+    int pixelizationBase = 2;
+    int pixelizationLevel = 0;
+    int lastPixelizationLevel;
+    int preUpscalePixLvl;
+
     int Pow(int baseNum, int exponent)
     {
         int res;
@@ -138,83 +141,52 @@ public class FractalMaster : MonoBehaviour
         {
             res = baseNum;
         }
-        for(int i = 1; i < exponent; i++)
+        for (int i = 1; i < exponent; i++)
         {
             res *= baseNum;
         }
         return res;
     }
-   
-    private void Awake()
+
+    public override void InitializeBuffers()
     {
-        Application.targetFrameRate = -1;
-       
-        IterBuffer = new ComputeBuffer(Screen.width * Screen.height  / Pow(Pow(pixelizationBase, pixelizationLevel),2),sizeof(int)*2+sizeof(float));
+
+        IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
         OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
-        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float)*2);
+        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
         LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
         FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
-        PossionBuffer = new ComputeBuffer(3*shaderPre,sizeof(int));
+        PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
 
-        _camera = GetComponent<Camera>();
-
+    }
+    public override void InitializeValues()
+    {
         MiddleX.setDouble(middleX);
         MiddleY.setDouble(middleY);
         Scale.setDouble(Pow(pixelizationBase, pixelizationLevel) * length / Screen.width);
-        
-        IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
 
-        handleLastValues();
-      
-        ResetParams();
-        InitializeGui();
+        IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
     }
-    void handleLastValues() {    
+    public override void HandleLastValues()
+    {
         lastPixelizationLevel = pixelizationLevel;
         PrevScreenX = Screen.width;
         PrevScreenY = Screen.height;
     }
-    void resetAntialias()
+    public override void ResetParams()
     {
-        _currentSample = 0;
+        reset = true;
+        currentSample = 0;
         currIter = 0;
-        _frameFinished = false;
+        upscaling = false;
         renderFinished = false;
     }
-    public void SetPrecision(bool val)
-    {
-        reset = true;
-        infinitePre = val;
-        resetAntialias();
-
-    }
-    public void SetSmoothGradient(bool val)
-    {
-        smoothGradient = val;
-    }
-    public void SetAnitialiasing(bool val)
-    {
-        Antialas = val;
-        resetAntialias();
-    }
-    public void SetColorPalette(int val)
-    {
-        currColorPalette = val % MyColoringSystem.colorPalettes.Length;
-        ColorBuffer.Dispose();
-        ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
-
-    }
-    public void SetMaxIter(int iter)
-    {
-        maxIter = iter;
-        reset = true;
-    }
-    void InitializeGui()
+    public override void InitializeGui()
     {
         precisionToggle.isOn = infinitePre;
-        antialiasingToggle.isOn = Antialas;
+        antialiasingToggle.isOn = doAntialasing;
         smoothGradientToggle.isOn = smoothGradient;
         colorStrengthSlider.maxValue = Mathf.Log10(ColorStrengthMax);
         colorStrengthSlider.minValue = Mathf.Log10(ColorStrengthMin);
@@ -223,35 +195,36 @@ public class FractalMaster : MonoBehaviour
         colorPaletteDropdown.options.Clear();
         foreach (ColorPalette palete in MyColoringSystem.colorPalettes)
         {
-            colorPaletteDropdown.options.Add(new TMPro.TMP_Dropdown.OptionData() {text = palete.name });
+            colorPaletteDropdown.options.Add(new TMPro.TMP_Dropdown.OptionData() { text = palete.name });
         }
         colorPaletteDropdown.value = currColorPalette;
         maxIterSlider.value = Mathf.Log10(maxIter);
         SetGuiActive(guiOn);
         iterProgresBarControler.setProgres(0);
+    }
+    public override void DisposeBuffers()
+    {
+        IterBuffer.Dispose();
+        OldIterBuffer.Dispose();
+        doubleDataBuffer.Dispose();
+        MultiFrameRenderBuffer.Dispose();
+        LastMultiFrameRenderBuffer.Dispose();
+        ColorBuffer.Dispose();
+        FpMultiframeBuffer.Dispose();
+        PossionBuffer.Dispose();
+    }
+    public override void AdditionalCleanup()
+    {
+        Destroy(dummyTexture);
+    }
 
-    }
-    public void Exit()
-    {
-        Application.Quit();
-    }
-    public void SetGuiActive(bool val)
-    {
-        guiOn = val;
-        gui.SetActive(val);
-    }
-    public void SetColorStrenght(float val)
-    {
-        colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
-    }
-
-    void handleKeyInput()
+    public override void HandleKeyInput()
     {
 
         if (Input.GetKeyDown(guiToggleControl))
         {
             SetGuiActive(!guiOn);
-           
+
         }
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -265,8 +238,8 @@ public class FractalMaster : MonoBehaviour
         }
         if (Input.GetKeyDown(antialiasTogleContorl))
         {
-            SetAnitialiasing(!Antialas);
-            antialiasingToggle.isOn = Antialas; 
+            SetAnitialiasing(!doAntialasing);
+            antialiasingToggle.isOn = doAntialasing;
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
         {
@@ -284,6 +257,7 @@ public class FractalMaster : MonoBehaviour
         if (Input.GetKeyDown(colorPaletteTogleContorl))
         {
             SetColorPalette(currColorPalette + 1);
+            colorPaletteDropdown.value = currColorPalette;
         }
         if (Input.GetKeyDown(resetControl))
         {
@@ -297,7 +271,7 @@ public class FractalMaster : MonoBehaviour
         }
         if (Input.GetKeyDown(upscaleControl))
         {
-           
+
             if (pixelizationLevel > 0)
             {
                 int[] arr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * 3];
@@ -319,21 +293,21 @@ public class FractalMaster : MonoBehaviour
                 renderFinished = false;
                 currIter = 0;
             }
-           
-        }
 
+        }
     }
-    void handleScreenSizeChange() {
+    public override void HandleScreenSizeChange()
+    {
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel)
         {
             reset = true;
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int)*2 + sizeof(float));
+            IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
             MultiFrameRenderBuffer.Dispose();
             MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
             LastMultiFrameRenderBuffer.Dispose();
             LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
-            if(lastPixelizationLevel != pixelizationLevel && !upscaling)
+            if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
                 int[] oldArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize]; ;
                 int[] newArr;
@@ -343,17 +317,17 @@ public class FractalMaster : MonoBehaviour
                 int otherHeigth;
                 if (lastPixelizationLevel < pixelizationLevel)//zoom in
                 {
-                    newArr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];                   
+                    newArr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
                     dataWidth = Screen.width / Pow(pixelizationBase, pixelizationLevel);
                     dataHeigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
-                    
+
                     otherWidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
                     otherHeigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
 
                 }
                 else //zoom out
                 {
-                   
+
                     newArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
 
 
@@ -364,7 +338,7 @@ public class FractalMaster : MonoBehaviour
                     dataWidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
                     dataHeigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
                 }
- 
+
                 FpMultiframeBuffer.GetData(oldArr);
 
                 int cornerX = dataWidth * (pixelizationBase - 1) / 2;
@@ -379,9 +353,9 @@ public class FractalMaster : MonoBehaviour
                         bigId += otherWidth * otherHeigth * register;
                         if (lastPixelizationLevel > pixelizationLevel)
                         {
-                            smallId += dataWidth * dataHeigth * register;     
+                            smallId += dataWidth * dataHeigth * register;
                         }
-                       
+
                         smallId *= shaderPixelSize;
                         bigId *= shaderPixelSize;
                         for (int i = 0; i < shaderPixelSize; i++)
@@ -422,38 +396,13 @@ public class FractalMaster : MonoBehaviour
         }
 
     }
-    void handleAntialias()
+    public override void HandleMouseInput()
     {
-        if (!renderFinished)
+        if(guiOn && Input.mousePosition.x > Screen.width - guiWidth)
         {
-            currIter += IterPecCycle;
+            return;
         }
 
-
-        if (Antialas)
-        {
-            if (_currentSample < maxAntiAliasyncReruns)
-            {
-                if (currIter > maxIter)
-                {
-               
-                    _frameFinished = true;
-                    currIter = 0;
-                }
-
-            }
-            else
-            {
-                renderFinished=true;
-            }
-        }else if (currIter > maxIter)
-        {
-            renderFinished = true;
-        }
-      
-    }
-    void handleMouseInput()
-    {
 
         Vector2 mousePosPix = Input.mousePosition;
         int mouseTextureCoordinatesX = (int)mousePosPix.x / Pow(pixelizationBase, pixelizationLevel);
@@ -489,7 +438,7 @@ public class FractalMaster : MonoBehaviour
                 MiddleY += differenceY * multiplyer;
                 ResetParams();
             }
-       
+
         }
         if (mouseTextureCoordinatesX != oldMouseTextureCoordinatesX || mouseTextureCoordinatesY != oldMouseTextureCoordinatesY)
         {
@@ -513,83 +462,46 @@ public class FractalMaster : MonoBehaviour
                 multiplyer.setDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
                 MiddleY -= multiplyer * Scale;
                 ResetParams();
-                
+
             }
 
         }
         oldMouseTextureCoordinatesX = mouseTextureCoordinatesX;
         oldMouseTextureCoordinatesY = mouseTextureCoordinatesY;
 
-        
+
     }
-    private void ResetParams() {
-        reset = true;
-        _currentSample = 0;
-        currIter = 0;
-        upscaling = false;
-        renderFinished = false;
-    }
-    void handleGuiUpdates()
+    public override void HandleGuiUpdates()
     {
         if (renderFinished)
         {
             iterProgresBarControler.setProgres(1);
         }
-        else if (Antialas)
+        else if (doAntialasing)
         {
-            if (_frameFinished)
+            if (frameFinished)
             {
-                iterProgresBarControler.setProgres(((float)_currentSample+1) / (float)maxAntiAliasyncReruns + ((float)currIter) / ((float)maxIter * (float)maxAntiAliasyncReruns));
+                iterProgresBarControler.setProgres(((float)currentSample + 1) / (float)maxAntiAliasyncReruns + ((float)currIter) / ((float)maxIter * (float)maxAntiAliasyncReruns));
             }
             else
             {
-                iterProgresBarControler.setProgres((float)_currentSample / (float)maxAntiAliasyncReruns + (float)currIter / ((float)maxIter * (float)maxAntiAliasyncReruns));
+                iterProgresBarControler.setProgres((float)currentSample / (float)maxAntiAliasyncReruns + (float)currIter / ((float)maxIter * (float)maxAntiAliasyncReruns));
             }
-            
+
         }
         else
         {
             iterProgresBarControler.setProgres((float)currIter / (float)maxIter);
         }
-
     }
-    private void Update()
+    public override void SetShadersParameters()
     {
-        handleLastValues();
 
-        handleKeyInput();
-        if (!guiOn || Input.mousePosition.x < Screen.width - guiWidth)
+        for (int i = 0; i < shaderPre; i++)
         {
-            handleMouseInput();
-        }
-
-        handleScreenSizeChange();
-        
-        handleAntialias();
-        handleGuiUpdates();
-        
-    }
-    void OnDestroy()
-    {
-        Destroy(_target);
-        IterBuffer.Dispose();
-        OldIterBuffer.Dispose();
-        doubleDataBuffer.Dispose();
-        MultiFrameRenderBuffer.Dispose();
-        LastMultiFrameRenderBuffer.Dispose();
-        ColorBuffer.Dispose();
-        FpMultiframeBuffer.Dispose();
-        PossionBuffer.Dispose();
-    }
-
-
-    private void SetShaderParameters()
-    {
-      
-        for (int i = 0; i <shaderPre; i++) {
             TestPosiotnArray[i] = MiddleX.digits[i];
             TestPosiotnArray[shaderPre + i] = MiddleY.digits[i];
-            TestPosiotnArray[shaderPre * 2+i] = Scale.digits[i];
+            TestPosiotnArray[shaderPre * 2 + i] = Scale.digits[i];
 
         }
 
@@ -607,7 +519,7 @@ public class FractalMaster : MonoBehaviour
             InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
             InfiniteShader.SetBuffer(0, "_LastMultiframeData", LastMultiFrameRenderBuffer);
             InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
-            InfiniteShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample % AntiAliasLookupTable.Length]);
+            InfiniteShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
             InfiniteShader.SetInt("_MaxIter", maxIter);
             InfiniteShader.SetBool("_reset", reset);
             InfiniteShader.SetBool("_pixelized", pixelized);
@@ -622,7 +534,7 @@ public class FractalMaster : MonoBehaviour
         {
             DoubleShader.SetBuffer(0, "_DoubleDataBuffer", doubleDataBuffer);
             DoubleShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
-            DoubleShader.SetVector("_PixelOffset", AntiAliasLookupTable[_currentSample % AntiAliasLookupTable.Length]);
+            DoubleShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
             DoubleShader.SetInt("_MaxIter", maxIter);
             DoubleShader.SetBool("_reset", reset);
             DoubleShader.SetInt("_ShiftX", shiftX);
@@ -630,7 +542,7 @@ public class FractalMaster : MonoBehaviour
             DoubleShader.SetInt("_Register", register);
             DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
 
-         
+
         }
         RenderShader.SetBuffer(0, "_IterBuffer", IterBuffer);
         RenderShader.SetBuffer(0, "_OldIterBuffer", OldIterBuffer);
@@ -641,7 +553,7 @@ public class FractalMaster : MonoBehaviour
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
         RenderShader.SetInt("_PixelWidth", Pow(pixelizationBase, pixelizationLevel));
         RenderShader.SetInt("_OldPixelWidth", Pow(pixelizationBase, preUpscalePixLvl));
-        RenderShader.SetBuffer(0, "_Colors", ColorBuffer); 
+        RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
         reset = false;
         shiftX = 0;
@@ -650,102 +562,163 @@ public class FractalMaster : MonoBehaviour
 
     }
 
-    private void InitRenderTexture()
+
+    void resetAntialias()
     {
-        if (_target == null || _target.width != Screen.width || _target.height != Screen.height||lastPixelizationLevel != pixelizationLevel)
+        currentSample = 0;
+        currIter = 0;
+        frameFinished = false;
+        renderFinished = false;
+    }
+    public void SetPrecision(bool val)
+    {
+        reset = true;
+        infinitePre = val;
+        resetAntialias();
+
+    }
+    public void SetSmoothGradient(bool val)
+    {
+        smoothGradient = val;
+    }
+    public void SetAnitialiasing(bool val)
+    {
+        doAntialasing = val;
+        resetAntialias();
+    }
+    public void SetColorPalette(int val)
+    {
+        currColorPalette = val % MyColoringSystem.colorPalettes.Length;
+        ColorBuffer.Dispose();
+        ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
+
+    }
+    public void SetMaxIter(int iter)
+    {
+        maxIter = iter;
+        reset = true;
+    }
+
+    public void SetGuiActive(bool val)
+    {
+        guiOn = val;
+        gui.SetActive(val);
+    }
+    public void SetColorStrenght(float val)
+    {
+        colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
+    }
+
+
+
+    public override void HandleAntialias()
+    {
+        if (!renderFinished)
         {
-            // Release render texture if we already have one
-            if (_target != null)
-                _target.Release();
-
-            // Get a render target for Fractal
-            _target = new RenderTexture(Screen.width, Screen.height, 0,
-                RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            _target.enableRandomWrite = true;
-            _target.Create();
-
-            // Reset sampling
-            _currentSample = 0;
+            currIter += IterPecCycle;
         }
-        if (_dummyTexture == null || _dummyTexture.width != Screen.width / Pow(pixelizationBase, pixelizationLevel) || _dummyTexture.height != Screen.height / Pow(pixelizationBase, pixelizationLevel) || lastPixelizationLevel != pixelizationLevel)
+
+
+        if (doAntialasing)
         {
-         
-            if (_dummyTexture != null)
-                _dummyTexture.Release();
+            if (currentSample < maxAntiAliasyncReruns)
+            {
+                if (currIter > maxIter)
+                {
 
+                    frameFinished = true;
+                    currIter = 0;
+                }
 
-            _dummyTexture = new RenderTexture(Screen.width / Pow(pixelizationBase, pixelizationLevel), Screen.height / Pow(pixelizationBase, pixelizationLevel), 0,
+            }
+            else
+            {
+                renderFinished = true;
+            }
+        }
+        else if (currIter > maxIter)
+        {
+            renderFinished = true;
+        }
+
+    }
+
+    public override void AddiitionalTextureRegenerationHandeling()
+    {
+        currentSample = 0;
+    }
+    public override bool ShouldRegerateTexture()
+    {
+        return lastPixelizationLevel != pixelizationLevel;
+    }
+    public override void InitializeOtherTextures()
+    {
+        if (dummyTexture == null || dummyTexture.width != Screen.width / Pow(pixelizationBase, pixelizationLevel) || dummyTexture.height != Screen.height / Pow(pixelizationBase, pixelizationLevel) || ShouldRegerateTexture())
+        {
+
+            if (dummyTexture != null)
+                dummyTexture.Release();
+
+            dummyTexture = new RenderTexture(Screen.width / Pow(pixelizationBase, pixelizationLevel), Screen.height / Pow(pixelizationBase, pixelizationLevel), 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            _dummyTexture.enableRandomWrite = true;
-            _dummyTexture.Create();
+            dummyTexture.enableRandomWrite = true;
+            dummyTexture.Create();
 
-         
+
         }
     }
-  
-    private void Render(RenderTexture destination)
+    public override void DispatchShaders()
     {
-        // Make sure we have a current render target
-        InitRenderTexture();
-
-        // Set the target and dispatch the compute shader
         int RenderThreadGrupsX = Mathf.CeilToInt(Screen.width / 8);
         int RenderThreadGrupsY = Mathf.CeilToInt(Screen.height / 8);
-        int CalculatethreadGroupsX = Mathf.CeilToInt(Screen.width / (8* Pow(pixelizationBase, pixelizationLevel)));
-        int CalculatethreadGroupsY = Mathf.CeilToInt(Screen.height / (8* Pow(pixelizationBase, pixelizationLevel)));
+        int CalculatethreadGroupsX = Mathf.CeilToInt(Screen.width / (8 * Pow(pixelizationBase, pixelizationLevel)));
+        int CalculatethreadGroupsY = Mathf.CeilToInt(Screen.height / (8 * Pow(pixelizationBase, pixelizationLevel)));
 
         if (infinitePre)
         {
 
-            InfiniteShader.SetTexture(0, "Result", _dummyTexture);
+            InfiniteShader.SetTexture(0, "Result", dummyTexture);
             InfiniteShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
 
         }
         else
         {
 
-            DoubleShader.SetTexture(0, "Result", _dummyTexture);
+            DoubleShader.SetTexture(0, "Result", dummyTexture);
             DoubleShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
         }
 
-        RenderShader.SetTexture(0, "Result", _target);
+        RenderShader.SetTexture(0, "Result", targetTexture);
         RenderShader.Dispatch(0, RenderThreadGrupsX, RenderThreadGrupsY, 1);
-        // Blit the result texture to the screen
-       
-        if ((_currentSample == 0 && !_frameFinished)||Input.GetMouseButton(0) )
+    }
+
+    public override void BlitTexture(RenderTexture destination)
+    {
+        if ((currentSample == 0 && !frameFinished) || Input.GetMouseButton(0))
         {
-            Graphics.Blit(_target, destination);
+            Graphics.Blit(targetTexture, destination);
 
 
         }
-        else if (_frameFinished)
+        else if (frameFinished)
         {
 
-            if (_addMaterial == null)
+            if (addMaterial == null)
             {
-                _addMaterial = new Material(AddShader);
+                addMaterial = new Material(AddShader);
             }
 
-            _addMaterial.SetFloat("_Sample", _currentSample);
-            Graphics.Blit(_target, destination, _addMaterial);
-            _frameFinished = false;
-            
-            _currentSample++;
-            
-            
+            addMaterial.SetFloat("_Sample", currentSample);
+            Graphics.Blit(targetTexture, destination, addMaterial);
+            frameFinished = false;
+
+            currentSample++;
+
+
             reset = true;
-        } 
-         
-       
-        
-
+        }
 
 
     }
 
-    private void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        SetShaderParameters();
-        Render(destination);
-    }
 }
