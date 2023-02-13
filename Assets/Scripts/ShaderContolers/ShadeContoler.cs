@@ -4,7 +4,7 @@ using UnityEngine;
 
 public abstract class ShadeContoler : MonoBehaviour
 {
-    Camera camera;
+    new Camera camera;
     protected RenderTexture targetTexture;
     private void Awake()
     {

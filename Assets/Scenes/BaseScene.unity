@@ -224,7 +224,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   valToToggle: 1
-  GameMasterComponent: {fileID: 0}
+  GameMasterComponent: {fileID: 963194229}
 --- !u!1 &96892582
 GameObject:
   m_ObjectHideFlags: 0
@@ -1764,7 +1764,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1d81e901dd540643b5f8e7eb8d40670, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GameMasterComponent: {fileID: 0}
+  GameMasterComponent: {fileID: 963194229}
   sliderVal: 0
 --- !u!1 &954812028
 GameObject:
@@ -1998,6 +1998,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29aae8a54aa57f346bf17f765f2442d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  InfiniteShader: {fileID: 0}
+  DoubleShader: {fileID: 0}
+  RenderShader: {fileID: 0}
+  AddShader: {fileID: 0}
+  gui: {fileID: 0}
+  precisionToggle: {fileID: 0}
+  smoothGradientToggle: {fileID: 0}
+  antialiasingToggle: {fileID: 0}
+  colorStrengthSlider: {fileID: 0}
+  maxIterSlider: {fileID: 0}
+  colorPaletteDropdown: {fileID: 0}
+  iterProgresBarControler: {fileID: 0}
 --- !u!1 &1112631936
 GameObject:
   m_ObjectHideFlags: 0
@@ -2099,7 +2111,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   valToToggle: 0
-  GameMasterComponent: {fileID: 0}
+  GameMasterComponent: {fileID: 963194229}
 --- !u!1 &1140675378
 GameObject:
   m_ObjectHideFlags: 0
@@ -2278,7 +2290,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1d81e901dd540643b5f8e7eb8d40670, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GameMasterComponent: {fileID: 0}
+  GameMasterComponent: {fileID: 963194229}
   sliderVal: 1
 --- !u!114 &1179610620
 MonoBehaviour:
@@ -2694,7 +2706,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   valToToggle: 2
-  GameMasterComponent: {fileID: 0}
+  GameMasterComponent: {fileID: 963194229}
 --- !u!1 &1295326696
 GameObject:
   m_ObjectHideFlags: 0
@@ -2842,7 +2854,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b0b0aa89a6fd56449012b384ecb58b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GameMasterComponent: {fileID: 0}
+  GameMasterComponent: {fileID: 963194229}
 --- !u!1 &1302316557
 GameObject:
   m_ObjectHideFlags: 0

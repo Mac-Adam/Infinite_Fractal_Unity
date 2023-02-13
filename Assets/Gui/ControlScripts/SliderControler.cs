@@ -7,7 +7,7 @@ public class SliderControler : MonoBehaviour
 {
     Slider slider;
  
-    public FractalMaster GameMasterComponent;
+    public MandelbrotContoroler GameMasterComponent;
     public enum ValueToControl
     {
         ColorStrenght,

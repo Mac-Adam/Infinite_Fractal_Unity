@@ -257,6 +257,7 @@ public class MandelbrotContoroler : ShadeContoler
         if (Input.GetKeyDown(colorPaletteTogleContorl))
         {
             SetColorPalette(currColorPalette + 1);
+            colorPaletteDropdown.value = currColorPalette;
         }
         if (Input.GetKeyDown(resetControl))
         {
@@ -397,6 +398,11 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void HandleMouseInput()
     {
+        if(guiOn && Input.mousePosition.x > Screen.width - guiWidth)
+        {
+            return;
+        }
+
 
         Vector2 mousePosPix = Input.mousePosition;
         int mouseTextureCoordinatesX = (int)mousePosPix.x / Pow(pixelizationBase, pixelizationLevel);
@@ -712,7 +718,7 @@ public class MandelbrotContoroler : ShadeContoler
             reset = true;
         }
 
-        throw new System.NotImplementedException();
+
     }
 
 }
