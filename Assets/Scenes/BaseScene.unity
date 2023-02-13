@@ -1998,18 +1998,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29aae8a54aa57f346bf17f765f2442d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  InfiniteShader: {fileID: 0}
-  DoubleShader: {fileID: 0}
-  RenderShader: {fileID: 0}
-  AddShader: {fileID: 0}
-  gui: {fileID: 0}
-  precisionToggle: {fileID: 0}
-  smoothGradientToggle: {fileID: 0}
-  antialiasingToggle: {fileID: 0}
-  colorStrengthSlider: {fileID: 0}
-  maxIterSlider: {fileID: 0}
-  colorPaletteDropdown: {fileID: 0}
-  iterProgresBarControler: {fileID: 0}
+  InfiniteShader: {fileID: 7200000, guid: 97ce3c6f3118c4249882377764e1b84b, type: 3}
+  DoubleShader: {fileID: 7200000, guid: 678fa519bb5d3234c9b765bd06a8b293, type: 3}
+  RenderShader: {fileID: 7200000, guid: d622378c12d34354090ba291bd17275b, type: 3}
+  AddShader: {fileID: 4800000, guid: 33e4928eb071c54458beaf83662e765d, type: 3}
+  gui: {fileID: 96892582}
+  precisionToggle: {fileID: 1112631938}
+  smoothGradientToggle: {fileID: 1260009985}
+  antialiasingToggle: {fileID: 59923643}
+  colorStrengthSlider: {fileID: 950721114}
+  maxIterSlider: {fileID: 1179610620}
+  colorPaletteDropdown: {fileID: 1295326698}
+  iterProgresBarControler: {fileID: 1428134733}
 --- !u!1 &1112631936
 GameObject:
   m_ObjectHideFlags: 0

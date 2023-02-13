@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using FixedPointNumberSystem;
 using Colors;
+using CommonFunctions;
+using CommonShaderRenderFunctions;
 
 public class MandelbrotContoroler : ShadeContoler
 {
@@ -130,33 +132,16 @@ public class MandelbrotContoroler : ShadeContoler
     int lastPixelizationLevel;
     int preUpscalePixLvl;
 
-    int Pow(int baseNum, int exponent)
-    {
-        int res;
-        if (exponent == 0)
-        {
-            res = 1;
-        }
-        else
-        {
-            res = baseNum;
-        }
-        for (int i = 1; i < exponent; i++)
-        {
-            res *= baseNum;
-        }
-        return res;
-    }
 
     public override void InitializeBuffers()
     {
 
-        IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
-        OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
+        IterBuffer = new ComputeBuffer(Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
+        OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
-        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
-        LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
-        FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+        MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
+        LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+        FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
         PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
 
@@ -165,9 +150,14 @@ public class MandelbrotContoroler : ShadeContoler
     {
         MiddleX.setDouble(middleX);
         MiddleY.setDouble(middleY);
-        Scale.setDouble(Pow(pixelizationBase, pixelizationLevel) * length / Screen.width);
+        Scale.setDouble(MathFunctions.IntPow(pixelizationBase, pixelizationLevel) * length / Screen.width);
 
         IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
+
+
+        
+        addMaterial = new Material(AddShader);
+        
     }
     public override void HandleLastValues()
     {
@@ -274,10 +264,10 @@ public class MandelbrotContoroler : ShadeContoler
 
             if (pixelizationLevel > 0)
             {
-                int[] arr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * 3];
+                int[] arr = new int[Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2) * 3];
                 IterBuffer.GetData(arr);
                 OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
+                OldIterBuffer = new ComputeBuffer(Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
                 OldIterBuffer.SetData(arr);
                 IterBuffer.Dispose();
 
@@ -285,9 +275,9 @@ public class MandelbrotContoroler : ShadeContoler
                 preUpscalePixLvl = pixelizationLevel;
                 pixelizationLevel -= 1;
 
-                IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
+                IterBuffer = new ComputeBuffer(Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
                 FixedPointNumber scaleFixer = new FixedPointNumber(fpPre);
-                scaleFixer.setDouble((double)Pow(pixelizationBase, pixelizationLevel) / (double)Pow(pixelizationBase, lastPixelizationLevel));
+                scaleFixer.setDouble((double)MathFunctions.IntPow(pixelizationBase, pixelizationLevel) / (double)MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel));
                 Scale *= scaleFixer;
                 upscaling = true;
                 renderFinished = false;
@@ -302,14 +292,14 @@ public class MandelbrotContoroler : ShadeContoler
         {
             reset = true;
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
+            IterBuffer = new ComputeBuffer(Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
             MultiFrameRenderBuffer.Dispose();
-            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
+            MultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
             LastMultiFrameRenderBuffer.Dispose();
-            LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+            LastMultiFrameRenderBuffer = new ComputeBuffer(Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
-                int[] oldArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize]; ;
+                int[] oldArr = new int[Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel), 2) * shaderPixelSize]; ;
                 int[] newArr;
                 int dataWidth;
                 int dataHeigth;
@@ -317,26 +307,26 @@ public class MandelbrotContoroler : ShadeContoler
                 int otherHeigth;
                 if (lastPixelizationLevel < pixelizationLevel)//zoom in
                 {
-                    newArr = new int[Screen.width * Screen.height / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
-                    dataWidth = Screen.width / Pow(pixelizationBase, pixelizationLevel);
-                    dataHeigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
+                    newArr = new int[Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
+                    dataWidth = Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
+                    dataHeigth = Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
 
-                    otherWidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
-                    otherHeigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
+                    otherWidth = Screen.width / MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
+                    otherHeigth = Screen.height / MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
 
                 }
                 else //zoom out
                 {
 
-                    newArr = new int[Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
+                    newArr = new int[Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2) * shaderPixelSize];
 
 
-                    otherWidth = Screen.width / Pow(pixelizationBase, pixelizationLevel);
-                    otherHeigth = Screen.height / Pow(pixelizationBase, pixelizationLevel);
+                    otherWidth = Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
+                    otherHeigth = Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
 
 
-                    dataWidth = Screen.width / Pow(pixelizationBase, lastPixelizationLevel);
-                    dataHeigth = Screen.height / Pow(pixelizationBase, lastPixelizationLevel);
+                    dataWidth = Screen.width / MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
+                    dataHeigth = Screen.height / MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
                 }
 
                 FpMultiframeBuffer.GetData(oldArr);
@@ -372,7 +362,7 @@ public class MandelbrotContoroler : ShadeContoler
                     }
                 }
                 FpMultiframeBuffer.Dispose();
-                FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+                FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
 
                 if (lastPixelizationLevel > pixelizationLevel)
                 {
@@ -388,7 +378,7 @@ public class MandelbrotContoroler : ShadeContoler
             else
             {
                 FpMultiframeBuffer.Dispose();
-                FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / Pow(Pow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
+                FpMultiframeBuffer = new ComputeBuffer(Screen.width * Screen.height * 2 / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * shaderPixelSize);
             }
 
 
@@ -405,17 +395,17 @@ public class MandelbrotContoroler : ShadeContoler
 
 
         Vector2 mousePosPix = Input.mousePosition;
-        int mouseTextureCoordinatesX = (int)mousePosPix.x / Pow(pixelizationBase, pixelizationLevel);
-        int mouseTextureCoordinatesY = (int)mousePosPix.y / Pow(pixelizationBase, pixelizationLevel);
+        int mouseTextureCoordinatesX = (int)mousePosPix.x / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
+        int mouseTextureCoordinatesY = (int)mousePosPix.y / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
 
 
         FixedPointNumber mousePosRealX = new FixedPointNumber(fpPre);
 
-        mousePosRealX.setDouble(mouseTextureCoordinatesX - Screen.width / (2 * Pow(pixelizationBase, pixelizationLevel)));
+        mousePosRealX.setDouble(mouseTextureCoordinatesX - Screen.width / (2 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new FixedPointNumber(fpPre);
 
-        mousePosRealY.setDouble(mouseTextureCoordinatesY - Screen.height / (2 * Pow(pixelizationBase, pixelizationLevel)));
+        mousePosRealY.setDouble(mouseTextureCoordinatesY - Screen.height / (2 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new FixedPointNumber(fpPre);
         if (Input.mouseScrollDelta.y != 0)
@@ -508,7 +498,7 @@ public class MandelbrotContoroler : ShadeContoler
         IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = Scale.toDouble() * Screen.width / Pow(pixelizationBase, pixelizationLevel);
+        doubleDataArray[0] = Scale.toDouble() * Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
         doubleDataArray[1] = MiddleX.toDouble();
         doubleDataArray[2] = MiddleY.toDouble();
         doubleDataBuffer.SetData(doubleDataArray);
@@ -551,8 +541,8 @@ public class MandelbrotContoroler : ShadeContoler
         RenderShader.SetBool("_Smooth", smoothGradient);
         RenderShader.SetBool("_Upscaling", upscaling);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
-        RenderShader.SetInt("_PixelWidth", Pow(pixelizationBase, pixelizationLevel));
-        RenderShader.SetInt("_OldPixelWidth", Pow(pixelizationBase, preUpscalePixLvl));
+        RenderShader.SetInt("_PixelWidth", MathFunctions.IntPow(pixelizationBase, pixelizationLevel));
+        RenderShader.SetInt("_OldPixelWidth", MathFunctions.IntPow(pixelizationBase, preUpscalePixLvl));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
         reset = false;
@@ -613,6 +603,7 @@ public class MandelbrotContoroler : ShadeContoler
 
     public override void HandleAntialias()
     {
+
         if (!renderFinished)
         {
             currIter += IterPecCycle;
@@ -653,71 +644,23 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void InitializeOtherTextures()
     {
-        if (dummyTexture == null || dummyTexture.width != Screen.width / Pow(pixelizationBase, pixelizationLevel) || dummyTexture.height != Screen.height / Pow(pixelizationBase, pixelizationLevel) || ShouldRegerateTexture())
-        {
-
-            if (dummyTexture != null)
-                dummyTexture.Release();
-
-            dummyTexture = new RenderTexture(Screen.width / Pow(pixelizationBase, pixelizationLevel), Screen.height / Pow(pixelizationBase, pixelizationLevel), 0,
-                RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            dummyTexture.enableRandomWrite = true;
-            dummyTexture.Create();
-
-
-        }
+        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, pixelizationBase, pixelizationLevel, ShouldRegerateTexture());
     }
     public override void DispatchShaders()
     {
-        int RenderThreadGrupsX = Mathf.CeilToInt(Screen.width / 8);
-        int RenderThreadGrupsY = Mathf.CeilToInt(Screen.height / 8);
-        int CalculatethreadGroupsX = Mathf.CeilToInt(Screen.width / (8 * Pow(pixelizationBase, pixelizationLevel)));
-        int CalculatethreadGroupsY = Mathf.CeilToInt(Screen.height / (8 * Pow(pixelizationBase, pixelizationLevel)));
 
-        if (infinitePre)
-        {
-
-            InfiniteShader.SetTexture(0, "Result", dummyTexture);
-            InfiniteShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
-
-        }
-        else
-        {
-
-            DoubleShader.SetTexture(0, "Result", dummyTexture);
-            DoubleShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
-        }
-
-        RenderShader.SetTexture(0, "Result", targetTexture);
-        RenderShader.Dispatch(0, RenderThreadGrupsX, RenderThreadGrupsY, 1);
+        PixelizedShaders.Dispatch(RenderShader, infinitePre ? InfiniteShader : DoubleShader, targetTexture, dummyTexture, pixelizationBase, pixelizationLevel);
     }
 
     public override void BlitTexture(RenderTexture destination)
     {
-        if ((currentSample == 0 && !frameFinished) || Input.GetMouseButton(0))
-        {
-            Graphics.Blit(targetTexture, destination);
-
-
-        }
-        else if (frameFinished)
-        {
-
-            if (addMaterial == null)
+        Antialiasing.BlitWitthAntialiasing(currentSample, frameFinished, destination, targetTexture, addMaterial,
+            () =>
             {
-                addMaterial = new Material(AddShader);
-            }
-
-            addMaterial.SetFloat("_Sample", currentSample);
-            Graphics.Blit(targetTexture, destination, addMaterial);
-            frameFinished = false;
-
-            currentSample++;
-
-
-            reset = true;
-        }
-
+                frameFinished = false;
+                currentSample++;
+                reset = true;
+            });
 
     }
 

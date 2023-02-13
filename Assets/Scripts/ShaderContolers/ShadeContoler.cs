@@ -4,11 +4,9 @@ using UnityEngine;
 
 public abstract class ShadeContoler : MonoBehaviour
 {
-    new Camera camera;
     protected RenderTexture targetTexture;
     private void Awake()
     {
-        camera = GetComponent<Camera>();
         InitializeBuffers();
         InitializeValues();
         HandleLastValues();
@@ -68,8 +66,10 @@ public abstract class ShadeContoler : MonoBehaviour
                 targetTexture.Release();
             }
 
-            targetTexture = new RenderTexture(Screen.width,Screen.height,0,RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            targetTexture.enableRandomWrite = true;
+            targetTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
+            {
+                enableRandomWrite = true
+            };
             targetTexture.Create();
             AddiitionalTextureRegenerationHandeling();
 
