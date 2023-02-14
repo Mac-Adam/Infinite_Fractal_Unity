@@ -53,7 +53,7 @@ public class MandelbrotContoroler : ShadeContoler
 
     //gui
     public GameObject gui;
-    bool guiOn = true;
+    bool guiOn = false;
     bool renderFinished = false;
     int guiWidth = 300;
     public Toggle precisionToggle;
