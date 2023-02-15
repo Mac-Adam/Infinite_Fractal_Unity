@@ -1,16 +1,26 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
-public class progresBarContorler : MonoBehaviour
+public class ProgresBarContorler : MonoBehaviour
 {
-    public int maxWidth;
-    public RectTransform rectTransform;
-   
+    public Image mask;
+    TMPro.TMP_Text text;
 
-    public void setProgres(float progres)
+
+    void Awake()
     {
-        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, progres * maxWidth);
-        //Debug.Log(progres);
+        text = GetComponentInChildren<TMPro.TMP_Text>();
+    }
+
+
+    public void SetText(string newText)
+    {
+        text.text = newText;
+    }
+    public void SetProgres(float progres)
+    {
+        mask.fillAmount = progres;
     }
 }

@@ -17,6 +17,30 @@ namespace GuiTemplates
             this.callback = callback;
         }
     }
+    struct ButtonTemplae
+    {
+        public string text;
+        public Action callback;
+
+        public ButtonTemplae(string text, Action callback)
+        {
+            this.text = text;
+            this.callback = callback;
+        }
+
+
+    }
+    struct ProgressBarTemplate
+    {
+        public string text;
+        public float startingValue;
+        public ProgressBarTemplate(string text, float startingValue)
+        {
+            this.text = text;
+            this.startingValue = startingValue;
+        }
+    }
+
     struct DropdownTemplate
     {
         public string text;
@@ -61,14 +85,18 @@ namespace GuiTemplates
         public Vector2 toggleSize;
         public Vector2 sliderSize;
         public Vector2 dropdownSize;
+        public Vector2 progressBarSize;
+        public Vector2 buttonSize;
 
-        public Sizes(float width,float margin, Vector2 toggleSize, Vector2 sliderSize, Vector2 dropdownSize)
+        public Sizes(float width,float margin, Vector2 toggleSize, Vector2 sliderSize, Vector2 dropdownSize, Vector2 progressBarSize,Vector2 buttonSize)
         {
             this.width = width;
             this.margin = margin;
             this.toggleSize = toggleSize;
             this.sliderSize = sliderSize;
             this.dropdownSize = dropdownSize;
+            this.progressBarSize = progressBarSize;
+            this.buttonSize = buttonSize;
         }
     }
 
@@ -78,14 +106,18 @@ namespace GuiTemplates
         public List<ToggleTemplate> toggleTemplates;
         public List<SliderTemplate> sliderTemplates;
         public List<DropdownTemplate> dropdownTemplates;
+        public List<ProgressBarTemplate> progressBarTemplates;
+        public List<ButtonTemplae> buttonTemplaes;
 
 
-        public UITemplate(Sizes sizes, List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates)
+        public UITemplate(Sizes sizes, List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates, List<ProgressBarTemplate> progressBarTemplates, List<ButtonTemplae> buttonTemplaes)
         {
             this.sizes = sizes;
             this.toggleTemplates = toggleTemplates;
             this.sliderTemplates = sliderTemplates;
             this.dropdownTemplates = dropdownTemplates;
+            this.progressBarTemplates = progressBarTemplates;
+            this.buttonTemplaes = buttonTemplaes;   
         }
 
     }

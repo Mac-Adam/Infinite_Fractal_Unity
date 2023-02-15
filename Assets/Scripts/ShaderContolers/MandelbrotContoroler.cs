@@ -62,7 +62,7 @@ public class MandelbrotContoroler : ShadeContoler
     public Slider colorStrengthSlider;
     public Slider maxIterSlider;
     public TMPro.TMP_Dropdown colorPaletteDropdown;
-    public progresBarContorler iterProgresBarControler;
+    public ProgresBarContorler iterProgresBarControler;
 
     //shader settings
     bool infinitePre = false;
@@ -190,7 +190,7 @@ public class MandelbrotContoroler : ShadeContoler
         colorPaletteDropdown.value = currColorPalette;
         maxIterSlider.value = Mathf.Log10(maxIter);
         SetGuiActive(guiOn);
-        iterProgresBarControler.setProgres(0);
+        //iterProgresBarControler.setProgres(0);
     }
     public override void DisposeBuffers()
     {
@@ -463,26 +463,26 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void HandleGuiUpdates()
     {
-        if (renderFinished)
-        {
-            iterProgresBarControler.setProgres(1);
-        }
-        else if (doAntialasing)
-        {
-            if (frameFinished)
-            {
-                iterProgresBarControler.setProgres(((float)currentSample + 1) / (float)maxAntiAliasyncReruns + ((float)currIter) / ((float)maxIter * (float)maxAntiAliasyncReruns));
-            }
-            else
-            {
-                iterProgresBarControler.setProgres((float)currentSample / (float)maxAntiAliasyncReruns + (float)currIter / ((float)maxIter * (float)maxAntiAliasyncReruns));
-            }
+        //if (renderFinished)
+        //{
+        //    iterProgresBarControler.setProgres(1);
+        //}
+        //else if (doAntialasing)
+        //{
+        //    if (frameFinished)
+        //    {
+        //        iterProgresBarControler.setProgres(((float)currentSample + 1) / (float)maxAntiAliasyncReruns + ((float)currIter) / ((float)maxIter * (float)maxAntiAliasyncReruns));
+        //    }
+        //    else
+        //    {
+        //        iterProgresBarControler.setProgres((float)currentSample / (float)maxAntiAliasyncReruns + (float)currIter / ((float)maxIter * (float)maxAntiAliasyncReruns));
+        //    }
 
-        }
-        else
-        {
-            iterProgresBarControler.setProgres((float)currIter / (float)maxIter);
-        }
+        //}
+        //else
+        //{
+        //    iterProgresBarControler.setProgres((float)currIter / (float)maxIter);
+        //}
     }
     public override void SetShadersParameters()
     {
