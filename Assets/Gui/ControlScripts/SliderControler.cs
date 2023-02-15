@@ -1,40 +1,72 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class SliderControler : MonoBehaviour
 {
     Slider slider;
- 
-    public MandelbrotContoroler GameMasterComponent;
-    public enum ValueToControl
+
+    TMPro.TMP_Text text;
+
+    private bool logScale = false;
+
+
+    void Awake()
     {
-        ColorStrenght,
-        MaxIter
+        slider =  GetComponentInChildren<Slider>();
+        text = GetComponentInChildren<TMPro.TMP_Text>();
     }
-    public ValueToControl sliderVal;
-    void Start()
+    public void SetUp(float min,float max, bool log)
     {
-        slider = GetComponent<Slider>();
-        slider.onValueChanged.AddListener(delegate
+        logScale = log;
+        if (logScale)
         {
-            SliderValueChanged(slider);
-        });
-    }
-    void SliderValueChanged(Slider change)
-    {
-        switch (sliderVal)
+            slider.minValue = Mathf.Log10(min);
+            slider.maxValue = Mathf.Log10(max);
+        }
+        else
         {
-            case ValueToControl.ColorStrenght:
-                GameMasterComponent.SetColorStrenght(Mathf.Pow(10,change.value));
-                break;
-            case ValueToControl.MaxIter:
-                GameMasterComponent.SetMaxIter((int)Mathf.Pow(10, change.value));
-                break;
+            slider.minValue = min;
+            slider.maxValue = max;
 
         }
+
+
+    }
+
+
+    public void SetText(string newText)
+    {
+        text.text = newText;
+    }
+    public void SetValue(float newValue)
+    {
+        if (logScale)
+        {
+            slider.value = Mathf.Log10(newValue);
+        }
+        else
+        {
+            slider.value = newValue;
+        }
         
+    }
+    public void AddListner(Action<float> callback)
+    {
+        if (logScale)
+        {
+            slider.onValueChanged.AddListener(delegate
+            {
+                callback(Mathf.Pow(10, slider.value));
+            });
+        }
+        else
+        {
+            slider.onValueChanged.AddListener(delegate
+            {
+                callback(slider.value);
+            });
+        }
 
     }
 

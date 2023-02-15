@@ -1,44 +1,35 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class ToggleControler : MonoBehaviour
 {
     Toggle toggle;
-    public enum ValueToToggle
-    {
-        Precision,
-        Antialiasing,
-        SmoothGradient
-    }
-    public ValueToToggle valToToggle;
-    public MandelbrotContoroler GameMasterComponent;
+    Text text;
+    
 
-    void Start()
-    {
+    void Awake()
+    {  
         toggle = GetComponent<Toggle>();
+        text = GetComponentInChildren<Text>();
+    }
+   
+
+    public void SetText(string newText)
+    {
+        text.text = newText;
+    }
+    public void SetValue(bool newValue)
+    {
+        toggle.isOn = newValue;
+    }
+    public void AddListner(Action<bool> callback)
+    {
         toggle.onValueChanged.AddListener(delegate
         {
-            ToggleValueChanged(toggle);
+            callback(toggle.isOn);
         });
     }
-    void ToggleValueChanged(Toggle change)
-    {
-        switch (valToToggle)
-        {
-            case ValueToToggle.Precision:
-                GameMasterComponent.SetPrecision(change.isOn);
-                break;
-            case ValueToToggle.Antialiasing:
-                GameMasterComponent.SetAnitialiasing(change.isOn);
-                break;
-            case ValueToToggle.SmoothGradient:
-                GameMasterComponent.SetSmoothGradient(change.isOn);
-                break;
 
-        }
-        
-    }
 
 }
