@@ -25,11 +25,11 @@ public class UIControler : MonoBehaviour
         public bool startingValue;
         public Action<bool> callback;
 
-        public ToggleTemplate(string t,bool s, Action<bool> c)
+        public ToggleTemplate(string text,bool startingValue, Action<bool> callback)
         {
-            text = t;
-            startingValue = s;
-            callback = c;
+            this.text = text;
+            this.startingValue = startingValue;
+            this.callback = callback;
         }
     }
     struct SliderTemplate
@@ -41,14 +41,14 @@ public class UIControler : MonoBehaviour
         public bool log;
         public Action<float> callback;
 
-        public SliderTemplate(string t, float s, float minval,float maxval,bool l,Action<float> c)
+        public SliderTemplate(string text, float startingValue, float min, float max, bool log, Action<float> callback)
         {
-            text = t;
-            startingValue = s;
-            min = minval;
-            max = maxval;
-            log = l;
-            callback = c;
+            this.text = text;
+            this.startingValue = startingValue;
+            this.min = min;
+            this.max = max;
+            this.log = log;
+            this.callback = callback;
 
         }
     }
@@ -59,11 +59,11 @@ public class UIControler : MonoBehaviour
         public Vector2 toggleSize;
         public Vector2 sliderSize;
 
-        public Sizes (float w, Vector2 tog,Vector2 slid)
+        public Sizes (float width, Vector2 toggleSize, Vector2 sliderSize)
         {
-            width = w;
-            toggleSize = tog;
-            sliderSize = slid;
+            this.width = width;
+            this.toggleSize = toggleSize;
+            this.sliderSize = sliderSize;
         }
     }
 
@@ -74,11 +74,11 @@ public class UIControler : MonoBehaviour
         public List<SliderTemplate> sliderTemplates;
 
 
-        public UITemplate(Sizes s,List<ToggleTemplate> tt,List<SliderTemplate> st)
+        public UITemplate(Sizes sizes,List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates)
         {
-            sizes = s;
-            toggleTemplates = tt;
-            sliderTemplates = st;
+            this.sizes = sizes;
+            this.toggleTemplates = toggleTemplates;
+            this.sliderTemplates = sliderTemplates;
         }  
 
     }
