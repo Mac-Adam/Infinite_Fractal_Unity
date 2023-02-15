@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using GuiTemplates;
 
 public class UIControler : MonoBehaviour
 {
@@ -18,101 +19,10 @@ public class UIControler : MonoBehaviour
 
     private float currentY = 0;
 
-    private float margin = 10; 
-
-    struct ToggleTemplate
-    {
-        public string text;
-        public bool startingValue;
-        public Action<bool> callback;
-
-        public ToggleTemplate(string text,bool startingValue, Action<bool> callback)
-        {
-            this.text = text;
-            this.startingValue = startingValue;
-            this.callback = callback;
-        }
-    }
-    struct DropdownTemplate
-    {
-        public string text;
-        public int startingValue;
-        public List<string> options;
-        public Action<int> callback;
-
-
-        public DropdownTemplate(string text,int startingValue, List<string> options,Action<int> callback)
-        {
-            this.text = text;
-            this.options = options;
-            this.callback = callback;
-            this.startingValue = startingValue;
-        } 
-    }
-    struct SliderTemplate
-    {
-        public string text;
-        public float startingValue;
-        public float min;
-        public float max;
-        public bool log;
-        public Action<float> callback;
-
-        public SliderTemplate(string text, float startingValue, float min, float max, bool log, Action<float> callback)
-        {
-            this.text = text;
-            this.startingValue = startingValue;
-            this.min = min;
-            this.max = max;
-            this.log = log;
-            this.callback = callback;
-
-        }
-    }
-
-    struct Sizes
-    {
-        public float width;
-        public Vector2 toggleSize;
-        public Vector2 sliderSize;
-        public Vector2 dropdownSize;
-
-        public Sizes (float width, Vector2 toggleSize, Vector2 sliderSize, Vector2 dropdownSize)
-        {
-            this.width = width;
-            this.toggleSize = toggleSize;
-            this.sliderSize = sliderSize;
-            this.dropdownSize = dropdownSize;
-        }
-    }
-
-    struct UITemplate
-    {
-        public Sizes sizes;
-        public List<ToggleTemplate> toggleTemplates;
-        public List<SliderTemplate> sliderTemplates;
-        public List<DropdownTemplate> dropdownTemplates;
-
-
-        public UITemplate(Sizes sizes,List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates)
-        {
-            this.sizes = sizes;
-            this.toggleTemplates = toggleTemplates;
-            this.sliderTemplates = sliderTemplates;
-            this.dropdownTemplates = dropdownTemplates;
-        }  
-
-    }
-    
-
-
-
-    // Start is called before the first frame update
     void Start()
     {
-        currentY -= margin;
         GenerateUI(new UITemplate(
-            new Sizes(300, new Vector2(250, 40), new Vector2(250,50),new Vector2(250,70) ),
+            new Sizes(300,10, new Vector2(250, 40), new Vector2(250,50),new Vector2(250,70) ),
             new List<ToggleTemplate>()
             {
                 new ToggleTemplate(
@@ -169,19 +79,31 @@ public class UIControler : MonoBehaviour
             )); ;
     }
 
-    // Update is called once per frame
-    void Update()
+    public void UpdateUI(List<bool> toggleUpdates,List<float> sliderUpdates,List<int> dropdownUpdates)
     {
-        
+        for(int i = 0; i < toggleUpdates.Count; i++)
+        {
+            toggleList[i].GetComponent<ToggleControler>().SetValue(toggleUpdates[i]);
+        }
+        for (int i = 0; i < sliderUpdates.Count; i++)
+        {
+            sliderList[i].GetComponent<SliderControler>().SetValue(sliderUpdates[i]);
+        }
+        for (int i = 0; i < dropdownUpdates.Count; i++)
+        {
+            dropdownList[i].GetComponent<DropdownControler>().SetValue(dropdownUpdates[i]);
+        }
+
     }
+  
 
 
     void GenerateUI(UITemplate template)
     {
-        background = GenerateComponentFromPrefab(backgroundPrefab, transform, new Vector2(template.sizes.width,0),Vector2.zero);
+        background = GenerateComponentFromPrefab(backgroundPrefab, transform, new Vector2(template.sizes.width,0),Vector2.zero,template.sizes.margin);
         foreach(ToggleTemplate toggleTemplate in template.toggleTemplates)
         {
-            GameObject newToggle = GenerateComponentFromPrefab(TogglePrefab, background.transform, template.sizes.toggleSize, new Vector2(0, currentY));
+            GameObject newToggle = GenerateComponentFromPrefab(TogglePrefab, background.transform, template.sizes.toggleSize, new Vector2(0, currentY), template.sizes.margin);
 
             ToggleControler toggleConroler = newToggle.GetComponent<ToggleControler>();
             toggleConroler.SetText(toggleTemplate.text);
@@ -193,7 +115,7 @@ public class UIControler : MonoBehaviour
         }
         foreach (SliderTemplate sliderTemplate in template.sliderTemplates)
         {
-            GameObject newSlider = GenerateComponentFromPrefab(SliderPrefab, background.transform, template.sizes.sliderSize, new Vector2(0, currentY));
+            GameObject newSlider = GenerateComponentFromPrefab(SliderPrefab, background.transform, template.sizes.sliderSize, new Vector2(0, currentY), template.sizes.margin);
 
             SliderControler sliderControler = newSlider.GetComponent<SliderControler>();
             sliderControler.SetUp(sliderTemplate.min, sliderTemplate.max, sliderTemplate.log);
@@ -206,7 +128,7 @@ public class UIControler : MonoBehaviour
         }
         foreach (DropdownTemplate dropdownTemplate in template.dropdownTemplates)
         {
-            GameObject newDropdown = GenerateComponentFromPrefab(DropdownPrefab, background.transform, template.sizes.dropdownSize, new Vector2(0, currentY));
+            GameObject newDropdown = GenerateComponentFromPrefab(DropdownPrefab, background.transform, template.sizes.dropdownSize, new Vector2(0, currentY), template.sizes.margin);
 
             DropdownControler dropdownControler = newDropdown.GetComponent<DropdownControler>();
             dropdownControler.SetOptions(dropdownTemplate.options);
@@ -224,7 +146,7 @@ public class UIControler : MonoBehaviour
     }
 
 
-    GameObject GenerateComponentFromPrefab(GameObject prefab,Transform parent,Vector2 size,Vector2 pos )
+    GameObject GenerateComponentFromPrefab(GameObject prefab,Transform parent,Vector2 size,Vector2 pos,float margin )
     {
         GameObject component = Instantiate(prefab);
         component.transform.SetParent(parent);
