@@ -14,6 +14,7 @@ public class UIControler : MonoBehaviour
     private GameObject background;
     private List<GameObject> toggleList = new();
     private List<GameObject> sliderList = new();
+    private List <GameObject> dropdownList = new();
 
     private float currentY = 0;
 
@@ -31,6 +32,22 @@ public class UIControler : MonoBehaviour
             this.startingValue = startingValue;
             this.callback = callback;
         }
+    }
+    struct DropdownTemplate
+    {
+        public string text;
+        public int startingValue;
+        public List<string> options;
+        public Action<int> callback;
+
+
+        public DropdownTemplate(string text,int startingValue, List<string> options,Action<int> callback)
+        {
+            this.text = text;
+            this.options = options;
+            this.callback = callback;
+            this.startingValue = startingValue;
+        } 
     }
     struct SliderTemplate
     {
@@ -58,12 +75,14 @@ public class UIControler : MonoBehaviour
         public float width;
         public Vector2 toggleSize;
         public Vector2 sliderSize;
+        public Vector2 dropdownSize;
 
-        public Sizes (float width, Vector2 toggleSize, Vector2 sliderSize)
+        public Sizes (float width, Vector2 toggleSize, Vector2 sliderSize, Vector2 dropdownSize)
         {
             this.width = width;
             this.toggleSize = toggleSize;
             this.sliderSize = sliderSize;
+            this.dropdownSize = dropdownSize;
         }
     }
 
@@ -72,13 +91,15 @@ public class UIControler : MonoBehaviour
         public Sizes sizes;
         public List<ToggleTemplate> toggleTemplates;
         public List<SliderTemplate> sliderTemplates;
+        public List<DropdownTemplate> dropdownTemplates;
 
 
-        public UITemplate(Sizes sizes,List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates)
+        public UITemplate(Sizes sizes,List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates)
         {
             this.sizes = sizes;
             this.toggleTemplates = toggleTemplates;
             this.sliderTemplates = sliderTemplates;
+            this.dropdownTemplates = dropdownTemplates;
         }  
 
     }
@@ -91,7 +112,7 @@ public class UIControler : MonoBehaviour
     {
         currentY -= margin;
         GenerateUI(new UITemplate(
-            new Sizes(300, new Vector2(250, 40), new Vector2(250,40)),
+            new Sizes(300, new Vector2(250, 40), new Vector2(250,50),new Vector2(250,70) ),
             new List<ToggleTemplate>()
             {
                 new ToggleTemplate(
@@ -132,6 +153,16 @@ public class UIControler : MonoBehaviour
                     }
 
                     )
+            },
+            new List<DropdownTemplate>()
+            {
+                new DropdownTemplate("test",1,
+                
+                new List<string>(){"zero","raz", "dwa", "trzy" },
+                
+                (int i)=>{
+                    Debug.Log($"you chose {i}");
+                })
             }
 
 
@@ -173,7 +204,19 @@ public class UIControler : MonoBehaviour
             sliderList.Add(newSlider);
 
         }
+        foreach (DropdownTemplate dropdownTemplate in template.dropdownTemplates)
+        {
+            GameObject newDropdown = GenerateComponentFromPrefab(DropdownPrefab, background.transform, template.sizes.dropdownSize, new Vector2(0, currentY));
 
+            DropdownControler dropdownControler = newDropdown.GetComponent<DropdownControler>();
+            dropdownControler.SetOptions(dropdownTemplate.options);
+            dropdownControler.SetText(dropdownTemplate.text);
+            dropdownControler.SetValue(dropdownTemplate.startingValue);
+            dropdownControler.AddListner(dropdownTemplate.callback);
+
+            dropdownList.Add(newDropdown);
+
+        }
 
 
 

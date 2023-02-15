@@ -147,7 +147,6 @@ GameObject:
   - component: {fileID: 1278544434857666502}
   - component: {fileID: 3685526587724774079}
   - component: {fileID: 8980504741199442302}
-  - component: {fileID: 2677955552772490811}
   m_Layer: 5
   m_Name: DropdownField
   m_TagString: Untagged
@@ -270,19 +269,6 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_AlphaFadeSpeed: 0.15
---- !u!114 &2677955552772490811
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 376374558195776670}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7b0b0aa89a6fd56449012b384ecb58b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  GameMasterComponent: {fileID: 0}
 --- !u!1 &785872824402540963
 GameObject:
   m_ObjectHideFlags: 0
@@ -1220,6 +1206,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6621711545037639032}
+  - component: {fileID: 1131589280784973258}
   m_Layer: 5
   m_Name: Dropdown
   m_TagString: Untagged
@@ -1249,6 +1236,18 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 1}
+--- !u!114 &1131589280784973258
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7943947225861924230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b0b0aa89a6fd56449012b384ecb58b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8274552156098985725
 GameObject:
   m_ObjectHideFlags: 0

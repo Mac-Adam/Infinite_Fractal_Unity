@@ -1,4 +1,4 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,20 +6,33 @@ using UnityEngine.UI;
 public class DropdownControler : MonoBehaviour
 {
     TMPro.TMP_Dropdown dropdown;
+    TMPro.TMP_Text text;
 
-    public MandelbrotContoroler GameMasterComponent;
-
-    void Start()
+    void Awake()
     {
-        dropdown = GetComponent<TMPro.TMP_Dropdown>();
+        dropdown = GetComponentInChildren<TMPro.TMP_Dropdown>();
+        text = GetComponentInChildren<TMPro.TMP_Text>();
+    }
+    public void SetOptions(List<string> options) 
+    {
+        foreach(string option in options)
+        {
+            dropdown.options.Add(new TMPro.TMP_Dropdown.OptionData() { text = option });
+        }
+    }
+    public void SetText(string newText)
+    {
+        text.text = newText;
+    }
+    public void SetValue(int newValue)
+    {
+        dropdown.value = newValue;
+    }
+    public void AddListner(Action<int> callback)
+    {
         dropdown.onValueChanged.AddListener(delegate
         {
-            DropdownValueChanged(dropdown);
+            callback(dropdown.value);
         });
-    }
-    void DropdownValueChanged(TMPro.TMP_Dropdown change)
-    {
-        GameMasterComponent.SetColorPalette(change.value);
-
     }
 }
