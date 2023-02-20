@@ -1,4 +1,6 @@
 using System.Collections;
+using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,6 +8,7 @@ using FixedPointNumberSystem;
 using Colors;
 using CommonFunctions;
 using CommonShaderRenderFunctions;
+using GuiTemplates;
 
 public class MandelbrotContoroler : ShadeContoler
 {
@@ -63,6 +66,11 @@ public class MandelbrotContoroler : ShadeContoler
     public Slider maxIterSlider;
     public TMPro.TMP_Dropdown colorPaletteDropdown;
     public ProgresBarContorler iterProgresBarControler;
+
+    public UIControler guiControler;
+    UITemplate guiTemplate;
+
+
 
     //shader settings
     bool infinitePre = false;
@@ -175,21 +183,97 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void InitializeGui()
     {
-        precisionToggle.isOn = infinitePre;
-        antialiasingToggle.isOn = doAntialasing;
-        smoothGradientToggle.isOn = smoothGradient;
-        colorStrengthSlider.maxValue = Mathf.Log10(ColorStrengthMax);
-        colorStrengthSlider.minValue = Mathf.Log10(ColorStrengthMin);
-        colorStrengthSlider.value = Mathf.Log10(colorStrength);
-
-        colorPaletteDropdown.options.Clear();
-        foreach (ColorPalette palete in MyColoringSystem.colorPalettes)
+        guiTemplate = new UITemplate(
+        DefaultTemlates.sizes,
+        new List<ToggleTemplate>(){
+            new ToggleTemplate(
+                "Infinite Precision",
+                infinitePre,
+                (bool b) => SetPrecision(b)
+                ),
+            new ToggleTemplate(
+                "Antialiasing",
+                doAntialasing,
+                (bool b) => SetAnitialiasing(b)
+                ),
+            new ToggleTemplate(
+                "Smooth Gradient",
+                smoothGradient,
+                (bool b) => SetSmoothGradient(b)
+                )
+            },
+        new List<SliderTemplate>()
         {
-            colorPaletteDropdown.options.Add(new TMPro.TMP_Dropdown.OptionData() { text = palete.name });
+            new SliderTemplate(
+                "Color Strenght",
+                colorStrength,
+                1,
+                10000,
+                true,
+                (float f)=> SetColorStrenght(f)
+                ),
+            new SliderTemplate(
+                "Max Iterations",
+                maxIter,
+                1,
+                1000000,
+                true,
+                (float f)=> SetMaxIter(Mathf.FloorToInt(f))
+                )
+        },
+        new List<DropdownTemplate>() {
+            new DropdownTemplate(
+                "Color Palette",
+                currColorPalette,
+                MyColoringSystem.colorPalettes.Select(palette => palette.name).ToList(),
+                (int i)=> SetColorPalette(i)
+                )
+        },
+        new List<ProgressBarTemplate>()
+        {
+            new ProgressBarTemplate(
+                "Frame progress",
+                0
+                )
+        },
+        new List<ButtonTemplate>()
+        {
+            new ButtonTemplate(
+                "Hide GUI",
+                ()=>SetGuiActive(false)
+                ),
+            new ButtonTemplate(
+                "Exit",
+                ()=>Exit()
+                )
         }
-        colorPaletteDropdown.value = currColorPalette;
-        maxIterSlider.value = Mathf.Log10(maxIter);
-        SetGuiActive(guiOn);
+
+        );
+        guiControler.GenerateUI(guiTemplate);
+
+
+
+
+
+
+
+
+
+        //precisionToggle.isOn = infinitePre;
+        //antialiasingToggle.isOn = doAntialasing;
+        //smoothGradientToggle.isOn = smoothGradient;
+        //colorStrengthSlider.maxValue = Mathf.Log10(ColorStrengthMax);
+        //colorStrengthSlider.minValue = Mathf.Log10(ColorStrengthMin);
+        //colorStrengthSlider.value = Mathf.Log10(colorStrength);
+
+        //colorPaletteDropdown.options.Clear();
+        //foreach (ColorPalette palete in MyColoringSystem.colorPalettes)
+        //{
+        //    colorPaletteDropdown.options.Add(new TMPro.TMP_Dropdown.OptionData() { text = palete.name });
+        //}
+        //colorPaletteDropdown.value = currColorPalette;
+        //maxIterSlider.value = Mathf.Log10(maxIter);
+        //SetGuiActive(guiOn);
         //iterProgresBarControler.setProgres(0);
     }
     public override void DisposeBuffers()
@@ -562,9 +646,11 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public void SetPrecision(bool val)
     {
-        reset = true;
         infinitePre = val;
+        ResetParams();
         resetAntialias();
+       
+        
 
     }
     public void SetSmoothGradient(bool val)
@@ -586,7 +672,8 @@ public class MandelbrotContoroler : ShadeContoler
     public void SetMaxIter(int iter)
     {
         maxIter = iter;
-        reset = true;
+        ResetParams();
+        resetAntialias();
     }
 
     public void SetGuiActive(bool val)

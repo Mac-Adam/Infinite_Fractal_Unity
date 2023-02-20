@@ -23,85 +23,6 @@ public class UIControler : MonoBehaviour
     private float currentYTop = 0;
     private float currentYBottom = 30;
 
-    void Start()
-    {
-        GenerateUI(new UITemplate(
-            new Sizes(300,10, new Vector2(250, 40), new Vector2(250,50),new Vector2(250,70), new Vector2(250,70 ), new Vector2(160 ,30)),
-            new List<ToggleTemplate>()
-            {
-                new ToggleTemplate(
-                "On", true, (bool b) => {
-                    Debug.Log($"fist one is now {b}");
-
-                }
-
-                ), new ToggleTemplate(
-                "Off", false, (bool b) => {
-                    Debug.Log($"second one is now {b}");
-
-                }
-
-                )
-
-            },
-            new List<SliderTemplate>() {
-                new SliderTemplate(
-                    "Non log",
-                    0.4f,
-                    0,1,
-                    false,
-                    (float f) =>
-                    {
-                        Debug.Log($"Non log is now {f}");
-                    }
-
-                    ),
-                new SliderTemplate(
-                    "log",
-                    100,
-                    1,100000,
-                    true,
-                    (float f) =>
-                    {
-                        Debug.Log($"log is now {f}");
-                    }
-
-                    )
-            },
-            new List<DropdownTemplate>()
-            {
-                new DropdownTemplate("test",1,
-                
-                new List<string>(){"zero","raz", "dwa", "trzy" },
-                
-                (int i)=>{
-                    Debug.Log($"you chose {i}");
-                })
-            },
-            new List<ProgressBarTemplate>()
-            {
-                new ProgressBarTemplate("time", 0.4f)
-               
-
-            },
-            new List<ButtonTemplae>() {
-                new ButtonTemplae("Hide Gui",
-
-                ()=>{
-                    Debug.Log("Hide Gui");
-                }),
-                new ButtonTemplae("Quit",
-
-                ()=>{
-                    Debug.Log("Quit");
-                })
-
-
-            }
-
-
-            )); ;
-    }
 
     public void UpdateUI(List<bool> toggleUpdates,List<float> sliderUpdates,List<int> dropdownUpdates,List<float> progressBarUpdates)
     {
@@ -126,7 +47,7 @@ public class UIControler : MonoBehaviour
   
 
 
-    void GenerateUI(UITemplate template)
+    public void GenerateUI(UITemplate template)
     {
         background = GenerateComponentFromPrefab(BackgroundPrefab, transform, new Vector2(template.sizes.width,0),Vector2.zero,template.sizes.margin,true);
         foreach(ToggleTemplate toggleTemplate in template.toggleTemplates)
@@ -178,7 +99,7 @@ public class UIControler : MonoBehaviour
             progressBarList.Add(newProgessBar);
 
         }
-        foreach (ButtonTemplae buttonTemplate in template.buttonTemplaes)
+        foreach (ButtonTemplate buttonTemplate in template.buttonTemplaes)
         {
             GameObject newButton = GenerateComponentFromPrefab(ButtonPrefab, background.transform, template.sizes.buttonSize, new Vector2(0, currentYBottom), template.sizes.margin, false);
             ButtonControler buttonControler = newButton.GetComponent<ButtonControler>();

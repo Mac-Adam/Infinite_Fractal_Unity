@@ -4,7 +4,7 @@ using UnityEngine;
 namespace GuiTemplates
 {
 
-    struct ToggleTemplate
+    public struct ToggleTemplate
     {
         public string text;
         public bool startingValue;
@@ -17,12 +17,12 @@ namespace GuiTemplates
             this.callback = callback;
         }
     }
-    struct ButtonTemplae
+    public struct ButtonTemplate
     {
         public string text;
         public Action callback;
 
-        public ButtonTemplae(string text, Action callback)
+        public ButtonTemplate(string text, Action callback)
         {
             this.text = text;
             this.callback = callback;
@@ -30,7 +30,7 @@ namespace GuiTemplates
 
 
     }
-    struct ProgressBarTemplate
+    public struct ProgressBarTemplate
     {
         public string text;
         public float startingValue;
@@ -41,7 +41,7 @@ namespace GuiTemplates
         }
     }
 
-    struct DropdownTemplate
+    public struct DropdownTemplate
     {
         public string text;
         public int startingValue;
@@ -57,7 +57,7 @@ namespace GuiTemplates
             this.startingValue = startingValue;
         }
     }
-    struct SliderTemplate
+    public struct SliderTemplate
     {
         public string text;
         public float startingValue;
@@ -78,7 +78,7 @@ namespace GuiTemplates
         }
     }
 
-    struct Sizes
+    public struct Sizes
     {
         public float width;
         public float margin;
@@ -100,17 +100,17 @@ namespace GuiTemplates
         }
     }
 
-    struct UITemplate
+    public struct UITemplate
     {
         public Sizes sizes;
         public List<ToggleTemplate> toggleTemplates;
         public List<SliderTemplate> sliderTemplates;
         public List<DropdownTemplate> dropdownTemplates;
         public List<ProgressBarTemplate> progressBarTemplates;
-        public List<ButtonTemplae> buttonTemplaes;
+        public List<ButtonTemplate> buttonTemplaes;
 
 
-        public UITemplate(Sizes sizes, List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates, List<ProgressBarTemplate> progressBarTemplates, List<ButtonTemplae> buttonTemplaes)
+        public UITemplate(Sizes sizes, List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates, List<ProgressBarTemplate> progressBarTemplates, List<ButtonTemplate> buttonTemplaes)
         {
             this.sizes = sizes;
             this.toggleTemplates = toggleTemplates;
@@ -122,6 +122,18 @@ namespace GuiTemplates
 
     }
 
+    public class DefaultTemlates
+    {
+        public static Sizes sizes = new(
+                        300,
+                        10,
+                        new Vector2(250, 40),
+                        new Vector2(250, 50),
+                        new Vector2(250, 70),
+                        new Vector2(250, 70),
+                        new Vector2(160, 30)
+                    );
+    }
 
 
 
