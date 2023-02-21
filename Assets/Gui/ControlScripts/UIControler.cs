@@ -44,7 +44,10 @@ public class UIControler : MonoBehaviour
         }
 
     }
-  
+    public void SetEnable(bool val)
+    {
+        gameObject.SetActive(val);
+    }
 
 
     public void GenerateUI(UITemplate template)

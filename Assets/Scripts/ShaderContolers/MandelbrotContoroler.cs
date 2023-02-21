@@ -55,18 +55,8 @@ public class MandelbrotContoroler : ShadeContoler
 
 
     //gui
-    public GameObject gui;
-    bool guiOn = false;
+    bool guiOn = true;
     bool renderFinished = false;
-    int guiWidth = 300;
-    public Toggle precisionToggle;
-    public Toggle smoothGradientToggle;
-    public Toggle antialiasingToggle;
-    public Slider colorStrengthSlider;
-    public Slider maxIterSlider;
-    public TMPro.TMP_Dropdown colorPaletteDropdown;
-    public ProgresBarContorler iterProgresBarControler;
-
     public UIControler guiControler;
     UITemplate guiTemplate;
 
@@ -173,14 +163,7 @@ public class MandelbrotContoroler : ShadeContoler
         PrevScreenX = Screen.width;
         PrevScreenY = Screen.height;
     }
-    public override void ResetParams()
-    {
-        reset = true;
-        currentSample = 0;
-        currIter = 0;
-        upscaling = false;
-        renderFinished = false;
-    }
+   
     public override void InitializeGui()
     {
         guiTemplate = new UITemplate(
@@ -234,6 +217,10 @@ public class MandelbrotContoroler : ShadeContoler
             new ProgressBarTemplate(
                 "Frame progress",
                 0
+                ),
+            new ProgressBarTemplate(
+                "Render progress",
+                0
                 )
         },
         new List<ButtonTemplate>()
@@ -250,31 +237,8 @@ public class MandelbrotContoroler : ShadeContoler
 
         );
         guiControler.GenerateUI(guiTemplate);
+        SetGuiActive(guiOn);
 
-
-
-
-
-
-
-
-
-        //precisionToggle.isOn = infinitePre;
-        //antialiasingToggle.isOn = doAntialasing;
-        //smoothGradientToggle.isOn = smoothGradient;
-        //colorStrengthSlider.maxValue = Mathf.Log10(ColorStrengthMax);
-        //colorStrengthSlider.minValue = Mathf.Log10(ColorStrengthMin);
-        //colorStrengthSlider.value = Mathf.Log10(colorStrength);
-
-        //colorPaletteDropdown.options.Clear();
-        //foreach (ColorPalette palete in MyColoringSystem.colorPalettes)
-        //{
-        //    colorPaletteDropdown.options.Add(new TMPro.TMP_Dropdown.OptionData() { text = palete.name });
-        //}
-        //colorPaletteDropdown.value = currColorPalette;
-        //maxIterSlider.value = Mathf.Log10(maxIter);
-        //SetGuiActive(guiOn);
-        //iterProgresBarControler.setProgres(0);
     }
     public override void DisposeBuffers()
     {
@@ -313,7 +277,6 @@ public class MandelbrotContoroler : ShadeContoler
         if (Input.GetKeyDown(antialiasTogleContorl))
         {
             SetAnitialiasing(!doAntialasing);
-            antialiasingToggle.isOn = doAntialasing;
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
         {
@@ -326,22 +289,19 @@ public class MandelbrotContoroler : ShadeContoler
         if (Input.GetKeyDown(toggleShaderControl))
         {
             SetPrecision(!infinitePre);
-            precisionToggle.isOn = infinitePre;
         }
         if (Input.GetKeyDown(colorPaletteTogleContorl))
         {
             SetColorPalette(currColorPalette + 1);
-            colorPaletteDropdown.value = currColorPalette;
         }
         if (Input.GetKeyDown(resetControl))
         {
             ResetParams();
-            resetAntialias();
+            ResetAntialias();
         }
         if (Input.GetKeyDown(togleInterpolationTypeContorl))
         {
             SetSmoothGradient(!smoothGradient);
-            smoothGradientToggle.isOn = smoothGradient;
         }
         if (Input.GetKeyDown(upscaleControl))
         {
@@ -472,7 +432,7 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void HandleMouseInput()
     {
-        if(guiOn && Input.mousePosition.x > Screen.width - guiWidth)
+        if(guiOn &&Input.mousePosition.x > Screen.width - guiTemplate.sizes.width)
         {
             return;
         }
@@ -518,7 +478,7 @@ public class MandelbrotContoroler : ShadeContoler
         {
             if (Input.GetMouseButton(0))
             {
-                resetAntialias();
+                ResetAntialias();
 
                 shiftX = (int)(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
                 shiftY = (int)(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
@@ -547,26 +507,31 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void HandleGuiUpdates()
     {
-        //if (renderFinished)
-        //{
-        //    iterProgresBarControler.setProgres(1);
-        //}
-        //else if (doAntialasing)
-        //{
-        //    if (frameFinished)
-        //    {
-        //        iterProgresBarControler.setProgres(((float)currentSample + 1) / (float)maxAntiAliasyncReruns + ((float)currIter) / ((float)maxIter * (float)maxAntiAliasyncReruns));
-        //    }
-        //    else
-        //    {
-        //        iterProgresBarControler.setProgres((float)currentSample / (float)maxAntiAliasyncReruns + (float)currIter / ((float)maxIter * (float)maxAntiAliasyncReruns));
-        //    }
+        guiControler.UpdateUI(
+            new List<bool>() {
+                infinitePre,
+                doAntialasing,
+                smoothGradient
+            },
+            new List<float>()
+            {
+                colorStrength,
+                maxIter
+            },
+            new List<int>()
+            {
+                currColorPalette
+            },
+            new List<float>()
+            {
+                renderFinished ? 1 : currIter/(float)maxIter,
+                renderFinished ? 1 : currentSample/(float)maxAntiAliasyncReruns
+            }
+         );
 
-        //}
-        //else
-        //{
-        //    iterProgresBarControler.setProgres((float)currIter / (float)maxIter);
-        //}
+
+
+       
     }
     public override void SetShadersParameters()
     {
@@ -636,8 +601,16 @@ public class MandelbrotContoroler : ShadeContoler
 
     }
 
-
-    void resetAntialias()
+    public override void ResetParams()
+    {
+        reset = true;
+        currentSample = 0;
+        currIter = 0;
+        upscaling = false;
+        renderFinished = false;
+        renderFinished = false;
+    }
+    void ResetAntialias()
     {
         currentSample = 0;
         currIter = 0;
@@ -648,7 +621,7 @@ public class MandelbrotContoroler : ShadeContoler
     {
         infinitePre = val;
         ResetParams();
-        resetAntialias();
+        ResetAntialias();
        
         
 
@@ -660,7 +633,7 @@ public class MandelbrotContoroler : ShadeContoler
     public void SetAnitialiasing(bool val)
     {
         doAntialasing = val;
-        resetAntialias();
+        ResetAntialias();
     }
     public void SetColorPalette(int val)
     {
@@ -673,13 +646,13 @@ public class MandelbrotContoroler : ShadeContoler
     {
         maxIter = iter;
         ResetParams();
-        resetAntialias();
+        ResetAntialias();
     }
 
     public void SetGuiActive(bool val)
     {
         guiOn = val;
-        gui.SetActive(val);
+        guiControler.SetEnable(val);
     }
     public void SetColorStrenght(float val)
     {
