@@ -29,13 +29,13 @@ public class MandelbrotContoroler : ShadeContoler
 
     //InfiShader
     ComputeBuffer FpMultiframeBuffer;
-    ComputeBuffer LastMultiFrameRenderBuffer;
+    ComputeBuffer LastMultiFrameRenderBuffer; // used for pixelization
     ComputeBuffer PossionBuffer;
     int[] TestPosiotnArray = new int[3 * shaderPre];
 
     //RenderShader
     ComputeBuffer IterBuffer;
-    ComputeBuffer OldIterBuffer;
+    ComputeBuffer OldIterBuffer; //used for upscaling
     float colorStrength = 5;
     const float ColorStrengthMax = 1000;
     const float ColorStrengthMin = 1;
@@ -97,7 +97,6 @@ public class MandelbrotContoroler : ShadeContoler
     string pixelizationLevelDownControl = "o";
     string toggleShaderControl = "t";
     string resetControl = "r";
-    string maxIterContorl = "p";
     string togleInterpolationTypeContorl = "l";
     string colorPaletteTogleContorl = "c";
     string antialiasTogleContorl = "a";
@@ -110,9 +109,9 @@ public class MandelbrotContoroler : ShadeContoler
     int oldMouseTextureCoordinatesY;
     int PrevScreenX;
     int PrevScreenY;
-    FixedPointNumber MiddleX = new FixedPointNumber(fpPre);
-    FixedPointNumber MiddleY = new FixedPointNumber(fpPre);
-    FixedPointNumber Scale = new FixedPointNumber(fpPre);
+    FixedPointNumber MiddleX = new(fpPre);
+    FixedPointNumber MiddleY = new(fpPre);
+    FixedPointNumber Scale = new(fpPre);
 
     //precision
     int maxIter = 1000;
@@ -146,6 +145,8 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void InitializeValues()
     {
+        Application.targetFrameRate = -1;
+
         MiddleX.setDouble(middleX);
         MiddleY.setDouble(middleY);
         Scale.setDouble(MathFunctions.IntPow(pixelizationBase, pixelizationLevel) * length / Screen.width);
@@ -155,7 +156,6 @@ public class MandelbrotContoroler : ShadeContoler
 
         
         addMaterial = new Material(AddShader);
-        
     }
     public override void HandleLastValues()
     {
@@ -262,7 +262,6 @@ public class MandelbrotContoroler : ShadeContoler
         if (Input.GetKeyDown(guiToggleControl))
         {
             SetGuiActive(!guiOn);
-
         }
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -320,8 +319,8 @@ public class MandelbrotContoroler : ShadeContoler
                 pixelizationLevel -= 1;
 
                 IterBuffer = new ComputeBuffer(Screen.width * Screen.height / MathFunctions.IntPow(MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 2), sizeof(int) * 2 + sizeof(float));
-                FixedPointNumber scaleFixer = new FixedPointNumber(fpPre);
-                scaleFixer.setDouble((double)MathFunctions.IntPow(pixelizationBase, pixelizationLevel) / (double)MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel));
+                FixedPointNumber scaleFixer = new(fpPre);
+                scaleFixer.setDouble(MathFunctions.IntPow(pixelizationBase, pixelizationLevel) / MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel));
                 Scale *= scaleFixer;
                 upscaling = true;
                 renderFinished = false;
@@ -436,6 +435,10 @@ public class MandelbrotContoroler : ShadeContoler
         {
             return;
         }
+        if(Screen.width != PrevScreenX || Screen.height != PrevScreenY)
+        {
+            return;
+        }
 
 
         Vector2 mousePosPix = Input.mousePosition;
@@ -443,35 +446,29 @@ public class MandelbrotContoroler : ShadeContoler
         int mouseTextureCoordinatesY = (int)mousePosPix.y / MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
 
 
-        FixedPointNumber mousePosRealX = new FixedPointNumber(fpPre);
+        FixedPointNumber mousePosRealX = new(fpPre);
 
         mousePosRealX.setDouble(mouseTextureCoordinatesX - Screen.width / (2 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
         mousePosRealX = mousePosRealX * Scale + MiddleX;
-        FixedPointNumber mousePosRealY = new FixedPointNumber(fpPre);
+        FixedPointNumber mousePosRealY = new(fpPre);
 
         mousePosRealY.setDouble(mouseTextureCoordinatesY - Screen.height / (2 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
         mousePosRealY = mousePosRealY * Scale + MiddleY;
-        FixedPointNumber multiplyer = new FixedPointNumber(fpPre);
+        FixedPointNumber multiplyer = new(fpPre);
         if (Input.mouseScrollDelta.y != 0)
         {
-            if (Input.GetKey(maxIterContorl))
-            {
-                maxIter -= maxIter * (int)Input.mouseScrollDelta.y / 4;
-                ResetParams();
-            }
-            else
-            {
-                double scaleDifference = 1 - Input.mouseScrollDelta.y / scrollSlowness;
-                multiplyer.setDouble(scaleDifference);
-                Scale *= multiplyer;
+           
+            double scaleDifference = 1 - Input.mouseScrollDelta.y / scrollSlowness;
+            multiplyer.setDouble(scaleDifference);
+            Scale *= multiplyer;
 
-                FixedPointNumber differenceX = mousePosRealX - MiddleX;
-                FixedPointNumber differenceY = mousePosRealY - MiddleY;
-                multiplyer.setDouble(1.0 - scaleDifference);
-                MiddleX += differenceX * multiplyer;
-                MiddleY += differenceY * multiplyer;
-                ResetParams();
-            }
+            FixedPointNumber differenceX = mousePosRealX - MiddleX;
+            FixedPointNumber differenceY = mousePosRealY - MiddleY;
+            multiplyer.setDouble(1.0 - scaleDifference);
+            MiddleX += differenceX * multiplyer;
+            MiddleY += differenceY * multiplyer;
+            ResetParams();
+            
 
         }
         if (mouseTextureCoordinatesX != oldMouseTextureCoordinatesX || mouseTextureCoordinatesY != oldMouseTextureCoordinatesY)
@@ -480,17 +477,11 @@ public class MandelbrotContoroler : ShadeContoler
             {
                 ResetAntialias();
 
-                shiftX = (int)(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
-                shiftY = (int)(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
+                shiftX = mouseTextureCoordinatesX - oldMouseTextureCoordinatesX;
+                shiftY = mouseTextureCoordinatesY - oldMouseTextureCoordinatesY;
 
-                if (register == 0)
-                {
-                    register = 1;
-                }
-                else
-                {
-                    register = 0;
-                }
+                register = (register + 1) % 2;
+                
                 multiplyer.setDouble(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
                 MiddleX -= multiplyer * Scale;
                 multiplyer.setDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
@@ -668,7 +659,7 @@ public class MandelbrotContoroler : ShadeContoler
         {
             currIter += IterPecCycle;
         }
-
+        
 
         if (doAntialasing)
         {

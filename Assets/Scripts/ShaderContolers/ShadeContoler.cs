@@ -5,15 +5,7 @@ using UnityEngine;
 public abstract class ShadeContoler : MonoBehaviour
 {
     protected RenderTexture targetTexture;
-    private void Awake()
-    {
-        InitializeBuffers();
-        InitializeValues();
-        HandleLastValues();
-        ResetParams();
-        InitializeGui();
 
-    }
     public abstract void InitializeBuffers();
     public abstract void InitializeValues();
     public abstract void HandleLastValues();
@@ -39,16 +31,24 @@ public abstract class ShadeContoler : MonoBehaviour
         Application.Quit();
     }
 
-    // Update is called once per frame
+    private void Awake()
+    {
+        InitializeBuffers();
+        InitializeValues();
+        HandleLastValues();
+        ResetParams();
+        InitializeGui();
+
+    }
     void Update()
     {
-        HandleLastValues();
+       
         HandleKeyInput();
         HandleMouseInput();
         HandleScreenSizeChange();
         HandleGuiUpdates();
         HandleAntialias();
-
+        HandleLastValues();
     }
     private void OnDestroy()
     {
