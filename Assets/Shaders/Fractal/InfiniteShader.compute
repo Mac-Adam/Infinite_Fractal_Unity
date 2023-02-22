@@ -6,7 +6,7 @@ RWTexture2D<float4> Result;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 5;
+uint _IterPerCycle = 5;
 
 
 StructuredBuffer<int> _PossitionBuffer;

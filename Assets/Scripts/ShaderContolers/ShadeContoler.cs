@@ -24,6 +24,7 @@ public abstract class ShadeContoler : MonoBehaviour
     public abstract void InitializeOtherTextures();
     public abstract void DispatchShaders();
     public abstract void HandleAntialias();
+    public abstract void AutomaticParametersChange();
 
     public abstract void BlitTexture(RenderTexture destination);
     public void Exit()
@@ -33,6 +34,7 @@ public abstract class ShadeContoler : MonoBehaviour
 
     private void Awake()
     {
+        Application.targetFrameRate = -1;
         InitializeBuffers();
         InitializeValues();
         HandleLastValues();
@@ -48,6 +50,8 @@ public abstract class ShadeContoler : MonoBehaviour
         HandleScreenSizeChange();
         HandleGuiUpdates();
         HandleAntialias();
+        AutomaticParametersChange();
+
         HandleLastValues();
     }
     private void OnDestroy()

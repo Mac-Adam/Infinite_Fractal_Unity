@@ -115,12 +115,18 @@ public class MandelbrotContoroler : ShadeContoler
 
     //precision
     int maxIter = 1000;
+    //constanst are a starting point the other one is dynamicly set based on hardware capabilities
     const int IterPerDoubleCycle = 10;
-    const int IterPerInfiniteCycle = 5;
+    const int IterPerInfiniteCycle = 3;
+    int IterPerCycle;
+    const float minTargetFramerate = 60;
+    const float maxTagretFramerate = 200;
+
+
+
     const int shaderPre = 8;
     const int fpPre = shaderPre * 2;
     const int shaderPixelSize = 2 * shaderPre + 3;
-    int IterPecCycle;
 
 
     //Pixelization
@@ -133,11 +139,11 @@ public class MandelbrotContoroler : ShadeContoler
     //more descriptive name would be RealScreenPixelsPerRenderPixel
     int PixelsPerPixel()
     {
-        return PixelsPerPixel();
+        return MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
     }
     int LastPixelsPerPixel()
     {
-        return LastPixelsPerPixel();
+        return MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
     }
     int PixelCount()
     {
@@ -147,7 +153,59 @@ public class MandelbrotContoroler : ShadeContoler
     {
         return Screen.width * Screen.height / MathFunctions.IntPow(LastPixelsPerPixel(), 2);
     }
-   
+
+    void ResetIterPerCycle()
+    {
+        IterPerCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
+    }
+
+    void ResetAntialias()
+    {
+        currentSample = 0;
+        currIter = 0;
+        frameFinished = false;
+        renderFinished = false;
+    }
+    public void SetPrecision(bool val)
+    {
+        infinitePre = val;
+        ResetParams();
+        ResetAntialias();
+    }
+    public void SetSmoothGradient(bool val)
+    {
+        smoothGradient = val;
+    }
+    public void SetAnitialiasing(bool val)
+    {
+        doAntialasing = val;
+        ResetAntialias();
+    }
+    public void SetColorPalette(int val)
+    {
+        currColorPalette = val % MyColoringSystem.colorPalettes.Length;
+        ColorBuffer.Dispose();
+        ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
+
+    }
+    public void SetMaxIter(int iter)
+    {
+        maxIter = iter;
+        ResetParams();
+        ResetAntialias();
+    }
+
+    public void SetGuiActive(bool val)
+    {
+        guiOn = val;
+        guiControler.SetEnable(val);
+    }
+    public void SetColorStrenght(float val)
+    {
+        colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
+    }
+
+
 
     public override void InitializeBuffers()
     {
@@ -164,14 +222,11 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void InitializeValues()
     {
-        Application.targetFrameRate = -1;
-
         MiddleX.setDouble(middleX);
         MiddleY.setDouble(middleY);
         Scale.setDouble(PixelsPerPixel() * length / Screen.width);
 
-        IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
-
+        ResetIterPerCycle();
 
         
         addMaterial = new Material(AddShader);
@@ -554,8 +609,6 @@ public class MandelbrotContoroler : ShadeContoler
 
         }
 
-        IterPecCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
-
         PossionBuffer.SetData(TestPosiotnArray);
         doubleDataArray[0] = Scale.toDouble() * Screen.width / PixelsPerPixel();
         doubleDataArray[1] = MiddleX.toDouble();
@@ -576,8 +629,9 @@ public class MandelbrotContoroler : ShadeContoler
             InfiniteShader.SetInt("_ShiftX", shiftX);
             InfiniteShader.SetInt("_ShiftY", shiftY);
             InfiniteShader.SetInt("_Register", register);
+            InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
             InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
-
+            
         }
         else
         {
@@ -589,6 +643,7 @@ public class MandelbrotContoroler : ShadeContoler
             DoubleShader.SetInt("_ShiftX", shiftX);
             DoubleShader.SetInt("_ShiftY", shiftY);
             DoubleShader.SetInt("_Register", register);
+            DoubleShader.SetInt("_IterPerCycle", IterPerCycle);
             DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
 
 
@@ -619,64 +674,34 @@ public class MandelbrotContoroler : ShadeContoler
         upscaling = false;
         renderFinished = false;
         renderFinished = false;
-    }
-    void ResetAntialias()
-    {
-        currentSample = 0;
-        currIter = 0;
-        frameFinished = false;
-        renderFinished = false;
-    }
-    public void SetPrecision(bool val)
-    {
-        infinitePre = val;
-        ResetParams();
-        ResetAntialias();
-       
-        
-
-    }
-    public void SetSmoothGradient(bool val)
-    {
-        smoothGradient = val;
-    }
-    public void SetAnitialiasing(bool val)
-    {
-        doAntialasing = val;
-        ResetAntialias();
-    }
-    public void SetColorPalette(int val)
-    {
-        currColorPalette = val % MyColoringSystem.colorPalettes.Length;
-        ColorBuffer.Dispose();
-        ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
-
-    }
-    public void SetMaxIter(int iter)
-    {
-        maxIter = iter;
-        ResetParams();
-        ResetAntialias();
+        ResetIterPerCycle();
     }
 
-    public void SetGuiActive(bool val)
+    public override void AutomaticParametersChange()
     {
-        guiOn = val;
-        guiControler.SetEnable(val);
-    }
-    public void SetColorStrenght(float val)
-    {
-        colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
-    }
+        if (!frameFinished && !renderFinished)
+        {
+            if (1 / Time.deltaTime > maxTagretFramerate)
+            {
+                IterPerCycle++;
+            }
+            else if (1 / Time.deltaTime < minTargetFramerate)
+            {
+                if (IterPerCycle > 1)
+                {
+                    IterPerCycle--;
+                }
 
-
+            }
+        }
+    }
 
     public override void HandleAntialias()
     {
 
         if (!renderFinished)
         {
-            currIter += IterPecCycle;
+            currIter += IterPerCycle;
         }
         
 
@@ -707,6 +732,7 @@ public class MandelbrotContoroler : ShadeContoler
     public override void AddiitionalTextureRegenerationHandeling()
     {
         currentSample = 0;
+  
     }
     public override bool ShouldRegerateTexture()
     {
