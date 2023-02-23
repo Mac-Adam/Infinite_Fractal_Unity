@@ -1,6 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
-#include "Assets/colorSpaces.cginc"
+#include "Assets/Shaders/General/colorSpaces.cginc"
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> Result;

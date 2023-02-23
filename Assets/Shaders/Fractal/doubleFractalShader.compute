@@ -7,7 +7,7 @@ RWTexture2D<float4> Result;
 float2 _PixelOffset;
 
 uint _MaxIter;
-static const uint _IterPerCycle = 10;
+uint _IterPerCycle = 10;
 double _Length;
 double _OffsetX;
 double _OffsetY;
