@@ -124,7 +124,7 @@ public class MandelbrotContoroler : ShadeContoler
 
 
 
-    const int shaderPre = 8;
+    const int shaderPre = 6;
     const int fpPre = shaderPre * 2;
     const int shaderPixelSize = 2 * shaderPre + 3;
 
@@ -222,9 +222,9 @@ public class MandelbrotContoroler : ShadeContoler
     }
     public override void InitializeValues()
     {
-        MiddleX.setDouble(middleX);
-        MiddleY.setDouble(middleY);
-        Scale.setDouble(PixelsPerPixel() * length / Screen.width);
+        MiddleX.SetDouble(middleX);
+        MiddleY.SetDouble(middleY);
+        Scale.SetDouble(PixelsPerPixel() * length / Screen.width);
 
         ResetIterPerCycle();
 
@@ -341,15 +341,18 @@ public class MandelbrotContoroler : ShadeContoler
         {
             Exit();
         }
+       
+        if (Input.GetKeyDown(antialiasTogleContorl))
+        {
+            SetAnitialiasing(!doAntialasing);
+        }
+      
         if (Input.GetKeyDown(pixelizationLevelUpControl))
         {
             preUpscalePixLvl = pixelizationLevel;
             pixelizationLevel += 1;
             pixelized = true;
-        }
-        if (Input.GetKeyDown(antialiasTogleContorl))
-        {
-            SetAnitialiasing(!doAntialasing);
+            upscaling = false;
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
         {
@@ -357,8 +360,12 @@ public class MandelbrotContoroler : ShadeContoler
             {
                 lastPixelizationLevel = pixelizationLevel;
                 pixelizationLevel -= 1;
+                upscaling = false;
             }
+           
         }
+        
+       
         if (Input.GetKeyDown(toggleShaderControl))
         {
             SetPrecision(!infinitePre);
@@ -394,7 +401,7 @@ public class MandelbrotContoroler : ShadeContoler
 
                 IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
                 FixedPointNumber scaleFixer = new(fpPre);
-                scaleFixer.setDouble(PixelsPerPixel() / LastPixelsPerPixel());
+                scaleFixer.SetDouble((double)PixelsPerPixel() / LastPixelsPerPixel());
                 Scale *= scaleFixer;
                 upscaling = true;
                 renderFinished = false;
@@ -522,23 +529,23 @@ public class MandelbrotContoroler : ShadeContoler
 
         FixedPointNumber mousePosRealX = new(fpPre);
 
-        mousePosRealX.setDouble(mouseTextureCoordinatesX - Screen.width / (2 * PixelsPerPixel()));
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - Screen.width / (2 * PixelsPerPixel()));
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(fpPre);
 
-        mousePosRealY.setDouble(mouseTextureCoordinatesY - Screen.height / (2 * PixelsPerPixel()));
+        mousePosRealY.SetDouble(mouseTextureCoordinatesY - Screen.height / (2 * PixelsPerPixel()));
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(fpPre);
         if (Input.mouseScrollDelta.y != 0)
         {
            
             double scaleDifference = 1 - Input.mouseScrollDelta.y / scrollSlowness;
-            multiplyer.setDouble(scaleDifference);
+            multiplyer.SetDouble(scaleDifference);
             Scale *= multiplyer;
 
             FixedPointNumber differenceX = mousePosRealX - MiddleX;
             FixedPointNumber differenceY = mousePosRealY - MiddleY;
-            multiplyer.setDouble(1.0 - scaleDifference);
+            multiplyer.SetDouble(1.0 - scaleDifference);
             MiddleX += differenceX * multiplyer;
             MiddleY += differenceY * multiplyer;
             ResetParams();
@@ -556,9 +563,9 @@ public class MandelbrotContoroler : ShadeContoler
 
                 register = (register + 1) % 2;
                 
-                multiplyer.setDouble(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
+                multiplyer.SetDouble(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
                 MiddleX -= multiplyer * Scale;
-                multiplyer.setDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
+                multiplyer.SetDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
                 MiddleY -= multiplyer * Scale;
                 ResetParams();
 
@@ -596,7 +603,6 @@ public class MandelbrotContoroler : ShadeContoler
 
 
 
-       
     }
     public override void SetShadersParameters()
     {
@@ -610,9 +616,9 @@ public class MandelbrotContoroler : ShadeContoler
         }
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = Scale.toDouble() * Screen.width / PixelsPerPixel();
-        doubleDataArray[1] = MiddleX.toDouble();
-        doubleDataArray[2] = MiddleY.toDouble();
+        doubleDataArray[0] = Scale.ToDouble() * Screen.width / PixelsPerPixel();
+        doubleDataArray[1] = MiddleX.ToDouble();
+        doubleDataArray[2] = MiddleY.ToDouble();
         doubleDataBuffer.SetData(doubleDataArray);
         ColorBuffer.SetData(MyColoringSystem.colorPalettes[currColorPalette].colors);
 

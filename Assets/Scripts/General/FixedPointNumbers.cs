@@ -1,9 +1,11 @@
+using System;
 namespace FixedPointNumberSystem
 {
 
     public struct FixedPointNumber
     {
         public static int digitBase = 46300;
+        //for simplicity it is assumed that both numers have the same precision
         public int precision;
         public int[] digits;
         public FixedPointNumber(int pre)
@@ -15,7 +17,7 @@ namespace FixedPointNumberSystem
                 digits[i] = 0;
             }
         }
-        public void setDouble(double num)
+        public void SetDouble(double num)
         {
             bool negate = false;
             if (num < 0)
@@ -57,104 +59,118 @@ namespace FixedPointNumberSystem
         }
         public bool IsPositive()
         {
-            bool res = true;
-            for (int i = 0; i < precision; i++)
-            {
-                if (digits[i] < 0)
-                {
-                    res = false;
-                }
-            }
-            return res;
-        }
-        public void Negate()
-        {
-            for (int i = 0; i < precision; i++)
+            for( int i = 0; i < precision; i++)
             {
                 if (digits[i] != 0)
                 {
-                    digits[i] = -digits[i];
-                    return;
-
+                    return digits[i] > 0;
                 }
-
+            }
+            return true;
+        }
+        public void BorrowUp()
+        {
+            digits[0]--;
+            for(int i = 1; i < precision; i++)
+            {
+                digits[i] += digitBase - 1;
+            }
+            digits[precision - 1]++;
+        }
+        public void BorrowDown()
+        {
+            digits[0]++;
+            for (int i = 1; i < precision; i++)
+            {
+                digits[i] -= digitBase - 1;
+            }
+            digits[precision - 1]--;
+        }
+        public void NormalizePositive()
+        {
+            for(int i = precision - 1; i > 0; i--)
+            {
+                digits[i - 1] += digits[i] / digitBase;
+                digits[i] %= digitBase;
             }
         }
-        public void MultiplyByInt(int num)
+        public void NormalizeNegative()
         {
-            bool negate = false;
-
-            if (!IsPositive())
+            for(int i = precision - 1; i > 0; i--)
             {
-                if (num < 0)
+                if (digits[i] > 0)
                 {
-                    Negate();
-                    num = -num;
+                    digits[i - 1] += digits[i] / digitBase;
                 }
                 else
                 {
-                    Negate();
-                    negate = true;
+                    digits[i - 1] -= Math.Abs(digits[i]) / digitBase;
                 }
-            }
-            else if (num < 0)
-            {
-                num = -num;
-                negate = true;
-            }
 
+                digits[i] = -(Math.Abs(digits[i]) % digitBase);
+            }
+        }
+        public void Normalize()
+        {
+            if (IsPositive())
+            {
+                BorrowUp();
+                NormalizePositive();
+            }
+            else
+            {
+                BorrowDown();
+                NormalizeNegative();
+            }
+        }
+        public void NormalizeNonBorrow()
+        {
+            if (IsPositive())
+            {
+                NormalizePositive();
+            }
+            else
+            {
+                NormalizeNegative();
+            }
+        }
+        public void Negate()
+        {
+            for(int i = 0; i < precision; i++)
+            {
+                digits[i] = -digits[i];
+            }
+        }
+        //Function used in multiplicatacion
+        public int PrepareForAdding(int num, int shiftAmount)
+        {
+            int bonus = 0;
             for (int i = 0; i < precision; i++)
             {
                 digits[i] *= num;
             }
-
-            for (int x = precision - 1; x >= 0; x--)
-            {
-
-                if (x != 0)
-                {
-                    digits[x - 1] += digits[x] / digitBase;
-                }
-                digits[x] %= digitBase;
-            }
-
-
-            if (negate)
-            {
-                Negate();
-            }
-        }
-        public void Shift(int num)
-        {
-            int[] newDigits = new int[precision];
+            NormalizePositive();
+            int[] shifted = new int[precision];
             for (int i = 0; i < precision; i++)
             {
-                if (i + num >= 0 && i + num < precision)
+                if (i - shiftAmount >= 0)
                 {
-                    newDigits[i] = digits[i + num];
+                    shifted[i] = digits[i - shiftAmount];
                 }
                 else
                 {
-                    newDigits[i] = 0;
+                    shifted[i] = 0;
                 }
             }
-            digits = newDigits;
-        }
-        public void Set(FixedPointNumber fpnum)
-        {
-            for (int i = 0; i < precision; i++)
+            if (shiftAmount != 0)
             {
-                if (i < fpnum.precision)
-                {
-                    digits[i] = fpnum.digits[i];
-                }
-                else
-                {
-                    digits[i] = 0;
-                }
+                bonus += digits[precision - shiftAmount];
             }
+            digits = shifted;
+            NormalizePositive();
+            return bonus;
         }
-        public double toDouble()
+        public double ToDouble()
         {
             double res = 0;
             bool negate = !IsPositive();
@@ -180,14 +196,6 @@ namespace FixedPointNumberSystem
         }
         public static bool operator >(FixedPointNumber a, FixedPointNumber b)
         {
-            if (a.precision < b.precision)
-            {
-                a.IncresePrecision(b.precision);
-            }
-            if (b.precision < a.precision)
-            {
-                b.IncresePrecision(a.precision);
-            }
             for (int i = 0; i < a.precision; i++)
             {
                 if (a.digits[i] > b.digits[i])
@@ -203,14 +211,6 @@ namespace FixedPointNumberSystem
         }
         public static bool operator <(FixedPointNumber a, FixedPointNumber b)
         {
-            if (a.precision < b.precision)
-            {
-                a.IncresePrecision(b.precision);
-            }
-            if (b.precision < a.precision)
-            {
-                b.IncresePrecision(a.precision);
-            }
             for (int i = 0; i < a.precision; i++)
             {
                 if (a.digits[i] < b.digits[i])
@@ -228,72 +228,28 @@ namespace FixedPointNumberSystem
         {
             FixedPointNumber a = aPassed.Replicate();
             FixedPointNumber b = bPassed.Replicate();
-            if (a.precision < b.precision)
+           
+            for(int i = 0; i < a.precision; i++)
             {
-                a.IncresePrecision(b.precision);
+                a.digits[i] +=b.digits[i];
             }
-            if (b.precision < a.precision)
-            {
-                b.IncresePrecision(a.precision);
-            }
-            bool negate = false;
-
-            if (!a.IsPositive())
-            {
-                if (!b.IsPositive())
-                {
-                    a.Negate();
-                    b.Negate();
-                    negate = true;
-                }
-                else
-                {
-                    a.Negate();
-                    return b - a;
-                }
-            }
-            else if (!b.IsPositive())
-            {
-                b.Negate();
-                return a - b;
-            }
-            FixedPointNumber res = new FixedPointNumber(a.precision);
-            res = a;
-            for (int i = 0; i < a.precision; i++)
-            {
-                res.digits[i] += b.digits[i];
-
-            }
-            for (int x = a.precision - 1; x >= 0; x--)
-            {
-
-                if (x != 0)
-                {
-                    res.digits[x - 1] += res.digits[x] / digitBase;
-                }
-                res.digits[x] %= digitBase;
-            }
-            if (negate)
-            {
-                res.Negate();
-
-
-            }
-            return res;
+            a.Normalize();
+            return a;
         }
         public static FixedPointNumber operator *(FixedPointNumber aPassed, FixedPointNumber bPassed)
         {
             FixedPointNumber a = aPassed.Replicate();
             FixedPointNumber b = bPassed.Replicate();
-            if (a.precision < b.precision)
-            {
-                a.IncresePrecision(b.precision);
-            }
-            if (b.precision < a.precision)
-            {
-                b.IncresePrecision(a.precision);
-            }
+            FixedPointNumber res = new(a.precision);
+            FixedPointNumber temp1 = new(a.precision);
+            FixedPointNumber temp2 = new(a.precision);
+
             bool negate = false;
+            int bonus = 0;
+            for(int i = 0; i < a.precision; i++)
+            {
+                temp2.digits[i] = 0;
+            }
             if (!a.IsPositive())
             {
                 if (!b.IsPositive())
@@ -306,40 +262,31 @@ namespace FixedPointNumberSystem
                     a.Negate();
                     negate = true;
                 }
-            }
-            else if (!b.IsPositive())
+
+            }else if (!b.IsPositive())
             {
                 b.Negate();
                 negate = true;
             }
-            FixedPointNumber multiplicationResults = new FixedPointNumber(a.precision + b.precision);
-            FixedPointNumber temp = new FixedPointNumber(a.precision + b.precision);
-            FixedPointNumber res = new FixedPointNumber(a.precision);
-            for (int i = 0; i < a.precision; i++)
-            {
-                for (int k = 0; k < a.precision * 2; k++)
+
+            for(int i = 0; i < a.precision; i++) { 
+                for(int k = 0; k < a.precision; k++)
                 {
-                    if (k < a.precision)
-                    {
-                        temp.digits[k] = a.digits[k];
-                    }
-                    else
-                    {
-                        temp.digits[k] = 0;
-                    }
-
+                    temp1.digits[k] = a.digits[k];
                 }
-                temp.Shift(-i);
-                temp.MultiplyByInt(b.digits[i]);
-                multiplicationResults += temp;
-
+                bonus = temp1.PrepareForAdding(b.digits[i], i);
+                temp2 += temp1;
+                    
             }
-
-            for (int x = 0; x < a.precision; x++)
+            for(int i = 0; i < a.precision; i++)
             {
-                res.digits[x] = multiplicationResults.digits[x];
+                res.digits[i] = temp2.digits[i];
             }
-            res.digits[a.precision - 1] += multiplicationResults.digits[a.precision] / (digitBase / 2);
+            res.digits[a.precision - 1] += bonus / digitBase;
+            if (bonus % digitBase >= digitBase / 2)
+            {
+                res.digits[a.precision - 1]++;
+            }
             if (negate)
             {
                 res.Negate();
@@ -351,58 +298,16 @@ namespace FixedPointNumberSystem
         {
             FixedPointNumber a = aPassed.Replicate();
             FixedPointNumber b = bPassed.Replicate();
-            if (a.precision < b.precision)
+            for(int i = 0; i < a.precision; i++)
             {
-                a.IncresePrecision(b.precision);
+                a.digits[i] -= b.digits[i];
             }
-            if (b.precision < a.precision)
-            {
-                b.IncresePrecision(a.precision);
-            }
-            FixedPointNumber res = new FixedPointNumber(a.precision);
-            if (!b.IsPositive())
-            {
-                b.Negate();
-                return a + b;
-            }
-            else if (!a.IsPositive())
-            {
-                a.Negate();
-                res = a + b;
-                res.Negate();
-                return res;
-            }
-            if (b > a)
-            {
-                res = b - a;
-                res.Negate();
-                return res;
-            }
-            for (int i = 0; i < a.precision; i++)
-            {
-                res.digits[i] = a.digits[i] - b.digits[i];
-            }
-            res.digits[0]--;
-
-            for (int j = 1; j < a.precision; j++)
-            {
-                res.digits[j] += digitBase - 1;
-            }
-            res.digits[a.precision - 1]++;
-            for (int k = a.precision - 1; k >= 0; k--)
-            {
-
-                if (k != 0)
-                {
-                    res.digits[k - 1] += res.digits[k] / digitBase;
-                }
-                res.digits[k] %= digitBase;
-            }
-            return res;
+            a.Normalize();
+            return a;
         }
         public FixedPointNumber Replicate()
         {
-            FixedPointNumber res = new FixedPointNumber(precision);
+            FixedPointNumber res = new(precision);
             for (int i = 0; i < precision; i++)
             {
                 res.digits[i] = digits[i];

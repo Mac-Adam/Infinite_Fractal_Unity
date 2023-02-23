@@ -64,14 +64,12 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		scale.digits[j] = _PossitionBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
-	scale = Convert(scale);
 	offset.digits[0] = pixel.x - width / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
 	[unroll]
 	for (int a = 0; a < fpPre; a++) {
 		middle.digits[a] = _PossitionBuffer[MiddleX + a];
 	}
-	middle = Convert(middle);
 	cX = add(offset, middle);
 	for (int b = 0; b < fpPre; b++) {
 		offset.digits[b] = 0;
@@ -83,7 +81,6 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	for (int c = 0; c < fpPre; c++) {
 		middle.digits[c] = _PossitionBuffer[MiddleY + c];
 	}
-	middle = Convert(middle);
 	cY = add(offset, middle);
 
 

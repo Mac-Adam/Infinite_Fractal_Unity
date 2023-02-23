@@ -1,5 +1,5 @@
 
-static const int fpPre = 8;
+static const int fpPre = 6;
 static const uint digitBase = 46300;
 
 
@@ -103,7 +103,7 @@ digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//M
 		}
 	}
 	if (shiftAmount != 0) {
-		bonus += shifted.digits[fpPre - shiftAmount];
+		bonus += a.digits[fpPre - shiftAmount];
 	}
 	a = normalizePositive(shifted);
 
@@ -234,16 +234,6 @@ float toFloat(digits num){
 		res += num.digits[i] * pow(digitBase,-i);
 	}
 	return res;
-}
-//should be useless after cpu code is updated
-digits Convert(digits a) {
-	if (!IsPositive(a)) {
-		[unroll]
-		for (int i = 0; i < fpPre; i++) {
-			a.digits[i] = -abs(a.digits[i]);
-		}
-	}
-	return a;
 }
 
 
