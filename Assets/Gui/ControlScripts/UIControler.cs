@@ -12,6 +12,9 @@ public class UIControler : MonoBehaviour
     public GameObject TogglePrefab;
     public GameObject SliderPrefab;
     public GameObject ProgressBarPrefab;
+    public GameObject TextPrefab;
+
+
 
     private GameObject background;
     private List<GameObject> toggleList = new();
@@ -19,12 +22,13 @@ public class UIControler : MonoBehaviour
     private List <GameObject> dropdownList = new();
     private List<GameObject> progressBarList = new();
     private List<GameObject> buttonList = new();
+    private List<GameObject> textList = new();
 
     private float currentYTop = 0;
     private float currentYBottom = 30;
 
 
-    public void UpdateUI(List<bool> toggleUpdates,List<float> sliderUpdates,List<int> dropdownUpdates,List<float> progressBarUpdates)
+    public void UpdateUI(List<bool> toggleUpdates,List<float> sliderUpdates,List<int> dropdownUpdates,List<float> progressBarUpdates,List<string> textUpdates)
     {
         for(int i = 0; i < toggleUpdates.Count; i++)
         {
@@ -42,7 +46,10 @@ public class UIControler : MonoBehaviour
         {
             progressBarList[i].GetComponent<ProgresBarContorler>().SetProgres(progressBarUpdates[i]);
         }
-
+        for (int i = 0; i < textUpdates.Count; i++)
+        {
+            textList[i].GetComponent<TextControler>().SetText(textUpdates[i]);
+        }
     }
     public void SetEnable(bool val)
     {
@@ -113,7 +120,16 @@ public class UIControler : MonoBehaviour
             buttonList.Add(newButton);
 
         }
+        foreach (TextTemplate textTemplate in template.textTemplates)
+        {
+            GameObject newText = GenerateComponentFromPrefab(TextPrefab, background.transform, template.sizes.textSize, new Vector2(0, currentYBottom), template.sizes.margin, false);
+            TextControler textControler = newText.GetComponent<TextControler>();
 
+            textControler.SetText(textTemplate.text);
+            
+            textList.Add(newText);
+
+        }
 
 
     }

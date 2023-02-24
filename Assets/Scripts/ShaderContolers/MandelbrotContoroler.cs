@@ -59,6 +59,25 @@ public class MandelbrotContoroler : ShadeContoler
     bool renderFinished = false;
     public UIControler guiControler;
     UITemplate guiTemplate;
+    string tooltip;
+    const string DoubleTooltip = @"Controls:
+I - Zoom In
+O - Zoom Out
+T - Change Precision
+L - Change Gradient Type
+C - Cycle Color Palette
+A - Toggle Antialiasing
+G - Toggle GUI";
+    const string InfiniteTooltip = @"Controls:
+I - Zoom In And Pixelize Image
+O - Zoom Out Without Rerendering
+U - Upscale Image
+T - Change Precision
+L - Change Gradient Type
+C - Cycle Color Palette
+A - Toggle Antialiasing
+G - Toggle GUI";
+
 
 
 
@@ -169,6 +188,7 @@ public class MandelbrotContoroler : ShadeContoler
     public void SetPrecision(bool val)
     {
         infinitePre = val;
+        tooltip = infinitePre ? InfiniteTooltip : DoubleTooltip;
         ResetParams();
         ResetAntialias();
     }
@@ -240,6 +260,7 @@ public class MandelbrotContoroler : ShadeContoler
    
     public override void InitializeGui()
     {
+        tooltip = infinitePre ? InfiniteTooltip : DoubleTooltip;
         guiTemplate = new UITemplate(
         DefaultTemlates.sizes,
         new List<ToggleTemplate>(){
@@ -307,6 +328,10 @@ public class MandelbrotContoroler : ShadeContoler
                 "Exit",
                 ()=>Exit()
                 )
+        },
+        new List<TextTemplate>()
+        {
+            new TextTemplate(tooltip)
         }
 
         );
@@ -598,6 +623,10 @@ public class MandelbrotContoroler : ShadeContoler
             {
                 renderFinished ? 1 : currIter/(float)maxIter,
                 renderFinished ? 1 : currentSample/(float)maxAntiAliasyncReruns
+            },
+            new List<string>()
+            {
+                tooltip
             }
          );
 

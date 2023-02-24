@@ -329,14 +329,6 @@ MonoBehaviour:
   DoubleShader: {fileID: 7200000, guid: 678fa519bb5d3234c9b765bd06a8b293, type: 3}
   RenderShader: {fileID: 7200000, guid: d622378c12d34354090ba291bd17275b, type: 3}
   AddShader: {fileID: 4800000, guid: 33e4928eb071c54458beaf83662e765d, type: 3}
-  gui: {fileID: 0}
-  precisionToggle: {fileID: 0}
-  smoothGradientToggle: {fileID: 0}
-  antialiasingToggle: {fileID: 0}
-  colorStrengthSlider: {fileID: 0}
-  maxIterSlider: {fileID: 0}
-  colorPaletteDropdown: {fileID: 0}
-  iterProgresBarControler: {fileID: 0}
   guiControler: {fileID: 872420325}
 --- !u!1 &1851789509
 GameObject:
@@ -505,6 +497,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: BlankCanvas
       objectReference: {fileID: 0}
+    - target: {fileID: 8142731233616675678, guid: 2c3fc9e39c877714696bb94b36bf48f2, type: 3}
+      propertyPath: TextPrefab
+      value: 
+      objectReference: {fileID: 7235851798828667668, guid: 85f64afb3c0e2c742b3e65413282a3ac, type: 3}
     - target: {fileID: 8142731233616675678, guid: 2c3fc9e39c877714696bb94b36bf48f2, type: 3}
       propertyPath: ButtonPrefab
       value: 

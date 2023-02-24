@@ -3,7 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace GuiTemplates
 {
-
+    public struct TextTemplate
+    {
+        public string text;
+        public TextTemplate(string text)
+        {
+            this.text = text;
+        }
+    }
     public struct ToggleTemplate
     {
         public string text;
@@ -87,8 +94,9 @@ namespace GuiTemplates
         public Vector2 dropdownSize;
         public Vector2 progressBarSize;
         public Vector2 buttonSize;
+        public Vector2 textSize;
 
-        public Sizes(float width,float margin, Vector2 toggleSize, Vector2 sliderSize, Vector2 dropdownSize, Vector2 progressBarSize,Vector2 buttonSize)
+        public Sizes(float width,float margin, Vector2 toggleSize, Vector2 sliderSize, Vector2 dropdownSize, Vector2 progressBarSize,Vector2 buttonSize,Vector2 textSize)
         {
             this.width = width;
             this.margin = margin;
@@ -97,6 +105,7 @@ namespace GuiTemplates
             this.dropdownSize = dropdownSize;
             this.progressBarSize = progressBarSize;
             this.buttonSize = buttonSize;
+            this.textSize = textSize;
         }
     }
 
@@ -108,16 +117,17 @@ namespace GuiTemplates
         public List<DropdownTemplate> dropdownTemplates;
         public List<ProgressBarTemplate> progressBarTemplates;
         public List<ButtonTemplate> buttonTemplaes;
+        public List<TextTemplate> textTemplates;
 
-
-        public UITemplate(Sizes sizes, List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates, List<ProgressBarTemplate> progressBarTemplates, List<ButtonTemplate> buttonTemplaes)
+        public UITemplate(Sizes sizes, List<ToggleTemplate> toggleTemplates, List<SliderTemplate> sliderTemplates, List<DropdownTemplate> dropdownTemplates, List<ProgressBarTemplate> progressBarTemplates, List<ButtonTemplate> buttonTemplaes,List<TextTemplate> textTemplates)
         {
             this.sizes = sizes;
             this.toggleTemplates = toggleTemplates;
             this.sliderTemplates = sliderTemplates;
             this.dropdownTemplates = dropdownTemplates;
             this.progressBarTemplates = progressBarTemplates;
-            this.buttonTemplaes = buttonTemplaes;   
+            this.buttonTemplaes = buttonTemplaes; 
+            this.textTemplates = textTemplates;
         }
 
     }
@@ -131,7 +141,8 @@ namespace GuiTemplates
                         new Vector2(250, 50),
                         new Vector2(250, 70),
                         new Vector2(250, 70),
-                        new Vector2(160, 30)
+                        new Vector2(160, 30),
+                        new Vector2(250,300)
                     );
     }
 
