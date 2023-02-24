@@ -1,5 +1,5 @@
 
-static const int fpPre = 6;
+static const int fpPre = 10;
 static const uint digitBase = 46300;
 
 

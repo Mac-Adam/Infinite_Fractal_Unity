@@ -143,7 +143,7 @@ G - Toggle GUI";
 
 
 
-    const int shaderPre = 6;
+    const int shaderPre = 10;
     const int fpPre = shaderPre * 2;
     const int shaderPixelSize = 2 * shaderPre + 3;
 
