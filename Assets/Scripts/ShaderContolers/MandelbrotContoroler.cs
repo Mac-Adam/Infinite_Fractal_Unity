@@ -770,7 +770,6 @@ G - Toggle GUI";
                 SetSPrecision(precisionLevel - 1);
             }
         }
-        Debug.Log(precisionLevel);
     }
 
     public override void HandleAntialias()

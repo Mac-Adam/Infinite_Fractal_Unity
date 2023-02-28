@@ -13,15 +13,15 @@
 #elif Q_VERY_HIGH
 #define PRECISION 12
 #elif Q_ULTRA
-#define PRECISION 16
+#define PRECISION 14
 #elif Q_ULTRA_HIGH
-#define PRECISION 20
+#define PRECISION 16
 #elif Q_SUPER
-#define PRECISION 24
+#define PRECISION 18
 #elif Q_MEGA
-#define PRECISION 32
+#define PRECISION 20
 #elif Q_SUPER_MEGA
-#define PRECISION 40
+#define PRECISION 24
 #endif
 
 #include "Assets/Shaders/General/fpnum.cginc"

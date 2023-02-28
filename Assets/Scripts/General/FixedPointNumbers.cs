@@ -27,11 +27,11 @@ namespace FixedPointNumberSystem
             new(8,"Q_MED"),
             new(10,"Q_HIGH"),
             new(12,"Q_VERY_HIGH"),
-            new(16,"Q_ULTRA"),
-            new(20,"Q_ULTRA_HIGH"),
-            new(24,"Q_SUPER"),
-            new(32,"Q_MEGA"),
-            new(40,"Q_SUPER_MEGA"),
+            new(14,"Q_ULTRA"),
+            new(16,"Q_ULTRA_HIGH"),
+            new(18,"Q_SUPER"),
+            new(20,"Q_MEGA"),
+            new(24,"Q_SUPER_MEGA"),
             };
 
     }
