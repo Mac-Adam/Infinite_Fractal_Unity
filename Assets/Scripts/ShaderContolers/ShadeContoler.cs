@@ -35,8 +35,8 @@ public abstract class ShadeContoler : MonoBehaviour
     private void Awake()
     {
         Application.targetFrameRate = -1;
-        InitializeBuffers();
         InitializeValues();
+        InitializeBuffers();
         HandleLastValues();
         ResetParams();
         InitializeGui();

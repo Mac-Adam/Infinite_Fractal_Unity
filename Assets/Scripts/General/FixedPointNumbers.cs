@@ -1,9 +1,43 @@
 using System;
+using UnityEngine;
 namespace FixedPointNumberSystem
 {
+    public static class GPUCode { 
+        public struct GPUPrecision{
+            public int precision;
+            public string name;
+            public GPUPrecision(int precision,string name)
+            {
+                this.precision = precision;
+                this.name = name;
+            } 
+        }
+                
+        public static void ResetAllKeywords()
+        {
+            foreach(GPUPrecision pre in precisions)
+            {
+                Shader.DisableKeyword(pre.name);
+            }
+        }
 
+        public static GPUPrecision[] precisions = {
+            new(4,"Q_VERY_LOW"),
+            new(6,"Q_LOW"),
+            new(8,"Q_MED"),
+            new(10,"Q_HIGH"),
+            new(12,"Q_VERY_HIGH"),
+            new(16,"Q_ULTRA"),
+            new(20,"Q_ULTRA_HIGH"),
+            new(24,"Q_SUPER"),
+            new(32,"Q_MEGA"),
+            new(40,"Q_SUPER_MEGA"),
+            };
+
+    }
     public struct FixedPointNumber
     {
+     
         public static int digitBase = 46300;
         //for simplicity it is assumed that both numers have the same precision
         public int precision;

@@ -1,4 +1,29 @@
 #pragma kernel CSMain
+
+#pragma multi_compile Q_VERY_LOW Q_LOW Q_MED Q_HIGH Q_VERY_HIGH Q_ULTRA Q_ULTRA_HIGH Q_SUPER Q_MEGA Q_SUPER_MEGA
+
+#if Q_VERY_LOW
+#define PRECISION 4
+#elif Q_LOW
+#define PRECISION 6
+#elif Q_MED
+#define PRECISION 8
+#elif Q_HIGH
+#define PRECISION 10
+#elif Q_VERY_HIGH
+#define PRECISION 12
+#elif Q_ULTRA
+#define PRECISION 16
+#elif Q_ULTRA_HIGH
+#define PRECISION 20
+#elif Q_SUPER
+#define PRECISION 24
+#elif Q_MEGA
+#define PRECISION 32
+#elif Q_SUPER_MEGA
+#define PRECISION 40
+#endif
+
 #include "Assets/Shaders/General/fpnum.cginc"
 
 RWTexture2D<float4> Result;
@@ -11,16 +36,16 @@ uint _IterPerCycle = 5;
 
 StructuredBuffer<int> _PossitionBuffer;
 static const int MiddleX = 0;
-static const int MiddleY = fpPre;
-static const int Scale = fpPre * 2;
+static const int MiddleY = PRECISION;
+static const int Scale = PRECISION * 2;
 
 
 static const int CurX = 0;
-static const int CurY = fpPre;
-static const int iter = 2 * fpPre;
-static const int finished = 2 * fpPre + 1;
-static const int iterOffset = 2 * fpPre + 2;
-static const int PixelSize = 2 * fpPre + 3;
+static const int CurY = PRECISION;
+static const int iter = 2 * PRECISION;
+static const int finished = 2 * PRECISION + 1;
+static const int iterOffset = 2 * PRECISION + 2;
+static const int PixelSize = 2 * PRECISION + 3;
 
 
 int _ShiftX;
@@ -58,7 +83,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits offset;
 	digits middle;
 	[unroll]
-	for (int j = 0; j < fpPre; j++) {
+	for (int j = 0; j < PRECISION; j++) {
 		zX.digits[j] = _FpMultiframeBuffer[idx + CurX + j];
 		zY.digits[j] = _FpMultiframeBuffer[idx + CurY + j];
 		scale.digits[j] = _PossitionBuffer[Scale + j];
@@ -67,18 +92,18 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	offset.digits[0] = pixel.x - width / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
 	[unroll]
-	for (int a = 0; a < fpPre; a++) {
+	for (int a = 0; a < PRECISION; a++) {
 		middle.digits[a] = _PossitionBuffer[MiddleX + a];
 	}
 	cX = add(offset, middle);
-	for (int b = 0; b < fpPre; b++) {
+	for (int b = 0; b < PRECISION; b++) {
 		offset.digits[b] = 0;
 	}
 
 	offset.digits[0] = pixel.y - height / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.y)), scale);
 	[unroll]
-	for (int c = 0; c < fpPre; c++) {
+	for (int c = 0; c < PRECISION; c++) {
 		middle.digits[c] = _PossitionBuffer[MiddleY + c];
 	}
 	cY = add(offset, middle);
@@ -105,10 +130,10 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 			return iter;
 		}
 	}
-	for (int l = 0; l < fpPre; l++) {
+	for (int l = 0; l < PRECISION; l++) {
 		_FpMultiframeBuffer[idx + CurX + l] = zX.digits[l];
 	}
-	for (int k = 0; k < fpPre; k++) {
+	for (int k = 0; k < PRECISION; k++) {
 		_FpMultiframeBuffer[idx + CurY + k] = zY.digits[k];
 	}
 

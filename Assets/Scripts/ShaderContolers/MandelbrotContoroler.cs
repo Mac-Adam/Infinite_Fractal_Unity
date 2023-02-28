@@ -31,7 +31,7 @@ public class MandelbrotContoroler : ShadeContoler
     ComputeBuffer FpMultiframeBuffer;
     ComputeBuffer LastMultiFrameRenderBuffer; // used for pixelization
     ComputeBuffer PossionBuffer;
-    int[] TestPosiotnArray = new int[3 * shaderPre];
+    int[] TestPosiotnArray;
 
     //RenderShader
     ComputeBuffer IterBuffer;
@@ -121,6 +121,7 @@ G - Toggle GUI";
     string antialiasTogleContorl = "a";
     string upscaleControl = "u";
     string guiToggleControl = "g";
+    string tempKey = "s";
 
 
     //Controlls Handleing
@@ -128,9 +129,10 @@ G - Toggle GUI";
     int oldMouseTextureCoordinatesY;
     int PrevScreenX;
     int PrevScreenY;
-    FixedPointNumber MiddleX = new(fpPre);
-    FixedPointNumber MiddleY = new(fpPre);
-    FixedPointNumber Scale = new(fpPre);
+    static int cpuPrecision = GPUCode.precisions[^1].precision+5;
+    FixedPointNumber MiddleX = new(cpuPrecision);
+    FixedPointNumber MiddleY = new(cpuPrecision);
+    FixedPointNumber Scale = new(cpuPrecision);
 
     //precision
     int maxIter = 1000;
@@ -142,10 +144,10 @@ G - Toggle GUI";
     const float maxTagretFramerate = 200;
 
 
-
-    const int shaderPre = 10;
-    const int fpPre = shaderPre * 2;
-    const int shaderPixelSize = 2 * shaderPre + 3;
+    int precisionLevel = 1;
+    int shaderPre;
+    int fpPre;
+    int shaderPixelSize;
 
 
     //Pixelization
@@ -176,6 +178,23 @@ G - Toggle GUI";
     void ResetIterPerCycle()
     {
         IterPerCycle = infinitePre ? IterPerInfiniteCycle : IterPerDoubleCycle;
+    }
+    void SetSPrecision(int val)
+    {
+        precisionLevel = val;
+        ResetPrecision();
+        DisposeBuffers();
+        InitializeBuffers();
+        ResetParams();
+    }
+    void ResetPrecision()
+    {
+
+        shaderPre = GPUCode.precisions[precisionLevel].precision;
+        fpPre = shaderPre * 2;
+        shaderPixelSize = 2 * shaderPre + 3;
+        TestPosiotnArray = new int[3 * shaderPre];
+
     }
 
     void ResetAntialias()
@@ -242,12 +261,14 @@ G - Toggle GUI";
     }
     public override void InitializeValues()
     {
+        ResetPrecision();
+
         MiddleX.SetDouble(middleX);
         MiddleY.SetDouble(middleY);
         Scale.SetDouble(PixelsPerPixel() * length / Screen.width);
 
         ResetIterPerCycle();
-
+        
         
         addMaterial = new Material(AddShader);
     }
@@ -357,6 +378,11 @@ G - Toggle GUI";
 
     public override void HandleKeyInput()
     {
+        if (Input.GetKeyDown(tempKey))
+        {
+            SetSPrecision(precisionLevel + 1);
+        }
+
 
         if (Input.GetKeyDown(guiToggleControl))
         {
@@ -425,7 +451,7 @@ G - Toggle GUI";
                 pixelizationLevel -= 1;
 
                 IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
-                FixedPointNumber scaleFixer = new(fpPre);
+                FixedPointNumber scaleFixer = new(cpuPrecision);
                 scaleFixer.SetDouble((double)PixelsPerPixel() / LastPixelsPerPixel());
                 Scale *= scaleFixer;
                 upscaling = true;
@@ -552,15 +578,15 @@ G - Toggle GUI";
         int mouseTextureCoordinatesY = (int)mousePosPix.y / PixelsPerPixel();
 
 
-        FixedPointNumber mousePosRealX = new(fpPre);
+        FixedPointNumber mousePosRealX = new(cpuPrecision);
 
         mousePosRealX.SetDouble(mouseTextureCoordinatesX - Screen.width / (2 * PixelsPerPixel()));
         mousePosRealX = mousePosRealX * Scale + MiddleX;
-        FixedPointNumber mousePosRealY = new(fpPre);
+        FixedPointNumber mousePosRealY = new(cpuPrecision);
 
         mousePosRealY.SetDouble(mouseTextureCoordinatesY - Screen.height / (2 * PixelsPerPixel()));
         mousePosRealY = mousePosRealY * Scale + MiddleY;
-        FixedPointNumber multiplyer = new(fpPre);
+        FixedPointNumber multiplyer = new(cpuPrecision);
         if (Input.mouseScrollDelta.y != 0)
         {
            
@@ -653,6 +679,9 @@ G - Toggle GUI";
 
         if (infinitePre)
         {
+            GPUCode.ResetAllKeywords();
+            Shader.EnableKeyword(GPUCode.precisions[precisionLevel].name);
+
             InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
             InfiniteShader.SetBuffer(0, "_LastMultiframeData", LastMultiFrameRenderBuffer);
             InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
