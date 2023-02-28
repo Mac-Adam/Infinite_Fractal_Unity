@@ -63,7 +63,6 @@ public class MandelbrotContoroler : ShadeContoler
     const string DoubleTooltip = @"Controls:
 I - Zoom In
 O - Zoom Out
-T - Change Precision
 L - Change Gradient Type
 C - Cycle Color Palette
 A - Toggle Antialiasing
@@ -72,7 +71,6 @@ G - Toggle GUI";
 I - Zoom In And Pixelize Image
 O - Zoom Out Without Rerendering
 U - Upscale Image
-T - Change Precision
 L - Change Gradient Type
 C - Cycle Color Palette
 A - Toggle Antialiasing
@@ -114,7 +112,6 @@ G - Toggle GUI";
 
     string pixelizationLevelUpControl = "i";
     string pixelizationLevelDownControl = "o";
-    string toggleShaderControl = "t";
     string resetControl = "r";
     string togleInterpolationTypeContorl = "l";
     string colorPaletteTogleContorl = "c";
@@ -146,7 +143,6 @@ G - Toggle GUI";
 
     int precisionLevel = 1;
     int shaderPre;
-    int fpPre;
     int shaderPixelSize;
 
 
@@ -181,6 +177,7 @@ G - Toggle GUI";
     }
     void SetSPrecision(int val)
     {
+        val = Math.Clamp(val, 0, GPUCode.precisions.Length - 1);
         precisionLevel = val;
         ResetPrecision();
         DisposeBuffers();
@@ -191,7 +188,6 @@ G - Toggle GUI";
     {
 
         shaderPre = GPUCode.precisions[precisionLevel].precision;
-        fpPre = shaderPre * 2;
         shaderPixelSize = 2 * shaderPre + 3;
         TestPosiotnArray = new int[3 * shaderPre];
 
@@ -285,11 +281,6 @@ G - Toggle GUI";
         guiTemplate = new UITemplate(
         DefaultTemlates.sizes,
         new List<ToggleTemplate>(){
-            new ToggleTemplate(
-                "Infinite Precision",
-                infinitePre,
-                (bool b) => SetPrecision(b)
-                ),
             new ToggleTemplate(
                 "Antialiasing",
                 doAntialasing,
@@ -416,11 +407,6 @@ G - Toggle GUI";
            
         }
         
-       
-        if (Input.GetKeyDown(toggleShaderControl))
-        {
-            SetPrecision(!infinitePre);
-        }
         if (Input.GetKeyDown(colorPaletteTogleContorl))
         {
             SetColorPalette(currColorPalette + 1);
@@ -632,7 +618,6 @@ G - Toggle GUI";
     {
         guiControler.UpdateUI(
             new List<bool>() {
-                infinitePre,
                 doAntialasing,
                 smoothGradient
             },
@@ -758,6 +743,34 @@ G - Toggle GUI";
 
             }
         }
+        int tagretPrecison = 0;
+        foreach(int digit in Scale.digits)
+        {
+            if (digit == 0)
+            {
+                tagretPrecison++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        if(tagretPrecison + 1>= GPUCode.precisions[precisionLevel].precision)
+        {
+            SetSPrecision(precisionLevel + 1);
+            if (!infinitePre)
+            {
+                SetPrecision(true);
+            }
+        }
+        else if(precisionLevel != 0)
+        {
+            if(tagretPrecison + 1 < GPUCode.precisions[precisionLevel - 1].precision)
+            {
+                SetSPrecision(precisionLevel - 1);
+            }
+        }
+        Debug.Log(precisionLevel);
     }
 
     public override void HandleAntialias()
