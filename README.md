@@ -13,7 +13,7 @@ they will never be identical thought, this can be seen in the image above
 
 ## Mandelbrot set
 
-Mandelbrot set is a fractal that lives in the realm of [Complex Numbers] (https://en.wikipedia.org/wiki/Complex_number, "complex numbers").
+Mandelbrot set is a fractal that lives in the realm of [complex numbers](https://en.wikipedia.org/wiki/Complex_number).
 
 ## How is it generated?
 
@@ -26,6 +26,6 @@ If this series diverges to infinity this pixel is colored if it stays low it is 
 
 ## Where do the colors come from?
 
-If the |z| > 4 we can be sure that the series diverges, we can therefore stop the computation and get the iteration count.
-In order to smooth out the gradient the |z| is taken into account.
+If the $|z| > 4$ we can be sure that the series diverges, we can therefore stop the computation and get the iteration count.
+In order to smooth out the gradient the $|z|$ is taken into account.
 Using this data, color is calculated using a CIELAB or CIELCh color space
