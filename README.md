@@ -90,6 +90,8 @@ If you want to dive deep into the fractal rendering each image on the way in ful
 
 ## Gallery
 
+<img src="./ScreenShots/1.png"  width="10%" height="10%">
+
 ![1](./ScreenShots/1.png) | ![4](./ScreenShots/4.png)
 
 ![5](./ScreenShots/5.png)![8](./ScreenShots/8.png)
