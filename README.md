@@ -79,14 +79,17 @@ If you want to dive deep into the fractal rendering each image on the way in ful
 - Infinite zoom (Not really because of the build times e-100 should be possible in current version)
 - Various performance enhancements
 - Simple gui
+- Antyaliasing
 
 ### Planned
 
 - Other fractals
-- better gui
-- performance boost
-- fixing known bugs
-- finding unknown bugs
+- Better gui
+- Performance boost
+- Fixing known bugs
+- Finding unknown bugs
+- More control over colors
+- More render options
 
 ## Gallery
 
