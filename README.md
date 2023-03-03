@@ -90,6 +90,8 @@ If you want to dive deep into the fractal rendering each image on the way in ful
 
 ## Gallery
 
+    TEST                   |    TEST2
+
 :-------------------------:|:-------------------------:
 ![1](./ScreenShots/1.png) | ![4](./ScreenShots/4.png)
 
