@@ -58,7 +58,7 @@ the program will always run smooth and never stutter.
 
 #### Salvaging information from previous renders
 
-![Salvaging information](./ScreenShots/1.gif)
+![Salvaging information](./ScreenShots/2.gif)
 When you decide to move the image, data about already generated pixels is preserved.
 
 #### Quick resolution control
@@ -87,3 +87,9 @@ If you want to dive deep into the fractal rendering each image on the way in ful
 - performance boost
 - fixing known bugs
 - finding unknown bugs
+
+## Gallery
+
+![1](./ScreenShots/1.png)![4](./ScreenShots/4.png)
+![5](./ScreenShots/5.png)![8](./ScreenShots/8.png)
+![9](./ScreenShots/5.png)![10](./ScreenShots/7.png)
