@@ -91,16 +91,16 @@ If you want to dive deep into the fractal rendering each image on the way in ful
 ## Gallery
 
 <p float="left">
-  <img src="./ScreenShots/1.png"  width="50%" height="50%">
-  <img src="./ScreenShots/4.png"  width="50%" height="50%">
+  <img src="./ScreenShots/1.png"  width="45%" height="45%">
+  <img src="./ScreenShots/4.png"  width="45%" height="45%">
   
 <p float="left">
-  <img src="./ScreenShots/5.png"  width="50%" height="50%">
-  <img src="./ScreenShots/8.png"  width="50%" height="50%">
+  <img src="./ScreenShots/5.png"  width="45%" height="45%">
+  <img src="./ScreenShots/8.png"  width="45%" height="45%">
 </p>
 
 <p float="left">
   
-  <img src="./ScreenShots/9.png"  width="50%" height="50%">
-  <img src="./ScreenShots/10.png"  width="50%" height="50%">
+  <img src="./ScreenShots/9.png"  width="45%" height="45%">
+  <img src="./ScreenShots/10.png"  width="45%" height="45%">
 </p>
