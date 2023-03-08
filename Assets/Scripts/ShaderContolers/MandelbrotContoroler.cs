@@ -25,12 +25,10 @@ public class MandelbrotContoroler : ShadeContoler
     double[] doubleDataArray = new double[3];
     ComputeBuffer doubleDataBuffer;
     ComputeBuffer MultiFrameRenderBuffer;
-    ComputeBuffer LastMultiFrameRenderBuffer;  // used for pixelization
-
+ 
 
     //InfiShader
     ComputeBuffer FpMultiframeBuffer;
-    ComputeBuffer FpLastMultiFrameRenderBuffer; // used for pixelization
     ComputeBuffer PossionBuffer;
     int[] TestPosiotnArray;
 
@@ -51,7 +49,6 @@ public class MandelbrotContoroler : ShadeContoler
     int shiftX = 0;
     int shiftY = 0;
     int register = 0;
-    bool pixelized = false;
 
 
 
@@ -171,6 +168,10 @@ G - Toggle GUI";
     {
         return Screen.width * Screen.height / MathFunctions.IntPow(LastPixelsPerPixel(), 2);
     }
+    PixelizationData GetPixelizationData()
+    {
+        return new(PixelsPerPixel(), LastPixelsPerPixel(), PixelCount(), LastPixelCount(), pixelizationBase);
+    }
 
     void ResetIterPerCycle()
     {
@@ -250,7 +251,6 @@ G - Toggle GUI";
         OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         MultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
-        FpLastMultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(int) * shaderPixelSize);
         FpMultiframeBuffer = new ComputeBuffer(PixelCount()*2, sizeof(int) * shaderPixelSize);
         PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
@@ -358,7 +358,6 @@ G - Toggle GUI";
         OldIterBuffer.Dispose();
         doubleDataBuffer.Dispose();
         MultiFrameRenderBuffer.Dispose();
-        FpLastMultiFrameRenderBuffer.Dispose();
         ColorBuffer.Dispose();
         FpMultiframeBuffer.Dispose();
         PossionBuffer.Dispose();
@@ -394,7 +393,6 @@ G - Toggle GUI";
         {
             preUpscalePixLvl = pixelizationLevel;
             pixelizationLevel += 1;
-            pixelized = true;
             upscaling = false;
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
@@ -457,11 +455,10 @@ G - Toggle GUI";
             IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
             MultiFrameRenderBuffer.Dispose();
             MultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
-            FpLastMultiFrameRenderBuffer.Dispose();
-            FpLastMultiFrameRenderBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * shaderPixelSize);
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
-                PixelizedShaders.HandleZoomPixelization<int>(MultiFrameRenderBuffer, LastMultiFrameRenderBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, PixelsPerPixel(), LastPixelsPerPixel(), LastPixelCount(), PixelCount(), pixelizationBase, register, (bool b) => { reset = b; }, (ComputeBuffer oldBuffer, ComputeBuffer newBuffer) => { FpMultiframeBuffer = oldBuffer; LastMultiFrameRenderBuffer = newBuffer; });
+
+                PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer,sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), register, (bool b) => { reset = b; }, (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer;},shaderPixelSize);
                 //int[] oldArr = new int[LastPixelCount()*2 * shaderPixelSize]; ;
                 //int[] newArr;
                 //int dataWidth;
@@ -670,12 +667,10 @@ G - Toggle GUI";
             Shader.EnableKeyword(GPUCode.precisions[precisionLevel].name);
 
             InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
-            InfiniteShader.SetBuffer(0, "_LastMultiframeData", FpLastMultiFrameRenderBuffer);
             InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
             InfiniteShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
             InfiniteShader.SetInt("_MaxIter", maxIter);
             InfiniteShader.SetBool("_reset", reset);
-            InfiniteShader.SetBool("_pixelized", pixelized);
             InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
             InfiniteShader.SetInt("_ShiftX", shiftX);
             InfiniteShader.SetInt("_ShiftY", shiftY);
@@ -713,7 +708,6 @@ G - Toggle GUI";
         reset = false;
         shiftX = 0;
         shiftY = 0;
-        pixelized = false;
 
     }
 

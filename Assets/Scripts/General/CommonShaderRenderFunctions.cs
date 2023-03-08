@@ -3,6 +3,24 @@ using UnityEngine;
 using System;
 namespace CommonShaderRenderFunctions
 {
+    struct PixelizationData //shortcut to keep everything condensed
+    {
+        int pixelsPerPixel;
+        int lastPixelsPerPixel;
+        int pixelCount;
+        int lastPixelCount;
+        int pixelizationBase;
+        public PixelizationData(int pixelsPerPixel,int lastPixelsPerPixel, int pixelCount, int lastPixelCount, int pixelizationBase)
+        {
+            this.pixelsPerPixel = pixelsPerPixel;
+            this.lastPixelsPerPixel = lastPixelsPerPixel;
+            this.pixelCount = pixelCount;
+            this.lastPixelCount = lastPixelCount;
+            this.pixelizationBase = pixelizationBase;
+        }
+        
+
+    }
     class PixelizedShaders
     {
 
@@ -44,83 +62,10 @@ namespace CommonShaderRenderFunctions
 
         }
 
-        public static void HandleZoomPixelization<T>(ComputeBuffer oldBuffer,ComputeBuffer newBuffer,int sizeofT,bool zoomIn, int pixelsPerPixel,int lastPixelsPerPixel,int lastPixelCount, int pixelCount, int pixelizationBase, int register,Action<bool> resetSetCallback,Action<ComputeBuffer,ComputeBuffer> setBuffers)
+        public static void HandleZoomPixelization<T>(ComputeBuffer Buffer, int sizeofT, bool zoomIn, PixelizationData pixelizationData, int register, Action<bool> resetSetCallback, Action<ComputeBuffer> setBuffers, int arrayCount = 1)
         {
-            T[] oldArr = new T[lastPixelCount * 2];
-            T[] newArr;
-            int dataWidth;
-            int dataHeigth;
-            int otherWidth;
-            int otherHeigth;
-            if (zoomIn)//zoom in
-            {
-                newArr = new T[pixelCount]; //Not yet sure but I think it should be *2
-                dataWidth = Screen.width / pixelsPerPixel;
-                dataHeigth = Screen.height / pixelsPerPixel;
 
-                otherWidth = Screen.width / lastPixelsPerPixel;
-                otherHeigth = Screen.height / lastPixelsPerPixel;
-
-            }
-            else //zoom out
-            {
-
-                newArr = new T[pixelCount * 2];
-
-
-                otherWidth = Screen.width / pixelsPerPixel;
-                otherHeigth = Screen.height / pixelsPerPixel;
-
-
-                dataWidth = Screen.width / lastPixelsPerPixel;
-                dataHeigth = Screen.height / lastPixelsPerPixel;
-            }
-
-            oldBuffer.GetData(oldArr);
-
-            int cornerX = dataWidth * (pixelizationBase - 1) / 2;
-            int cornerY = dataHeigth * (pixelizationBase - 1) / 2;
-            for (int x = 0; x < dataWidth; x++)
-            {
-                for (int y = 0; y < dataHeigth; y++)
-                {
-
-                    int smallId = x + y * dataWidth;
-                    int bigId = x + cornerX + (y + cornerY) * otherWidth;
-                    bigId += otherWidth * otherHeigth * register;
-                    if (!zoomIn)
-                    {
-                        smallId += dataWidth * dataHeigth * register;
-                    }
-
-
-                  
-                    if (zoomIn)
-                    {
-                        newArr[bigId] = oldArr[smallId];
-                    }
-                    else
-                    {
-                        newArr[smallId] = oldArr[bigId];
-                    }
-                    
-                }
-            }
-            oldBuffer.Dispose();
-            oldBuffer = new ComputeBuffer(pixelCount * 2, sizeofT);
-
-            if (!zoomIn)
-            {
-                resetSetCallback(false);
-                oldBuffer.SetData(newArr);
-            }
-            else
-            {
-                newBuffer.SetData(newArr);
-            }
-            setBuffers(oldBuffer, newBuffer);
         }
-
 
     }
     class Antialiasing
