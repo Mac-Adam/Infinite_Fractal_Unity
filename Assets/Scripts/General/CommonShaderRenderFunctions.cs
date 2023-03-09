@@ -5,11 +5,11 @@ namespace CommonShaderRenderFunctions
 {
     struct PixelizationData //shortcut to keep everything condensed
     {
-        int pixelsPerPixel;
-        int lastPixelsPerPixel;
-        int pixelCount;
-        int lastPixelCount;
-        int pixelizationBase;
+        public int pixelsPerPixel;
+        public int lastPixelsPerPixel;
+        public int pixelCount;
+        public int lastPixelCount;
+        public int pixelizationBase;
         public PixelizationData(int pixelsPerPixel,int lastPixelsPerPixel, int pixelCount, int lastPixelCount, int pixelizationBase)
         {
             this.pixelsPerPixel = pixelsPerPixel;
@@ -18,8 +18,18 @@ namespace CommonShaderRenderFunctions
             this.lastPixelCount = lastPixelCount;
             this.pixelizationBase = pixelizationBase;
         }
+       
         
 
+    }
+
+    public struct DoublePixelPacket
+    {
+        double CurrentZX;
+        double CurrentZY;
+        uint iter;
+        uint finished;
+        double offset;
     }
     class PixelizedShaders
     {
@@ -62,8 +72,52 @@ namespace CommonShaderRenderFunctions
 
         }
 
-        public static void HandleZoomPixelization<T>(ComputeBuffer Buffer, int sizeofT, bool zoomIn, PixelizationData pixelizationData, int register, Action<bool> resetSetCallback, Action<ComputeBuffer> setBuffers, int arrayCount = 1)
+        public static void HandleZoomPixelization<T>(ComputeBuffer Buffer, int sizeofT, bool zoomIn, PixelizationData pixelizationData, int register, Action<ComputeBuffer> setBuffers, int arrayCount = 1)
         {
+            T[] oldData = new T[pixelizationData.lastPixelCount * arrayCount * 2];
+            Buffer.GetData(oldData);
+            Buffer.Dispose();
+            Buffer = new ComputeBuffer(pixelizationData.pixelCount, sizeofT*arrayCount*2);
+            T[] newData = new T[pixelizationData.pixelCount * arrayCount * 2];
+
+            if (zoomIn)
+            {
+                
+                int oldDataWidth = Screen.width / pixelizationData.lastPixelsPerPixel;
+                int oldDataHeight = Screen.height / pixelizationData.lastPixelsPerPixel;
+                int newDataWidth = Screen.width / pixelizationData.pixelsPerPixel;
+                int newDataHeight = Screen.height / pixelizationData.pixelsPerPixel;
+                int cornerX = (oldDataWidth - oldDataWidth / pixelizationData.pixelizationBase) / 2;
+                int cornerY = (oldDataHeight - oldDataHeight / pixelizationData.pixelizationBase) / 2;
+                for (int r = 0; r < 2; r++)
+                {
+                    for (int x = 0; x < newDataWidth; x++)
+                    {
+                        for (int y = 0; y < newDataHeight; y++)
+                        {
+                            int oldIdx = (y + cornerY) * oldDataWidth + (x + cornerX);
+                            int newIdx = y * Screen.width / pixelizationData.pixelsPerPixel + x;
+                            oldIdx += oldDataWidth * oldDataHeight * r;
+                            newIdx += newDataWidth * newDataHeight * r;
+                            oldIdx *= arrayCount;
+                            newIdx *= arrayCount;
+                            for (int i = 0; i < arrayCount; i++)
+                            {
+                                newData[newIdx] = oldData[oldIdx];
+                            }
+
+
+                        }
+                    }
+                }
+              
+
+
+
+
+            }
+            Buffer.SetData(newData);
+            setBuffers(Buffer);
 
         }
 

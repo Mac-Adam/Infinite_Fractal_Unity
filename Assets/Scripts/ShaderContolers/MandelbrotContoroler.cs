@@ -450,96 +450,28 @@ G - Toggle GUI";
     {
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel)
         {
-            reset = true;
             IterBuffer.Dispose();
             IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
-            MultiFrameRenderBuffer.Dispose();
-            MultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
-
-                PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer,sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), register, (bool b) => { reset = b; }, (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer;},shaderPixelSize);
-                //int[] oldArr = new int[LastPixelCount()*2 * shaderPixelSize]; ;
-                //int[] newArr;
-                //int dataWidth;
-                //int dataHeigth;
-                //int otherWidth;
-                //int otherHeigth;
-                //if (lastPixelizationLevel < pixelizationLevel)//zoom in
-                //{
-                //    newArr = new int[PixelCount() * shaderPixelSize];
-                //    dataWidth = Screen.width / PixelsPerPixel();
-                //    dataHeigth = Screen.height / PixelsPerPixel();
-
-                //    otherWidth = Screen.width / LastPixelsPerPixel();
-                //    otherHeigth = Screen.height / LastPixelsPerPixel();
-
-                //}
-                //else //zoom out
-                //{
-
-                //    newArr = new int[PixelCount()*2 * shaderPixelSize];
-
-
-                //    otherWidth = Screen.width / PixelsPerPixel();
-                //    otherHeigth = Screen.height / PixelsPerPixel();
-
-
-                //    dataWidth = Screen.width / LastPixelsPerPixel();
-                //    dataHeigth = Screen.height / LastPixelsPerPixel();
-                //}
-
-                //FpMultiframeBuffer.GetData(oldArr);
-
-                //int cornerX = dataWidth * (pixelizationBase - 1) / 2;
-                //int cornerY = dataHeigth * (pixelizationBase - 1) / 2;
-                //for (int x = 0; x < dataWidth; x++)
-                //{
-                //    for (int y = 0; y < dataHeigth; y++)
-                //    {
-
-                //        int smallId = x + y * dataWidth;
-                //        int bigId = x + cornerX + (y + cornerY) * otherWidth;
-                //        bigId += otherWidth * otherHeigth * register;
-                //        if (lastPixelizationLevel > pixelizationLevel)
-                //        {
-                //            smallId += dataWidth * dataHeigth * register;
-                //        }
-
-                //        smallId *= shaderPixelSize;
-                //        bigId *= shaderPixelSize;
-                //        for (int i = 0; i < shaderPixelSize; i++)
-                //        {
-                //            if (lastPixelizationLevel > pixelizationLevel)
-                //            {
-                //                newArr[bigId + i] = oldArr[smallId + i];
-                //            }
-                //            else
-                //            {
-                //                newArr[smallId + i] = oldArr[bigId + i];
-                //            }
-                //        }
-                //    }
-                //}
-                //FpMultiframeBuffer.Dispose();
-                //FpMultiframeBuffer = new ComputeBuffer(PixelCount()*2, sizeof(int) * shaderPixelSize);
-
-                //if (lastPixelizationLevel > pixelizationLevel)
-                //{
-                //    reset = false;
-                //    FpMultiframeBuffer.SetData(newArr);
-                //}
-                //else
-                //{
-                //    FpLastMultiFrameRenderBuffer.SetData(newArr);
-                //}
-
+               
+                PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), register, (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
+                PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), register, (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
+                
             }
             else
             {
+                MultiFrameRenderBuffer.Dispose();
+                MultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
                 FpMultiframeBuffer.Dispose();
-                FpMultiframeBuffer = new ComputeBuffer(PixelCount()*2, sizeof(int) * shaderPixelSize);
+                FpMultiframeBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(int) * shaderPixelSize);
+                reset = true;
             }
+
+           
+            
+           
+           
 
 
 
