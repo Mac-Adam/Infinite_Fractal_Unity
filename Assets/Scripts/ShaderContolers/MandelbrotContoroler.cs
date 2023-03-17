@@ -455,9 +455,9 @@ G - Toggle GUI";
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
                
-                PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), register, (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
-                PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), register, (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
-                
+                PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
+                PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
+                Debug.Log(pixelizationLevel - lastPixelizationLevel);   
             }
             else
             {
