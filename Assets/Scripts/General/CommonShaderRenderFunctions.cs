@@ -3,15 +3,45 @@ using UnityEngine;
 using System;
 namespace CommonShaderRenderFunctions
 {
+    struct PixelizationData //shortcut to keep everything condensed
+    {
+        public int pixelsPerPixel;
+        public int lastPixelsPerPixel;
+        public int pixelCount;
+        public int lastPixelCount;
+        public int pixelizationBase;
+        public int register;
+        public PixelizationData(int pixelsPerPixel,int lastPixelsPerPixel, int pixelCount, int lastPixelCount, int pixelizationBase,int register)
+        {
+            this.pixelsPerPixel = pixelsPerPixel;
+            this.lastPixelsPerPixel = lastPixelsPerPixel;
+            this.pixelCount = pixelCount;
+            this.lastPixelCount = lastPixelCount;
+            this.pixelizationBase = pixelizationBase;
+            this.register = register;
+        }
+       
+        
+
+    }
+
+    public struct DoublePixelPacket
+    {
+        double CurrentZX;
+        double CurrentZY;
+        uint iter;
+        uint finished;
+        double offset;
+    }
     class PixelizedShaders
     {
-        
-        public static RenderTexture InitializePixelizedTexture(RenderTexture texture,int pixelizationBase,int pixelizationLevel,bool additionalCondition=false)
+
+        public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int pixelizationBase, int pixelizationLevel, bool additionalCondition = false)
         {
-           
+
             if (texture == null || texture.width != Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || texture.height != Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || additionalCondition)
             {
-
+                
                 if (texture != null)
                     texture.Release();
 
@@ -22,28 +52,113 @@ namespace CommonShaderRenderFunctions
                 };
                 texture.Create();
 
-
+                Debug.Log($"W: {texture.width} H: {texture.height} Screen: {Screen.width} x {Screen.height}");
             }
             return texture;
         }
 
-        public static void Dispatch(ComputeShader RenderShader,ComputeShader DummyShader,RenderTexture targetTexture, RenderTexture dummyTexture,int pixelizationBase, int pixelizationLevel)
+        public static void Dispatch(ComputeShader RenderShader, ComputeShader DummyShader, RenderTexture targetTexture, RenderTexture dummyTexture, int pixelizationBase, int pixelizationLevel)
         {
             int RenderThreadGrupsX = Mathf.CeilToInt(Screen.width / 8);
             int RenderThreadGrupsY = Mathf.CeilToInt(Screen.height / 8);
-            int CalculatethreadGroupsX = Mathf.CeilToInt(Screen.width / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-            int CalculatethreadGroupsY = Mathf.CeilToInt(Screen.height / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-
+            int CalculatethreadGroupsX = Mathf.CeilToInt((float)Screen.width / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
+            int CalculatethreadGroupsY = Mathf.CeilToInt((float)Screen.height / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
+            Debug.Log($"Render: {RenderThreadGrupsX} x {RenderThreadGrupsY} calculate: {CalculatethreadGroupsX} x {CalculatethreadGroupsY}");
 
             DummyShader.SetTexture(0, "Result", dummyTexture);
             DummyShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
-          
+
 
             RenderShader.SetTexture(0, "Result", targetTexture);
             RenderShader.Dispatch(0, RenderThreadGrupsX, RenderThreadGrupsY, 1);
 
         }
 
+        public static void HandleZoomPixelization<T>(ComputeBuffer Buffer, int sizeofT, bool zoomIn, PixelizationData pixelizationData, Action<ComputeBuffer> setBuffers, int arrayCount = 1)
+        {
+           
+            T[] oldData = new T[pixelizationData.lastPixelCount * arrayCount * 2];
+
+          
+            Buffer.GetData(oldData);
+            Buffer.Dispose();
+
+            Buffer = new ComputeBuffer(pixelizationData.pixelCount, sizeofT*arrayCount*2);
+
+          
+            T[] newData = new T[pixelizationData.pixelCount * arrayCount * 2];
+            int oldDataWidth = Screen.width / pixelizationData.lastPixelsPerPixel;
+            int oldDataHeight = Screen.height / pixelizationData.lastPixelsPerPixel;
+            int newDataWidth = Screen.width / pixelizationData.pixelsPerPixel;
+            int newDataHeight = Screen.height / pixelizationData.pixelsPerPixel;
+
+            int cornerX;
+            int cornerY;
+            int oldIdx;
+            int newIdx;
+            int yLoops;
+            int xLoops;
+
+            if (zoomIn)
+            {
+                cornerX = (oldDataWidth - oldDataWidth / pixelizationData.pixelizationBase) / 2;
+                cornerY = (oldDataHeight - oldDataHeight / pixelizationData.pixelizationBase) / 2;
+
+                oldIdx = cornerY * oldDataWidth + cornerX;
+                newIdx = 0;
+              
+
+                yLoops = newDataHeight;
+                xLoops = newDataWidth;
+
+            }
+            else
+            {
+                cornerX = (newDataWidth - newDataWidth / pixelizationData.pixelizationBase) / 2;
+                cornerY = (newDataHeight - newDataHeight / pixelizationData.pixelizationBase) / 2;
+                
+                oldIdx = 0;
+                newIdx = cornerY * newDataWidth + cornerX;
+           
+                yLoops = oldDataHeight;
+                xLoops = oldDataWidth;
+
+            }
+            oldIdx += oldDataWidth * oldDataHeight * pixelizationData.register;
+            newIdx += newDataWidth * newDataHeight * pixelizationData.register;
+            oldIdx *= arrayCount;
+            newIdx *= arrayCount;
+            for (int y = 0; y < yLoops; y++)
+            {
+                for (int x = 0; x < xLoops; x++)
+                {
+
+                    for (int i = 0; i < arrayCount; i++)
+                    {
+                        newData[newIdx] = oldData[oldIdx];
+                    }
+                           
+                    newIdx += arrayCount;
+                    oldIdx += arrayCount;
+                }
+
+                if (zoomIn)
+                {
+                    oldIdx += (oldDataWidth - newDataWidth) * arrayCount;
+                }
+                else
+                {
+                    newIdx += (newDataWidth - oldDataWidth) * arrayCount;
+                }
+                        
+            }
+                
+           
+           
+            Buffer.SetData(newData);
+            setBuffers(Buffer);
+
+        }
 
     }
     class Antialiasing
