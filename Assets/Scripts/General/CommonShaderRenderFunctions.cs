@@ -10,13 +10,15 @@ namespace CommonShaderRenderFunctions
         public int pixelCount;
         public int lastPixelCount;
         public int pixelizationBase;
-        public PixelizationData(int pixelsPerPixel,int lastPixelsPerPixel, int pixelCount, int lastPixelCount, int pixelizationBase)
+        public int register;
+        public PixelizationData(int pixelsPerPixel,int lastPixelsPerPixel, int pixelCount, int lastPixelCount, int pixelizationBase,int register)
         {
             this.pixelsPerPixel = pixelsPerPixel;
             this.lastPixelsPerPixel = lastPixelsPerPixel;
             this.pixelCount = pixelCount;
             this.lastPixelCount = lastPixelCount;
             this.pixelizationBase = pixelizationBase;
+            this.register = register;
         }
        
         
@@ -74,69 +76,88 @@ namespace CommonShaderRenderFunctions
 
         public static void HandleZoomPixelization<T>(ComputeBuffer Buffer, int sizeofT, bool zoomIn, PixelizationData pixelizationData, Action<ComputeBuffer> setBuffers, int arrayCount = 1)
         {
+           
             T[] oldData = new T[pixelizationData.lastPixelCount * arrayCount * 2];
+
+          
             Buffer.GetData(oldData);
             Buffer.Dispose();
+
             Buffer = new ComputeBuffer(pixelizationData.pixelCount, sizeofT*arrayCount*2);
+
+          
             T[] newData = new T[pixelizationData.pixelCount * arrayCount * 2];
             int oldDataWidth = Screen.width / pixelizationData.lastPixelsPerPixel;
             int oldDataHeight = Screen.height / pixelizationData.lastPixelsPerPixel;
             int newDataWidth = Screen.width / pixelizationData.pixelsPerPixel;
             int newDataHeight = Screen.height / pixelizationData.pixelsPerPixel;
+
+            int cornerX;
+            int cornerY;
+            int oldIdx;
+            int newIdx;
+            int yLoops;
+            int xLoops;
+
             if (zoomIn)
             {
-                
-                int cornerX = (oldDataWidth - oldDataWidth / pixelizationData.pixelizationBase) / 2;
-                int cornerY = (oldDataHeight - oldDataHeight / pixelizationData.pixelizationBase) / 2;
-                for (int r = 0; r < 2; r++)
-                {
-                    for (int x = 0; x < newDataWidth; x++)
-                    {
-                        for (int y = 0; y < newDataHeight; y++)
-                        {
-                            int oldIdx = (y + cornerY) * oldDataWidth + (x + cornerX);
-                            int newIdx = y * Screen.width / pixelizationData.pixelsPerPixel + x;
-                            oldIdx += oldDataWidth * oldDataHeight * r;
-                            newIdx += newDataWidth * newDataHeight * r;
-                            oldIdx *= arrayCount;
-                            newIdx *= arrayCount;
-                            for (int i = 0; i < arrayCount; i++)
-                            {
-                                newData[newIdx] = oldData[oldIdx];
-                            }
+                cornerX = (oldDataWidth - oldDataWidth / pixelizationData.pixelizationBase) / 2;
+                cornerY = (oldDataHeight - oldDataHeight / pixelizationData.pixelizationBase) / 2;
 
+                oldIdx = cornerY * oldDataWidth + cornerX;
+                newIdx = 0;
+                oldIdx += oldDataWidth * oldDataHeight * pixelizationData.register;
+                newIdx += newDataWidth * newDataHeight * pixelizationData.register;
+                oldIdx *= arrayCount;
+                newIdx *= arrayCount;
 
-                        }
-                    }
-                }
+                yLoops = newDataHeight;
+                xLoops = newDataWidth;
+
             }
             else
             {
-                int cornerX = (newDataWidth - newDataWidth / pixelizationData.pixelizationBase) / 2;
-                int cornerY = (newDataHeight - newDataHeight / pixelizationData.pixelizationBase) / 2;
-                for (int r = 0; r < 2; r++)
-                {
-                    for (int x = 0; x < oldDataWidth; x++)
-                    {
-                        for (int y = 0; y < oldDataHeight; y++)
-                        {
-                            int oldIdx = y * oldDataWidth + x;
-                            int newIdx = (y +cornerY) * newDataWidth + x +cornerX;
-            
-                            oldIdx += oldDataWidth * oldDataHeight * r;
-                            newIdx += newDataWidth * newDataHeight * r;
-                            oldIdx *= arrayCount;
-                            newIdx *= arrayCount;
-                            for (int i = 0; i < arrayCount; i++)
-                            {
-                                newData[newIdx] = oldData[oldIdx];
-                            }
+                cornerX = (newDataWidth - newDataWidth / pixelizationData.pixelizationBase) / 2;
+                cornerY = (newDataHeight - newDataHeight / pixelizationData.pixelizationBase) / 2;
+                
+                oldIdx = 0;
+                newIdx = cornerY * newDataWidth + cornerX;
+                oldIdx += oldDataWidth * oldDataHeight * pixelizationData.register;
+                newIdx += newDataWidth * newDataHeight * pixelizationData.register;
+                oldIdx *= arrayCount;
+                newIdx *= arrayCount;
+                yLoops = oldDataHeight;
+                xLoops = oldDataWidth;
 
-
-                        }
-                    }
-                }
             }
+
+            for (int y = 0; y < yLoops; y++)
+            {
+                for (int x = 0; x < xLoops; x++)
+                {
+
+                    for (int i = 0; i < arrayCount; i++)
+                    {
+                        newData[newIdx] = oldData[oldIdx];
+                    }
+                           
+                    newIdx += arrayCount;
+                    oldIdx += arrayCount;
+                }
+
+                if (zoomIn)
+                {
+                    oldIdx += (oldDataWidth - newDataWidth) * arrayCount;
+                }
+                else
+                {
+                    newIdx += (newDataWidth - oldDataWidth) * arrayCount;
+                }
+                        
+            }
+                
+           
+           
             Buffer.SetData(newData);
             setBuffers(Buffer);
 
