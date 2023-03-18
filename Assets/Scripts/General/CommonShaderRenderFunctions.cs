@@ -41,7 +41,7 @@ namespace CommonShaderRenderFunctions
 
             if (texture == null || texture.width != Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || texture.height != Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || additionalCondition)
             {
-
+                
                 if (texture != null)
                     texture.Release();
 
@@ -52,7 +52,7 @@ namespace CommonShaderRenderFunctions
                 };
                 texture.Create();
 
-
+                Debug.Log($"W: {texture.width} H: {texture.height} Screen: {Screen.width} x {Screen.height}");
             }
             return texture;
         }
@@ -61,9 +61,9 @@ namespace CommonShaderRenderFunctions
         {
             int RenderThreadGrupsX = Mathf.CeilToInt(Screen.width / 8);
             int RenderThreadGrupsY = Mathf.CeilToInt(Screen.height / 8);
-            int CalculatethreadGroupsX = Mathf.CeilToInt(Screen.width / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-            int CalculatethreadGroupsY = Mathf.CeilToInt(Screen.height / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-
+            int CalculatethreadGroupsX = Mathf.CeilToInt((float)Screen.width / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
+            int CalculatethreadGroupsY = Mathf.CeilToInt((float)Screen.height / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
+            Debug.Log($"Render: {RenderThreadGrupsX} x {RenderThreadGrupsY} calculate: {CalculatethreadGroupsX} x {CalculatethreadGroupsY}");
 
             DummyShader.SetTexture(0, "Result", dummyTexture);
             DummyShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
@@ -106,10 +106,7 @@ namespace CommonShaderRenderFunctions
 
                 oldIdx = cornerY * oldDataWidth + cornerX;
                 newIdx = 0;
-                oldIdx += oldDataWidth * oldDataHeight * pixelizationData.register;
-                newIdx += newDataWidth * newDataHeight * pixelizationData.register;
-                oldIdx *= arrayCount;
-                newIdx *= arrayCount;
+              
 
                 yLoops = newDataHeight;
                 xLoops = newDataWidth;
@@ -122,15 +119,15 @@ namespace CommonShaderRenderFunctions
                 
                 oldIdx = 0;
                 newIdx = cornerY * newDataWidth + cornerX;
-                oldIdx += oldDataWidth * oldDataHeight * pixelizationData.register;
-                newIdx += newDataWidth * newDataHeight * pixelizationData.register;
-                oldIdx *= arrayCount;
-                newIdx *= arrayCount;
+           
                 yLoops = oldDataHeight;
                 xLoops = oldDataWidth;
 
             }
-
+            oldIdx += oldDataWidth * oldDataHeight * pixelizationData.register;
+            newIdx += newDataWidth * newDataHeight * pixelizationData.register;
+            oldIdx *= arrayCount;
+            newIdx *= arrayCount;
             for (int y = 0; y < yLoops; y++)
             {
                 for (int x = 0; x < xLoops; x++)
