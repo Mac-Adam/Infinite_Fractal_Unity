@@ -33,6 +33,14 @@ namespace CommonShaderRenderFunctions
         uint finished;
         double offset;
     }
+    public struct FloatPixelPacket
+    {
+        float CurrentZX;
+        float CurrentZY;
+        uint iter;
+        uint finished;
+        float offset;
+    }
     class PixelizedShaders
     {
 
@@ -52,7 +60,6 @@ namespace CommonShaderRenderFunctions
                 };
                 texture.Create();
 
-                Debug.Log($"W: {texture.width} H: {texture.height} Screen: {Screen.width} x {Screen.height}");
             }
             return texture;
         }
@@ -63,8 +70,7 @@ namespace CommonShaderRenderFunctions
             int RenderThreadGrupsY = Mathf.CeilToInt(Screen.height / 8);
             int CalculatethreadGroupsX = Mathf.CeilToInt((float)Screen.width / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
             int CalculatethreadGroupsY = Mathf.CeilToInt((float)Screen.height / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-            Debug.Log($"Render: {RenderThreadGrupsX} x {RenderThreadGrupsY} calculate: {CalculatethreadGroupsX} x {CalculatethreadGroupsY}");
-
+          
             DummyShader.SetTexture(0, "Result", dummyTexture);
             DummyShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
 
