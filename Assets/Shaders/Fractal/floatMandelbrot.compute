@@ -1,0 +1,184 @@
+#pragma kernel CSMain
+
+
+RWTexture2D<float4> Result;
+
+
+float2 _PixelOffset;
+
+uint _MaxIter;
+uint _IterPerCycle = 10;
+float _Length;
+float _OffsetX;
+float _OffsetY;
+StructuredBuffer<float> _FloatDataBuffer;
+
+struct res {
+	uint iter;
+	bool finished;
+	float offset;
+};
+RWStructuredBuffer<res> _IterBuffer;
+
+struct Pixel {
+	float CurrentZX;
+	float CurrentZY;
+	uint iter;
+	bool finished;
+	float offset;
+};
+
+RWStructuredBuffer<Pixel> _MultiFrameData;
+
+
+int _ShiftX;
+int _ShiftY;
+
+uint _Register;
+
+bool _reset;
+
+
+
+float getOffset(float2 squares) {
+	float logz = log((squares.x + squares.y)) / 2.0;
+	float res = log(logz / log(2.0)) / log(2.0);
+	res = clamp(res, 0.0, 1.0);
+	return res;
+}
+uint getIteration(float2 possition, float2 InitialZ, int idx) {
+	float2 c = possition;
+	uint iter = 0;
+	float2 z = InitialZ;
+	float2 squares = float2(z.x * z.x, z.y * z.y);
+	while (squares.x + squares.y < 4.0) {
+		if (iter >= (_IterPerCycle)) {
+
+			_MultiFrameData[idx].CurrentZX = z.x;
+			_MultiFrameData[idx].CurrentZY = z.y;
+			if (_MultiFrameData[idx].iter >= _MaxIter) {
+				_MultiFrameData[idx].finished = true;
+			}
+			return iter;
+		}
+		z.y = 2 * z.x * z.y + c.y;
+		z.x = squares.x - squares.y + c.x;
+		squares.x = z.x * z.x;
+		squares.y = z.y * z.y;
+		iter++;
+	}
+	_MultiFrameData[idx].finished = true;
+	_MultiFrameData[idx].offset = getOffset((float2)squares);
+	return iter;
+
+
+}
+
+
+[numthreads(8, 8, 1)]
+
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+
+	uint width, height;
+	Result.GetDimensions(width, height);
+
+
+
+	//Get float data form buffer
+	_Length = _FloatDataBuffer[0];
+	_OffsetX = _FloatDataBuffer[1];
+	_OffsetY = _FloatDataBuffer[2];
+
+
+	// Get the dimensions of the RenderTexture
+
+	//Get id of pixel
+	uint pixelId = id.x + id.y * width + width * height * _Register;
+	int currentIter = 0;
+	if (_ShiftX != 0 || _ShiftY != 0) {
+		int oldPixelId;
+		int min;
+		int max;
+		if (_Register == 0) {
+			min = width * height;
+			max = width * height * 2;
+			oldPixelId = pixelId - _ShiftX - _ShiftY * width + width * height;
+		}
+		else if (_Register == 1) {
+			min = 0;
+			max = width * height;
+
+			oldPixelId = pixelId - _ShiftX - _ShiftY * width - width * height;
+		}
+		if (int(id.x) <= _ShiftX || //left border
+			int(width - id.x) <= -_ShiftX || //rigth  border
+			int(id.y) <= _ShiftY || //top border
+			int(height - id.y) <= -_ShiftY ||//bottom border
+			oldPixelId<min || oldPixelId>max) {
+
+
+			//this part  should be rerendered
+			_MultiFrameData[pixelId].iter = 0;
+			_MultiFrameData[pixelId].CurrentZX = 0;
+			_MultiFrameData[pixelId].CurrentZY = 0;
+			_MultiFrameData[pixelId].finished = false;
+			_MultiFrameData[pixelId].offset = 0;
+
+
+		}
+		else {
+			_MultiFrameData[pixelId].iter = _MultiFrameData[oldPixelId].iter;
+			_MultiFrameData[pixelId].CurrentZX = _MultiFrameData[oldPixelId].CurrentZX;
+			_MultiFrameData[pixelId].CurrentZY = _MultiFrameData[oldPixelId].CurrentZY;
+			_MultiFrameData[pixelId].finished = _MultiFrameData[oldPixelId].finished;
+			_MultiFrameData[pixelId].offset = _MultiFrameData[oldPixelId].offset;
+
+		}
+
+
+
+
+
+
+
+
+	}
+
+	else if (_reset) {
+		_MultiFrameData[pixelId].iter = 0;
+		_MultiFrameData[pixelId].CurrentZX = 0;
+		_MultiFrameData[pixelId].CurrentZY = 0;
+		_MultiFrameData[pixelId].finished = false;
+		_MultiFrameData[pixelId].offset = 0;
+
+
+	}
+
+
+
+	//check if further computation is nesesary
+	if (!_MultiFrameData[pixelId].finished) {
+		// Transform pixel to correct range
+		float2 scale = _Length / width;
+		float2 uv = ((float2)id.xy + _PixelOffset - float2(width / 2, height / 2)) * scale;
+		// add offset
+		uv += float2(_OffsetX, _OffsetY);
+
+		if (_MultiFrameData[pixelId].iter == 0) {
+			currentIter = getIteration(uv, float2(0.0, 0.0), pixelId);
+		}
+		else {
+			currentIter = getIteration(uv, float2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
+		}
+
+
+
+		_MultiFrameData[pixelId].iter += currentIter;
+
+	}
+	_IterBuffer[id.x + id.y * width].iter = _MultiFrameData[pixelId].iter;
+	_IterBuffer[id.x + id.y * width].finished = _MultiFrameData[pixelId].finished;
+	_IterBuffer[id.x + id.y * width].offset = _MultiFrameData[pixelId].offset;
+
+}
