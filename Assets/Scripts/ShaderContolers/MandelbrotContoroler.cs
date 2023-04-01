@@ -122,7 +122,7 @@ G - Toggle GUI";
     string antialiasTogleContorl = "a";
     string upscaleControl = "u";
     string guiToggleControl = "g";
-    string tempKey = "s";
+    string scrennShotKey = "s";
 
 
     //Controlls Handleing
@@ -251,6 +251,10 @@ G - Toggle GUI";
         colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
     }
 
+    public void SaveCurrentRenderTextureAsAPng()
+    {
+        OtherFunctions.SaveRenderTextureToFile(targetTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt"));
+    }
 
 
     public override void InitializeBuffers()
@@ -380,9 +384,9 @@ G - Toggle GUI";
 
     public override void HandleKeyInput()
     {
-        if (Input.GetKeyDown(tempKey))
+        if (Input.GetKeyDown(scrennShotKey))
         {
-            SetSPrecision(precisionLevel + 1);
+            SaveCurrentRenderTextureAsAPng();
         }
 
 
