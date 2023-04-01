@@ -90,8 +90,7 @@ namespace CommonShaderRenderFunctions
             Buffer.Dispose();
 
             Buffer = new ComputeBuffer(pixelizationData.pixelCount, sizeofT*arrayCount*2);
-
-          
+         
             T[] newData = new T[pixelizationData.pixelCount * arrayCount * 2];
             int oldDataWidth = Screen.width / pixelizationData.lastPixelsPerPixel;
             int oldDataHeight = Screen.height / pixelizationData.lastPixelsPerPixel;
@@ -141,9 +140,10 @@ namespace CommonShaderRenderFunctions
 
                     for (int i = 0; i < arrayCount; i++)
                     {
-                        newData[newIdx] = oldData[oldIdx];
+                        newData[newIdx+i] = oldData[oldIdx+i];
                     }
-                           
+
+               
                     newIdx += arrayCount;
                     oldIdx += arrayCount;
                 }

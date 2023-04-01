@@ -276,8 +276,6 @@ G - Toggle GUI";
         Scale.SetDouble(PixelsPerPixel() * length / Screen.width);
 
         ResetIterPerCycle();
-        
-        
         addMaterial = new Material(AddShader);
     }
     public override void HandleLastValues()
@@ -473,9 +471,6 @@ G - Toggle GUI";
                 switch (precision)
                 {
                     case Precision.INFINTE:
-                        Debug.Log(shaderPixelSize);
-                        Debug.Log(precisionLevel);
-                        Debug.Log(GPUCode.precisions[precisionLevel].precision);
                         PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
                         break;
                     case Precision.DOUBLE:

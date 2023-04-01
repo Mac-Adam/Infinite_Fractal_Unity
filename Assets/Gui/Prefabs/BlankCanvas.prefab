@@ -113,3 +113,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 355d5e06c83274949a4fe0e053174e15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  BackgroundPrefab: {fileID: 5644105639650865094, guid: 28a52b8c0b4189a44bf3401739719290, type: 3}
+  ButtonPrefab: {fileID: 6248114110181640847, guid: dbbc2cd8be32db04b94e07843a06284d, type: 3}
+  DropdownPrefab: {fileID: 7943947225861924230, guid: f6e94c292d35a9e43883bbc58db057e7, type: 3}
+  TogglePrefab: {fileID: 364592535179168295, guid: 8ef9074e570c450489b4f3097b031f72, type: 3}
+  SliderPrefab: {fileID: 8023916542548643863, guid: ceea35cd7b8640d4e8449bd7eb7c3d22, type: 3}
+  ProgressBarPrefab: {fileID: 5907787426033870000, guid: 3f3435339c94313478ecc21de7be4cab, type: 3}
+  TextPrefab: {fileID: 7235851798828667668, guid: 85f64afb3c0e2c742b3e65413282a3ac, type: 3}

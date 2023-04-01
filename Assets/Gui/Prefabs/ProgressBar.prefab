@@ -249,7 +249,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8129191527505607851}
-  - component: {fileID: 3223998476144386069}
+  - component: {fileID: 6289867670328682911}
   m_Layer: 5
   m_Name: ProgressBar
   m_TagString: Untagged
@@ -279,7 +279,7 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 1}
---- !u!114 &3223998476144386069
+--- !u!114 &6289867670328682911
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
