@@ -294,7 +294,7 @@ G - Toggle GUI";
 
         MiddleX.SetDouble(middleX);
         MiddleY.SetDouble(middleY);
-        Scale.SetDouble(PixelsPerPixel() * length / Screen.width);
+        Scale.SetDouble( length / ReducedWidth());
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
@@ -456,7 +456,6 @@ G - Toggle GUI";
         }
         if (Input.GetKeyDown(upscaleControl))
         {
-
             if (pixelizationLevel > 0)
             {
                 int[] arr = new int[PixelCount() * 3];
@@ -472,12 +471,15 @@ G - Toggle GUI";
 
                 IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
                 FixedPointNumber scaleFixer = new(cpuPrecision);
-                scaleFixer.SetDouble((double)PixelsPerPixel() / LastPixelsPerPixel());
+                scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
                 Scale *= scaleFixer;
                 upscaling = true;
                 renderFinished = false;
                 currIter = 0;
+
             }
+
+
 
         }
     }
@@ -538,17 +540,17 @@ G - Toggle GUI";
 
 
         Vector2 mousePosPix = Input.mousePosition;
-        int mouseTextureCoordinatesX = (int)mousePosPix.x / PixelsPerPixel();
-        int mouseTextureCoordinatesY = (int)mousePosPix.y / PixelsPerPixel();
+        int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, pixelizationBase, pixelizationLevel);
+        int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, pixelizationBase, pixelizationLevel);
 
 
         FixedPointNumber mousePosRealX = new(cpuPrecision);
 
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - Screen.width / (2 * PixelsPerPixel()));
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedHeight()/2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(cpuPrecision);
 
-        mousePosRealY.SetDouble(mouseTextureCoordinatesY - Screen.height / (2 * PixelsPerPixel()));
+        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight()/2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(cpuPrecision);
         if (Input.mouseScrollDelta.y != 0)
@@ -634,7 +636,7 @@ G - Toggle GUI";
         }
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = Scale.ToDouble() * Screen.width / PixelsPerPixel();
+        doubleDataArray[0] = Scale.ToDouble() * ReducedWidth();
         doubleDataArray[1] = MiddleX.ToDouble();
         doubleDataArray[2] = MiddleY.ToDouble();
         floatDataArray[0] = (float)doubleDataArray[0];
@@ -695,7 +697,8 @@ G - Toggle GUI";
         RenderShader.SetBool("_Smooth", smoothGradient);
         RenderShader.SetBool("_Upscaling", upscaling);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
-        RenderShader.SetInt("_PixelWidth", PixelsPerPixel());
+        RenderShader.SetInt("_ReduceAmount", PixelsPerPixel());
+        RenderShader.SetBool("_Superresolution", pixelizationLevel < 0);
         RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, preUpscalePixLvl));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
