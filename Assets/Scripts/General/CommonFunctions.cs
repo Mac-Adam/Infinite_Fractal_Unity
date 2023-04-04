@@ -2,27 +2,6 @@ using UnityEngine;
 using System.IO;
 namespace CommonFunctions
 {
-    class MathFunctions
-    {
-        public static int IntPow(int baseNum, int exponent)
-        {
-            int res;
-            if (exponent == 0)
-            {
-                res = 1;
-            }
-            else
-            {
-                res = baseNum;
-            }
-            for (int i = 1; i < exponent; i++)
-            {
-                res *= baseNum;
-            }
-            return res;
-        }
-    }
-
     public class OtherFunctions
     {
         //Not my code :/
@@ -50,6 +29,46 @@ namespace CommonFunctions
             else
                 Object.DestroyImmediate(tex);
 
+        }
+        public static int IntPow(int baseNum, int exponent)
+        {
+            int res;
+            if (exponent == 0)
+            {
+                res = 1;
+            }
+            else
+            {
+                res = baseNum;
+            }
+            for (int i = 1; i < exponent; i++)
+            {
+                res *= baseNum;
+            }
+            return res;
+        }
+        // returns num*expBase^exp as a intiger
+        static public int Reduce(int num,int expBase, int exp)
+        {
+            if (exp == 0)
+            {
+                return num;
+            }
+            else if (exp > 0)
+            {
+                for (int i = 0; i < exp; i++)
+                {
+                    num /= expBase;
+                }
+            }
+            else
+            {
+                for (int i = 0; i > exp; i--)
+                {
+                    num *= expBase;
+                }
+            }
+            return num;
         }
 
     }

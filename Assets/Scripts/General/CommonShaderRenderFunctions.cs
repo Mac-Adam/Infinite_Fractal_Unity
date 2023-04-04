@@ -41,19 +41,21 @@ namespace CommonShaderRenderFunctions
         uint finished;
         float offset;
     }
+
     class PixelizedShaders
     {
 
         public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int pixelizationBase, int pixelizationLevel, bool additionalCondition = false)
         {
-
-            if (texture == null || texture.width != Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || texture.height != Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || additionalCondition)
+            int reducedWidth = OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
+            int reducedHeight = OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
+            if (texture == null || texture.width != reducedWidth || texture.height != reducedHeight || additionalCondition)
             {
                 
                 if (texture != null)
                     texture.Release();
 
-                texture = new RenderTexture(Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel), Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 0,
+                texture = new RenderTexture(reducedWidth, reducedHeight, 0,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
                 {
                     enableRandomWrite = true
@@ -66,10 +68,11 @@ namespace CommonShaderRenderFunctions
 
         public static void Dispatch(ComputeShader RenderShader, ComputeShader DummyShader, RenderTexture targetTexture, RenderTexture dummyTexture, int pixelizationBase, int pixelizationLevel)
         {
-            int RenderThreadGrupsX = Mathf.CeilToInt(Screen.width / 8);
-            int RenderThreadGrupsY = Mathf.CeilToInt(Screen.height / 8);
-            int CalculatethreadGroupsX = Mathf.CeilToInt((float)Screen.width / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-            int CalculatethreadGroupsY = Mathf.CeilToInt((float)Screen.height / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
+            //TODO figure out how to fix the edge glithces when the size is not a multiple of 8
+            int RenderThreadGrupsX = Mathf.CeilToInt((float)Screen.width / 8);
+            int RenderThreadGrupsY = Mathf.CeilToInt((float)Screen.height / 8);
+            int CalculatethreadGroupsX = Mathf.CeilToInt((float)OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel) / 8);
+            int CalculatethreadGroupsY = Mathf.CeilToInt((float)OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel) / 8);
           
             DummyShader.SetTexture(0, "Result", dummyTexture);
             DummyShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);

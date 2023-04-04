@@ -159,20 +159,37 @@ G - Toggle GUI";
     //more descriptive name would be RealScreenPixelsPerRenderPixel
     int PixelsPerPixel()
     {
-        return MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
+        return OtherFunctions.IntPow(pixelizationBase, pixelizationLevel);
     }
     int LastPixelsPerPixel()
     {
-        return MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
+        return OtherFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
     }
     int PixelCount()
     {
-        return Screen.width * Screen.height / MathFunctions.IntPow(PixelsPerPixel(),2);
+        return ReducedHeight()*ReducedWidth();
     }
     int LastPixelCount()
     {
-        return Screen.width * Screen.height / MathFunctions.IntPow(LastPixelsPerPixel(), 2);
+        return LastReducedHeight()*LastReducedWidth();
     }
+    int ReducedWidth()
+    {
+        return OtherFunctions.Reduce(Screen.width,pixelizationBase,pixelizationLevel);
+    }
+    int ReducedHeight()
+    {
+        return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
+    }
+    int LastReducedWidth()
+    {
+        return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel);
+    }
+    int LastReducedHeight()
+    {
+        return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
+    }
+
     PixelizationData GetPixelizationData()
     {
         return new(PixelsPerPixel(), LastPixelsPerPixel(), PixelCount(), LastPixelCount(), pixelizationBase,register);
@@ -679,7 +696,7 @@ G - Toggle GUI";
         RenderShader.SetBool("_Upscaling", upscaling);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
         RenderShader.SetInt("_PixelWidth", PixelsPerPixel());
-        RenderShader.SetInt("_OldPixelWidth", MathFunctions.IntPow(pixelizationBase, preUpscalePixLvl));
+        RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, preUpscalePixLvl));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
         reset = false;
