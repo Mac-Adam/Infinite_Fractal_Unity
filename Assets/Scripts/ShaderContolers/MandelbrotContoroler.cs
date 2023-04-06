@@ -261,7 +261,9 @@ G - Toggle GUI";
 
     public void SaveCurrentRenderTextureAsAPng()
     {
-        OtherFunctions.SaveRenderTextureToFile(targetTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt"));
+        RenderShader.SetBool("_RenderExact", true);
+        PixelizedShaders.Dispatch(RenderShader, dummyTexture);
+        OtherFunctions.SaveRenderTextureToFile(dummyTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt"));
     }
 
 
@@ -394,6 +396,7 @@ G - Toggle GUI";
     {
         if (Input.GetKeyDown(scrennShotKey))
         {
+
             SaveCurrentRenderTextureAsAPng();
         }
 
@@ -435,9 +438,6 @@ G - Toggle GUI";
         }
         if (Input.GetKeyDown(resetControl))
         {
-            Debug.Log(precision);
-          
-            Debug.Log(Scale.ToDouble());
             ResetParams();
             ResetAntialias();
         }
@@ -447,28 +447,27 @@ G - Toggle GUI";
         }
         if (Input.GetKeyDown(upscaleControl))
         {
-            if (pixelizationLevel > 0)
-            {
-                int[] arr = new int[PixelCount() * 3];
-                IterBuffer.GetData(arr);
-                OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
-                OldIterBuffer.SetData(arr);
-                IterBuffer.Dispose();
+           
+            int[] arr = new int[PixelCount() * 3];
+            IterBuffer.GetData(arr);
+            OldIterBuffer.Dispose();
+            OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+            OldIterBuffer.SetData(arr);
+            IterBuffer.Dispose();
 
 
-                preUpscalePixLvl = pixelizationLevel;
-                pixelizationLevel -= 1;
+            preUpscalePixLvl = pixelizationLevel;
+            pixelizationLevel -= 1;
 
-                IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
-                FixedPointNumber scaleFixer = new(cpuPrecision);
-                scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
-                Scale *= scaleFixer;
-                upscaling = true;
-                renderFinished = false;
-                currIter = 0;
+            IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+            FixedPointNumber scaleFixer = new(cpuPrecision);
+            scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
+            Scale *= scaleFixer;
+            upscaling = true;
+            renderFinished = false;
+            currIter = 0;
 
-            }
+            
 
 
 
@@ -690,6 +689,7 @@ G - Toggle GUI";
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
         RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(pixelizationBase,Math.Abs(pixelizationLevel)));
         RenderShader.SetBool("_Superresolution", pixelizationLevel < 0);
+        RenderShader.SetBool("_RenderExact", false);
         RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, Math.Abs(preUpscalePixLvl)));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
@@ -816,19 +816,21 @@ G - Toggle GUI";
     }
     public override void DispatchShaders()
     {
+      
         switch (precision)
         {
             case Precision.INFINTE:
-                PixelizedShaders.Dispatch(RenderShader,InfiniteShader, targetTexture, dummyTexture, pixelizationBase, pixelizationLevel);
+                PixelizedShaders.Dispatch(InfiniteShader, dummyTexture);
                 break;
             case Precision.DOUBLE:
-                PixelizedShaders.Dispatch(RenderShader,  DoubleShader, targetTexture, dummyTexture, pixelizationBase, pixelizationLevel);
+                PixelizedShaders.Dispatch(DoubleShader, dummyTexture);
                 break;
             case Precision.FLOAT:
-                PixelizedShaders.Dispatch(RenderShader, FloatShader, targetTexture, dummyTexture, pixelizationBase, pixelizationLevel);
+                PixelizedShaders.Dispatch(FloatShader, dummyTexture);
                 break;
-        }       
-        
+        }
+        PixelizedShaders.Dispatch(RenderShader, targetTexture);
+
     }
 
     public override void BlitTexture(RenderTexture destination)

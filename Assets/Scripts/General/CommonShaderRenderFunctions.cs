@@ -68,20 +68,13 @@ namespace CommonShaderRenderFunctions
             return texture;
         }
 
-        public static void Dispatch(ComputeShader RenderShader, ComputeShader DummyShader, RenderTexture targetTexture, RenderTexture dummyTexture, int pixelizationBase, int pixelizationLevel)
+        public static void Dispatch(ComputeShader shader, RenderTexture texture)
         {
             //TODO figure out how to fix the edge glithces when the size is not a multiple of 8
-            int RenderThreadGrupsX = Mathf.CeilToInt((float)Screen.width / 8);
-            int RenderThreadGrupsY = Mathf.CeilToInt((float)Screen.height / 8);
-            int CalculatethreadGroupsX = Mathf.CeilToInt((float)OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel) / 8);
-            int CalculatethreadGroupsY = Mathf.CeilToInt((float)OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel) / 8);
-          
-            DummyShader.SetTexture(0, "Result", dummyTexture);
-            DummyShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
-
-
-            RenderShader.SetTexture(0, "Result", targetTexture);
-            RenderShader.Dispatch(0, RenderThreadGrupsX, RenderThreadGrupsY, 1);
+            int ThreadGrupsX = Mathf.CeilToInt((float)texture.width / 8);
+            int ThreadGrupsY = Mathf.CeilToInt((float)texture.height / 8);
+            shader.SetTexture(0, "Result", texture);
+            shader.Dispatch(0, ThreadGrupsX, ThreadGrupsY, 1);
 
         }
 

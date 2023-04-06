@@ -15,6 +15,7 @@ RWStructuredBuffer<res> _OldIterBuffer;
 uint _MaxIter;
 uint _OldPixelWidth;
 bool _Upscaling;
+bool _RenderExact;
 
 int _ColorArrayLength;
 StructuredBuffer<float4> _Colors;
@@ -57,6 +58,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	uint textureX = id.x;
 	uint textureY = id.y;
 	uint reducedWidth = width;
+	if (_RenderExact) {
+		Result[id.xy] = getColor(_IterBuffer[textureX + textureY * reducedWidth]);
+		return;
+	}
 	if (_Superresolution) {
 		textureX *= _ReduceAmount;
 		textureY *= _ReduceAmount;
