@@ -181,6 +181,30 @@ G - Toggle GUI";
         return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
     }
 
+    int maxPixelizationLevel()
+    {
+        int max = 6; //This will allways be a valid level
+        long buffersize;
+        do
+        {
+            max--;
+            buffersize = OtherFunctions.Reduce(Screen.width, pixelizationBase, max) * OtherFunctions.Reduce(Screen.height, pixelizationBase, max);
+            switch (precision)
+            {
+                case Precision.FLOAT:
+                    buffersize *= sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float);
+                    break;
+                case Precision.DOUBLE:
+                    buffersize *= sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2;
+                    break;
+                case Precision.INFINTE:
+                    buffersize *= sizeof(int)*shaderPixelSize;
+                    break;
+            }
+
+        } while (buffersize <= PixelizedShaders.MAXBYTESPERBUFFER);
+        return max;
+    }
     PixelizationData GetPixelizationData()
     {
         return new(ReducedWidth(),ReducedHeight(),LastReducedWidth(),LastReducedHeight(), PixelCount(), LastPixelCount(), pixelizationBase,register);
@@ -259,7 +283,7 @@ G - Toggle GUI";
         colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
     }
 
-    public void SaveCurrentRenderTextureAsAPng()
+    void SaveCurrentRenderTextureAsAPng()
     {
         RenderShader.SetBool("_RenderExact", true);
         PixelizedShaders.Dispatch(RenderShader, dummyTexture);
@@ -267,9 +291,9 @@ G - Toggle GUI";
     }
 
 
+
     public override void InitializeBuffers()
     {
-
         IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
         OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));

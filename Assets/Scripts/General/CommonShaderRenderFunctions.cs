@@ -46,7 +46,7 @@ namespace CommonShaderRenderFunctions
 
     class PixelizedShaders
     {
-
+        public const uint MAXBYTESPERBUFFER = 2147483648;
         public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int pixelizationBase, int pixelizationLevel, bool additionalCondition = false)
         {
             int reducedWidth = OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
