@@ -156,15 +156,6 @@ G - Toggle GUI";
     int preUpscalePixLvl;
 
 
-    //more descriptive name would be RealScreenPixelsPerRenderPixel
-    int PixelsPerPixel()
-    {
-        return OtherFunctions.IntPow(pixelizationBase, pixelizationLevel);
-    }
-    int LastPixelsPerPixel()
-    {
-        return OtherFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
-    }
     int PixelCount()
     {
         return ReducedHeight()*ReducedWidth();
@@ -192,7 +183,7 @@ G - Toggle GUI";
 
     PixelizationData GetPixelizationData()
     {
-        return new(PixelsPerPixel(), LastPixelsPerPixel(), PixelCount(), LastPixelCount(), pixelizationBase,register);
+        return new(ReducedWidth(),ReducedHeight(),LastReducedWidth(),LastReducedHeight(), PixelCount(), LastPixelCount(), pixelizationBase,register);
     }
 
     void ResetIterPerCycle()
@@ -697,9 +688,9 @@ G - Toggle GUI";
         RenderShader.SetBool("_Smooth", smoothGradient);
         RenderShader.SetBool("_Upscaling", upscaling);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
-        RenderShader.SetInt("_ReduceAmount", PixelsPerPixel());
+        RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(pixelizationBase,Math.Abs(pixelizationLevel)));
         RenderShader.SetBool("_Superresolution", pixelizationLevel < 0);
-        RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, preUpscalePixLvl));
+        RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, Math.Abs(preUpscalePixLvl)));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
         reset = false;

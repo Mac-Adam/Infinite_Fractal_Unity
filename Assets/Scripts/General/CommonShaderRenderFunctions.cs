@@ -5,23 +5,25 @@ namespace CommonShaderRenderFunctions
 {
     struct PixelizationData //shortcut to keep everything condensed
     {
-        public int pixelsPerPixel;
-        public int lastPixelsPerPixel;
+        public int reducedWidth;
+        public int reducedHeight;
+        public int lastReducedWidth;
+        public int lastReducedHeight;
         public int pixelCount;
         public int lastPixelCount;
         public int pixelizationBase;
         public int register;
-        public PixelizationData(int pixelsPerPixel,int lastPixelsPerPixel, int pixelCount, int lastPixelCount, int pixelizationBase,int register)
+        public PixelizationData(int reducedWidth, int reducedHeight, int lastReducedWidth,int lastReducedHeight, int pixelCount, int lastPixelCount, int pixelizationBase, int register)
         {
-            this.pixelsPerPixel = pixelsPerPixel;
-            this.lastPixelsPerPixel = lastPixelsPerPixel;
+            this.reducedWidth = reducedWidth;
+            this.reducedHeight = reducedHeight;
+            this.lastReducedWidth = lastReducedWidth;
+            this.lastReducedHeight = lastReducedHeight;
             this.pixelCount = pixelCount;
             this.lastPixelCount = lastPixelCount;
             this.pixelizationBase = pixelizationBase;
             this.register = register;
         }
-       
-        
 
     }
 
@@ -95,10 +97,10 @@ namespace CommonShaderRenderFunctions
             Buffer = new ComputeBuffer(pixelizationData.pixelCount, sizeofT*arrayCount*2);
          
             T[] newData = new T[pixelizationData.pixelCount * arrayCount * 2];
-            int oldDataWidth = Screen.width / pixelizationData.lastPixelsPerPixel;
-            int oldDataHeight = Screen.height / pixelizationData.lastPixelsPerPixel;
-            int newDataWidth = Screen.width / pixelizationData.pixelsPerPixel;
-            int newDataHeight = Screen.height / pixelizationData.pixelsPerPixel;
+            int oldDataWidth = pixelizationData.lastReducedWidth;
+            int oldDataHeight = pixelizationData.lastReducedHeight;
+            int newDataWidth = pixelizationData.reducedWidth;
+            int newDataHeight = pixelizationData.reducedHeight;
 
             int cornerX;
             int cornerY;

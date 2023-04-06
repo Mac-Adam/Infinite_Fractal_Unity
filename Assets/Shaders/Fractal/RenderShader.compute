@@ -13,7 +13,7 @@ struct res {
 RWStructuredBuffer<res> _IterBuffer;
 RWStructuredBuffer<res> _OldIterBuffer;
 uint _MaxIter;
-int _OldPixelWidth;
+uint _OldPixelWidth;
 bool _Upscaling;
 
 int _ColorArrayLength;
@@ -73,9 +73,21 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			Result[id.xy] = getColor(_IterBuffer[textureIdx]);
 		}
 		else {
-			int oldTextureX = id.x / _OldPixelWidth;
-			int oldTextureY = id.y / _OldPixelWidth;
-			int oldTextureIdx = oldTextureX + oldTextureY * (width / _OldPixelWidth);
+			int oldTextureX = id.x;
+			int oldTextureY = id.y;
+			uint oldReducedWidth = width;
+			if (_Superresolution) {
+				oldTextureX *= _OldPixelWidth;
+				oldTextureY *= _OldPixelWidth;
+				oldReducedWidth *= _OldPixelWidth;
+			}
+			else {
+				oldTextureX /= _OldPixelWidth;
+				oldTextureY /= _OldPixelWidth;
+				oldReducedWidth /= _OldPixelWidth;
+			}
+
+			int oldTextureIdx = oldTextureX + oldTextureY * oldReducedWidth;
 			Result[id.xy] = getColor(_OldIterBuffer[oldTextureIdx]);
 		}
 	}

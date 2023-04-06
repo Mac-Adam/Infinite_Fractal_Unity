@@ -47,7 +47,7 @@ namespace CommonFunctions
             }
             return res;
         }
-        // returns num*expBase^exp as a intiger
+        // returns num*expBase^-exp as a intiger
         static public int Reduce(int num,int expBase, int exp)
         {
             if (exp == 0)
