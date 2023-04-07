@@ -557,16 +557,18 @@ G - Toggle GUI";
         int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, pixelizationBase, pixelizationLevel);
         int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, pixelizationBase, pixelizationLevel);
 
-
+       
         FixedPointNumber mousePosRealX = new(cpuPrecision);
 
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedHeight()/2);
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth()/2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(cpuPrecision);
 
         mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight()/2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(cpuPrecision);
+
+    
         if (Input.mouseScrollDelta.y != 0)
         {
            
