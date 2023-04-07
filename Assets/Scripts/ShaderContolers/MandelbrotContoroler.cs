@@ -62,22 +62,17 @@ public class MandelbrotContoroler : ShadeContoler
     bool renderFinished = false;
     public UIControler guiControler;
     UITemplate guiTemplate;
-    string tooltip;
-    const string DoubleTooltip = @"Controls:
-I - Zoom In
-O - Zoom Out
-L - Change Gradient Type
-C - Cycle Color Palette
-A - Toggle Antialiasing
-G - Toggle GUI";
-    const string InfiniteTooltip = @"Controls:
-I - Zoom In And Pixelize Image
-O - Zoom Out Without Rerendering
-U - Upscale Image
-L - Change Gradient Type
-C - Cycle Color Palette
-A - Toggle Antialiasing
-G - Toggle GUI";
+    string resolutionInfo;
+    const string tooltip = @"Controls:
+Pixelization:
+    I - Zoom In
+    O - Zoom Out
+    U - Upscale Image
+Visual:
+    L - Smooth Gradient
+    C - Cycle Color Palette
+    A - Toggle Antialiasing
+    G - Toggle GUI";
 
 
 
@@ -246,7 +241,6 @@ G - Toggle GUI";
             return;
         }
         precision = val;
-        tooltip = precision==Precision.INFINTE ? InfiniteTooltip : DoubleTooltip;
         ResetParams();
         ResetAntialias();
     }
@@ -325,7 +319,8 @@ G - Toggle GUI";
    
     public override void InitializeGui()
     {
-        tooltip = precision == Precision.INFINTE ? InfiniteTooltip : DoubleTooltip;
+        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
+Calculating {ReducedWidth()} x {ReducedHeight()}";
         guiTemplate = new UITemplate(
         DefaultTemlates.sizes,
         new List<ToggleTemplate>(){
@@ -391,7 +386,8 @@ G - Toggle GUI";
         },
         new List<TextTemplate>()
         {
-            new TextTemplate(tooltip)
+            new TextTemplate(tooltip),
+            new TextTemplate(resolutionInfo)
         }
 
         );
@@ -446,13 +442,12 @@ G - Toggle GUI";
             upscaling = false;
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
-        {
-            if (pixelizationLevel > 0)
-            {
-                lastPixelizationLevel = pixelizationLevel;
-                pixelizationLevel -= 1;
-                upscaling = false;
-            }
+    {
+           
+            lastPixelizationLevel = pixelizationLevel;
+            pixelizationLevel -= 1;
+            upscaling = false;
+            
            
         }
         
@@ -612,6 +607,8 @@ G - Toggle GUI";
     }
     public override void HandleGuiUpdates()
     {
+        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
+Calculating {ReducedWidth()} x {ReducedHeight()}";
         guiControler.UpdateUI(
             new List<bool>() {
                 doAntialasing,
@@ -633,7 +630,8 @@ G - Toggle GUI";
             },
             new List<string>()
             {
-                tooltip
+                tooltip,
+                resolutionInfo
             }
          );
 
