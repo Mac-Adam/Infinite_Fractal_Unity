@@ -33,7 +33,9 @@ namespace CommonShaderRenderFunctions
         double CurrentZY;
         uint iter;
         uint finished;
-        double offset;
+        float offset;
+        //for reasosns I don't fully understand sizeof(float) must be mutiplied by 2, otherwise it doesn't work
+        public static int size = sizeof(double) * 2 + sizeof(uint) * 2 + sizeof(float) * 2;
     }
     public struct FloatPixelPacket
     {
@@ -42,6 +44,14 @@ namespace CommonShaderRenderFunctions
         uint iter;
         uint finished;
         float offset;
+        public static int size = sizeof(float) * 3 + sizeof(uint) * 2;
+    }
+    public struct IterPixelPacket
+    {
+        int iter;
+        int finished;
+        float rest;
+        public static int size = sizeof(int) * 2 + sizeof(float);
     }
 
     class PixelizedShaders

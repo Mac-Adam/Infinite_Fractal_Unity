@@ -181,7 +181,7 @@ G - Toggle GUI";
         return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
     }
 
-    int maxPixelizationLevel()
+    int MaxPixelizationLevel()
     {
         int max = 6; //This will allways be a valid level
         long buffersize;
@@ -192,13 +192,13 @@ G - Toggle GUI";
             switch (precision)
             {
                 case Precision.FLOAT:
-                    buffersize *= sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float);
+                    buffersize *= FloatPixelPacket.size;
                     break;
                 case Precision.DOUBLE:
-                    buffersize *= sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2;
+                    buffersize *= DoublePixelPacket.size;
                     break;
                 case Precision.INFINTE:
-                    buffersize *= sizeof(int)*shaderPixelSize;
+                    buffersize *= sizeof(int) * shaderPixelSize;
                     break;
             }
 
@@ -294,12 +294,12 @@ G - Toggle GUI";
 
     public override void InitializeBuffers()
     {
-        IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
-        OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+        IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+        OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         floatDataBuffer = new ComputeBuffer(3, sizeof(float));
-        MultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
-        floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float));
+        MultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2,DoublePixelPacket.size);
+        floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, FloatPixelPacket.size);
         FpMultiframeBuffer = new ComputeBuffer(PixelCount()*2, sizeof(int) * shaderPixelSize);
         PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
@@ -475,7 +475,7 @@ G - Toggle GUI";
             int[] arr = new int[PixelCount() * 3];
             IterBuffer.GetData(arr);
             OldIterBuffer.Dispose();
-            OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+            OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
             OldIterBuffer.SetData(arr);
             IterBuffer.Dispose();
 
@@ -483,7 +483,7 @@ G - Toggle GUI";
             preUpscalePixLvl = pixelizationLevel;
             pixelizationLevel -= 1;
 
-            IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+            IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
             FixedPointNumber scaleFixer = new(cpuPrecision);
             scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
             Scale *= scaleFixer;
@@ -502,7 +502,7 @@ G - Toggle GUI";
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel)
         {
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+            IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
                 switch (precision)
@@ -511,10 +511,10 @@ G - Toggle GUI";
                         PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
                         break;
                     case Precision.DOUBLE:
-                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, DoublePixelPacket.size, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
                         break;
                     case Precision.FLOAT:
-                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, FloatPixelPacket.size, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
                         break;
 
                 }
@@ -523,9 +523,9 @@ G - Toggle GUI";
             else
             {
                 MultiFrameRenderBuffer.Dispose();
-                MultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
+                MultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, DoublePixelPacket.size);
                 floatMultiFrameRenderBuffer.Dispose();
-                floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float));
+                floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2,FloatPixelPacket.size);
                 FpMultiframeBuffer.Dispose();
                 FpMultiframeBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(int) * shaderPixelSize);
                 reset = true;
