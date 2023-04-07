@@ -5,23 +5,25 @@ namespace CommonShaderRenderFunctions
 {
     struct PixelizationData //shortcut to keep everything condensed
     {
-        public int pixelsPerPixel;
-        public int lastPixelsPerPixel;
+        public int reducedWidth;
+        public int reducedHeight;
+        public int lastReducedWidth;
+        public int lastReducedHeight;
         public int pixelCount;
         public int lastPixelCount;
         public int pixelizationBase;
         public int register;
-        public PixelizationData(int pixelsPerPixel,int lastPixelsPerPixel, int pixelCount, int lastPixelCount, int pixelizationBase,int register)
+        public PixelizationData(int reducedWidth, int reducedHeight, int lastReducedWidth,int lastReducedHeight, int pixelCount, int lastPixelCount, int pixelizationBase, int register)
         {
-            this.pixelsPerPixel = pixelsPerPixel;
-            this.lastPixelsPerPixel = lastPixelsPerPixel;
+            this.reducedWidth = reducedWidth;
+            this.reducedHeight = reducedHeight;
+            this.lastReducedWidth = lastReducedWidth;
+            this.lastReducedHeight = lastReducedHeight;
             this.pixelCount = pixelCount;
             this.lastPixelCount = lastPixelCount;
             this.pixelizationBase = pixelizationBase;
             this.register = register;
         }
-       
-        
 
     }
 
@@ -31,7 +33,9 @@ namespace CommonShaderRenderFunctions
         double CurrentZY;
         uint iter;
         uint finished;
-        double offset;
+        float offset;
+        //for reasosns I don't fully understand sizeof(float) must be mutiplied by 2, otherwise it doesn't work
+        public static int size = sizeof(double) * 2 + sizeof(uint) * 2 + sizeof(float) * 2;
     }
     public struct FloatPixelPacket
     {
@@ -40,20 +44,30 @@ namespace CommonShaderRenderFunctions
         uint iter;
         uint finished;
         float offset;
+        public static int size = sizeof(float) * 3 + sizeof(uint) * 2;
     }
+    public struct IterPixelPacket
+    {
+        int iter;
+        int finished;
+        float rest;
+        public static int size = sizeof(int) * 2 + sizeof(float);
+    }
+
     class PixelizedShaders
     {
-
+        public const uint MAXBYTESPERBUFFER = 2147483648;
         public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int pixelizationBase, int pixelizationLevel, bool additionalCondition = false)
         {
-
-            if (texture == null || texture.width != Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || texture.height != Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel) || additionalCondition)
+            int reducedWidth = OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
+            int reducedHeight = OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
+            if (texture == null || texture.width != reducedWidth || texture.height != reducedHeight || additionalCondition)
             {
                 
                 if (texture != null)
                     texture.Release();
 
-                texture = new RenderTexture(Screen.width / MathFunctions.IntPow(pixelizationBase, pixelizationLevel), Screen.height / MathFunctions.IntPow(pixelizationBase, pixelizationLevel), 0,
+                texture = new RenderTexture(reducedWidth, reducedHeight, 0,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
                 {
                     enableRandomWrite = true
@@ -64,19 +78,13 @@ namespace CommonShaderRenderFunctions
             return texture;
         }
 
-        public static void Dispatch(ComputeShader RenderShader, ComputeShader DummyShader, RenderTexture targetTexture, RenderTexture dummyTexture, int pixelizationBase, int pixelizationLevel)
+        public static void Dispatch(ComputeShader shader, RenderTexture texture)
         {
-            int RenderThreadGrupsX = Mathf.CeilToInt(Screen.width / 8);
-            int RenderThreadGrupsY = Mathf.CeilToInt(Screen.height / 8);
-            int CalculatethreadGroupsX = Mathf.CeilToInt((float)Screen.width / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-            int CalculatethreadGroupsY = Mathf.CeilToInt((float)Screen.height / (8 * MathFunctions.IntPow(pixelizationBase, pixelizationLevel)));
-          
-            DummyShader.SetTexture(0, "Result", dummyTexture);
-            DummyShader.Dispatch(0, CalculatethreadGroupsX, CalculatethreadGroupsY, 1);
-
-
-            RenderShader.SetTexture(0, "Result", targetTexture);
-            RenderShader.Dispatch(0, RenderThreadGrupsX, RenderThreadGrupsY, 1);
+            //TODO figure out how to fix the edge glithces when the size is not a multiple of 8
+            int ThreadGrupsX = Mathf.CeilToInt((float)texture.width / 8);
+            int ThreadGrupsY = Mathf.CeilToInt((float)texture.height / 8);
+            shader.SetTexture(0, "Result", texture);
+            shader.Dispatch(0, ThreadGrupsX, ThreadGrupsY, 1);
 
         }
 
@@ -92,10 +100,10 @@ namespace CommonShaderRenderFunctions
             Buffer = new ComputeBuffer(pixelizationData.pixelCount, sizeofT*arrayCount*2);
          
             T[] newData = new T[pixelizationData.pixelCount * arrayCount * 2];
-            int oldDataWidth = Screen.width / pixelizationData.lastPixelsPerPixel;
-            int oldDataHeight = Screen.height / pixelizationData.lastPixelsPerPixel;
-            int newDataWidth = Screen.width / pixelizationData.pixelsPerPixel;
-            int newDataHeight = Screen.height / pixelizationData.pixelsPerPixel;
+            int oldDataWidth = pixelizationData.lastReducedWidth;
+            int oldDataHeight = pixelizationData.lastReducedHeight;
+            int newDataWidth = pixelizationData.reducedWidth;
+            int newDataHeight = pixelizationData.reducedHeight;
 
             int cornerX;
             int cornerY;

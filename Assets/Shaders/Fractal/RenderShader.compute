@@ -1,10 +1,10 @@
-// Each #kernel tells which function to compile; you can have many kernels
+
 #pragma kernel CSMain
 #include "Assets/Shaders/General/colorSpaces.cginc"
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
+
 RWTexture2D<float4> Result;
-int _PixelWidth;
+uint _ReduceAmount;
+bool _Superresolution;
 struct res {
 	uint iter; 
 	bool finished;
@@ -13,8 +13,9 @@ struct res {
 RWStructuredBuffer<res> _IterBuffer;
 RWStructuredBuffer<res> _OldIterBuffer;
 uint _MaxIter;
-int _OldPixelWidth;
+uint _OldPixelWidth;
 bool _Upscaling;
+bool _RenderExact;
 
 int _ColorArrayLength;
 StructuredBuffer<float4> _Colors;
@@ -54,18 +55,44 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 {
 	uint width, height;
 	Result.GetDimensions(width, height);
-	
-	int textureX = id.x / _PixelWidth;
-	int textureY = id.y / _PixelWidth;
-	int textureIdx = textureX + textureY * (width/ _PixelWidth);
+	uint textureX = id.x;
+	uint textureY = id.y;
+	uint reducedWidth = width;
+	if (_RenderExact) {
+		Result[id.xy] = getColor(_IterBuffer[textureX + textureY * reducedWidth]);
+		return;
+	}
+	if (_Superresolution) {
+		textureX *= _ReduceAmount;
+		textureY *= _ReduceAmount;
+		reducedWidth *= _ReduceAmount;
+	}
+	else { 
+		textureX /= _ReduceAmount;
+		textureY /= _ReduceAmount;
+		reducedWidth /= _ReduceAmount;
+	}
+	int textureIdx = textureX + textureY * reducedWidth;
 	if (_Upscaling) {
 		if (_IterBuffer[textureIdx].finished) {
 			Result[id.xy] = getColor(_IterBuffer[textureIdx]);
 		}
 		else {
-			int oldTextureX = id.x / _OldPixelWidth;
-			int oldTextureY = id.y / _OldPixelWidth;
-			int oldTextureIdx = oldTextureX + oldTextureY * (width / _OldPixelWidth);
+			int oldTextureX = id.x;
+			int oldTextureY = id.y;
+			uint oldReducedWidth = width;
+			if (_Superresolution) {
+				oldTextureX *= _OldPixelWidth;
+				oldTextureY *= _OldPixelWidth;
+				oldReducedWidth *= _OldPixelWidth;
+			}
+			else {
+				oldTextureX /= _OldPixelWidth;
+				oldTextureY /= _OldPixelWidth;
+				oldReducedWidth /= _OldPixelWidth;
+			}
+
+			int oldTextureIdx = oldTextureX + oldTextureY * oldReducedWidth;
 			Result[id.xy] = getColor(_OldIterBuffer[oldTextureIdx]);
 		}
 	}

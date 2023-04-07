@@ -62,22 +62,18 @@ public class MandelbrotContoroler : ShadeContoler
     bool renderFinished = false;
     public UIControler guiControler;
     UITemplate guiTemplate;
-    string tooltip;
-    const string DoubleTooltip = @"Controls:
-I - Zoom In
-O - Zoom Out
-L - Change Gradient Type
-C - Cycle Color Palette
-A - Toggle Antialiasing
-G - Toggle GUI";
-    const string InfiniteTooltip = @"Controls:
-I - Zoom In And Pixelize Image
-O - Zoom Out Without Rerendering
-U - Upscale Image
-L - Change Gradient Type
-C - Cycle Color Palette
-A - Toggle Antialiasing
-G - Toggle GUI";
+    string resolutionInfo;
+    const string tooltip = @"Controls:
+Pixelization:
+    I - Zoom In
+    O - Zoom Out
+    U - Upscale Image
+Visual:
+    S - Make a Screenshot
+    L - Smooth Gradient
+    C - Cycle Color Palette
+    A - Toggle Antialiasing
+    G - Toggle GUI";
 
 
 
@@ -122,7 +118,7 @@ G - Toggle GUI";
     string antialiasTogleContorl = "a";
     string upscaleControl = "u";
     string guiToggleControl = "g";
-    string tempKey = "s";
+    string scrennShotKey = "s";
 
 
     //Controlls Handleing
@@ -156,26 +152,58 @@ G - Toggle GUI";
     int preUpscalePixLvl;
 
 
-    //more descriptive name would be RealScreenPixelsPerRenderPixel
-    int PixelsPerPixel()
-    {
-        return MathFunctions.IntPow(pixelizationBase, pixelizationLevel);
-    }
-    int LastPixelsPerPixel()
-    {
-        return MathFunctions.IntPow(pixelizationBase, lastPixelizationLevel);
-    }
     int PixelCount()
     {
-        return Screen.width * Screen.height / MathFunctions.IntPow(PixelsPerPixel(),2);
+        return ReducedHeight()*ReducedWidth();
     }
     int LastPixelCount()
     {
-        return Screen.width * Screen.height / MathFunctions.IntPow(LastPixelsPerPixel(), 2);
+        return LastReducedHeight()*LastReducedWidth();
+    }
+    int ReducedWidth()
+    {
+        return OtherFunctions.Reduce(Screen.width,pixelizationBase,pixelizationLevel);
+    }
+    int ReducedHeight()
+    {
+        return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
+    }
+    int LastReducedWidth()
+    {
+        return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel);
+    }
+    int LastReducedHeight()
+    {
+        return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
+    }
+
+    int MaxPixelizationLevel()
+    {
+        int max = 6; //This will allways be a valid level
+        long buffersize;
+        do
+        {
+            max--;
+            buffersize = 2 * OtherFunctions.Reduce(Screen.width, pixelizationBase, max) * OtherFunctions.Reduce(Screen.height, pixelizationBase, max);
+            switch (precision)
+            {
+                case Precision.FLOAT:
+                    buffersize *= FloatPixelPacket.size;
+                    break;
+                case Precision.DOUBLE:
+                    buffersize *= DoublePixelPacket.size;
+                    break;
+                case Precision.INFINTE:
+                    buffersize *= sizeof(int) * shaderPixelSize;
+                    break;
+            }
+
+        } while (buffersize <= PixelizedShaders.MAXBYTESPERBUFFER);
+        return max + 1;
     }
     PixelizationData GetPixelizationData()
     {
-        return new(PixelsPerPixel(), LastPixelsPerPixel(), PixelCount(), LastPixelCount(), pixelizationBase,register);
+        return new(ReducedWidth(),ReducedHeight(),LastReducedWidth(),LastReducedHeight(), PixelCount(), LastPixelCount(), pixelizationBase,register);
     }
 
     void ResetIterPerCycle()
@@ -214,7 +242,11 @@ G - Toggle GUI";
             return;
         }
         precision = val;
-        tooltip = precision==Precision.INFINTE ? InfiniteTooltip : DoubleTooltip;
+        if (pixelizationLevel < MaxPixelizationLevel())
+        {
+            pixelizationLevel = MaxPixelizationLevel();
+        }
+        RegenereateFractalComputeBuffers();
         ResetParams();
         ResetAntialias();
     }
@@ -251,29 +283,65 @@ G - Toggle GUI";
         colorStrength = Mathf.Clamp(val, ColorStrengthMin, ColorStrengthMax);
     }
 
-
-
-    public override void InitializeBuffers()
+    void SaveCurrentRenderTextureAsAPng()
     {
+        RenderShader.SetBool("_RenderExact", true);
+        PixelizedShaders.Dispatch(RenderShader, dummyTexture);
+        OtherFunctions.SaveRenderTextureToFile(dummyTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt"));
+    }
 
-        IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
-        OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
-        doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
-        floatDataBuffer = new ComputeBuffer(3, sizeof(float));
-        MultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
-        floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount()*2, sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float));
-        FpMultiframeBuffer = new ComputeBuffer(PixelCount()*2, sizeof(int) * shaderPixelSize);
-        PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
-        ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
+
+    void RegenereateFractalComputeBuffers()
+    {
+        if (MultiFrameRenderBuffer != null)
+        {
+            MultiFrameRenderBuffer.Dispose();
+        }
+        if (floatMultiFrameRenderBuffer != null)
+        {
+            floatMultiFrameRenderBuffer.Dispose();
+        }
+        if (FpMultiframeBuffer != null)
+        {
+            FpMultiframeBuffer.Dispose();
+        }
+
+        
+        
+        switch (precision)
+        {
+            case Precision.INFINTE:
+                FpMultiframeBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(int) * shaderPixelSize);
+                break;
+            case Precision.DOUBLE:
+                MultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, DoublePixelPacket.size);
+                break;
+            case Precision.FLOAT:
+                floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, FloatPixelPacket.size);
+                break;
+
+        }
+
 
     }
+    public override void InitializeBuffers()
+    {
+        IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+        OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+        doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
+        floatDataBuffer = new ComputeBuffer(3, sizeof(float));
+        PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
+        ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[currColorPalette].length, 4 * sizeof(float));
+        RegenereateFractalComputeBuffers();
+    }
+ 
     public override void InitializeValues()
     {
         ResetPrecision();
 
         MiddleX.SetDouble(middleX);
         MiddleY.SetDouble(middleY);
-        Scale.SetDouble(PixelsPerPixel() * length / Screen.width);
+        Scale.SetDouble( length / ReducedWidth());
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
@@ -287,7 +355,8 @@ G - Toggle GUI";
    
     public override void InitializeGui()
     {
-        tooltip = precision == Precision.INFINTE ? InfiniteTooltip : DoubleTooltip;
+        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
+Calculating {ReducedWidth()} x {ReducedHeight()}";
         guiTemplate = new UITemplate(
         DefaultTemlates.sizes,
         new List<ToggleTemplate>(){
@@ -353,7 +422,8 @@ G - Toggle GUI";
         },
         new List<TextTemplate>()
         {
-            new TextTemplate(tooltip)
+            new TextTemplate(tooltip),
+            new TextTemplate(resolutionInfo)
         }
 
         );
@@ -367,11 +437,23 @@ G - Toggle GUI";
         OldIterBuffer.Dispose();
         doubleDataBuffer.Dispose();
         floatDataBuffer.Dispose();
-        MultiFrameRenderBuffer.Dispose();
-        floatMultiFrameRenderBuffer.Dispose();
+      
         ColorBuffer.Dispose();
-        FpMultiframeBuffer.Dispose();
+       
         PossionBuffer.Dispose();
+        if (MultiFrameRenderBuffer != null)
+        {
+            MultiFrameRenderBuffer.Dispose();
+        }
+        if (floatMultiFrameRenderBuffer != null)
+        {
+            floatMultiFrameRenderBuffer.Dispose();
+        }
+        if (FpMultiframeBuffer != null)
+        {
+            FpMultiframeBuffer.Dispose();
+        }
+
     }
     public override void AdditionalCleanup()
     {
@@ -380,9 +462,10 @@ G - Toggle GUI";
 
     public override void HandleKeyInput()
     {
-        if (Input.GetKeyDown(tempKey))
+        if (Input.GetKeyDown(scrennShotKey))
         {
-            SetSPrecision(precisionLevel + 1);
+
+            SaveCurrentRenderTextureAsAPng();
         }
 
 
@@ -407,13 +490,15 @@ G - Toggle GUI";
             upscaling = false;
         }
         if (Input.GetKeyDown(pixelizationLevelDownControl))
-        {
-            if (pixelizationLevel > 0)
+    {
+            if (MaxPixelizationLevel() < pixelizationLevel)
             {
                 lastPixelizationLevel = pixelizationLevel;
                 pixelizationLevel -= 1;
                 upscaling = false;
             }
+          
+            
            
         }
         
@@ -423,9 +508,6 @@ G - Toggle GUI";
         }
         if (Input.GetKeyDown(resetControl))
         {
-            Debug.Log(precision);
-          
-            Debug.Log(Scale.ToDouble());
             ResetParams();
             ResetAntialias();
         }
@@ -435,13 +517,13 @@ G - Toggle GUI";
         }
         if (Input.GetKeyDown(upscaleControl))
         {
-
-            if (pixelizationLevel > 0)
+            if (MaxPixelizationLevel() < pixelizationLevel)
             {
+
                 int[] arr = new int[PixelCount() * 3];
                 IterBuffer.GetData(arr);
                 OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+                OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
                 OldIterBuffer.SetData(arr);
                 IterBuffer.Dispose();
 
@@ -449,14 +531,17 @@ G - Toggle GUI";
                 preUpscalePixLvl = pixelizationLevel;
                 pixelizationLevel -= 1;
 
-                IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+                IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
                 FixedPointNumber scaleFixer = new(cpuPrecision);
-                scaleFixer.SetDouble((double)PixelsPerPixel() / LastPixelsPerPixel());
+                scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
                 Scale *= scaleFixer;
                 upscaling = true;
                 renderFinished = false;
                 currIter = 0;
             }
+            
+
+
 
         }
     }
@@ -465,7 +550,7 @@ G - Toggle GUI";
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel)
         {
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(PixelCount(), sizeof(int) * 2 + sizeof(float));
+            IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
                 switch (precision)
@@ -474,10 +559,10 @@ G - Toggle GUI";
                         PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
                         break;
                     case Precision.DOUBLE:
-                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, DoublePixelPacket.size, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
                         break;
                     case Precision.FLOAT:
-                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, FloatPixelPacket.size, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
                         break;
 
                 }
@@ -485,12 +570,7 @@ G - Toggle GUI";
             }
             else
             {
-                MultiFrameRenderBuffer.Dispose();
-                MultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(double) * 2 + sizeof(int) * 2 + sizeof(float) * 2);
-                floatMultiFrameRenderBuffer.Dispose();
-                floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(float) * 2 + sizeof(int) * 2 + sizeof(float));
-                FpMultiframeBuffer.Dispose();
-                FpMultiframeBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(int) * shaderPixelSize);
+                RegenereateFractalComputeBuffers();
                 reset = true;
             }
 
@@ -517,19 +597,21 @@ G - Toggle GUI";
 
 
         Vector2 mousePosPix = Input.mousePosition;
-        int mouseTextureCoordinatesX = (int)mousePosPix.x / PixelsPerPixel();
-        int mouseTextureCoordinatesY = (int)mousePosPix.y / PixelsPerPixel();
+        int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, pixelizationBase, pixelizationLevel);
+        int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, pixelizationBase, pixelizationLevel);
 
-
+       
         FixedPointNumber mousePosRealX = new(cpuPrecision);
 
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - Screen.width / (2 * PixelsPerPixel()));
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth()/2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(cpuPrecision);
 
-        mousePosRealY.SetDouble(mouseTextureCoordinatesY - Screen.height / (2 * PixelsPerPixel()));
+        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight()/2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(cpuPrecision);
+
+    
         if (Input.mouseScrollDelta.y != 0)
         {
            
@@ -573,6 +655,8 @@ G - Toggle GUI";
     }
     public override void HandleGuiUpdates()
     {
+        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
+Calculating {ReducedWidth()} x {ReducedHeight()}";
         guiControler.UpdateUI(
             new List<bool>() {
                 doAntialasing,
@@ -594,7 +678,8 @@ G - Toggle GUI";
             },
             new List<string>()
             {
-                tooltip
+                tooltip,
+                resolutionInfo
             }
          );
 
@@ -613,7 +698,7 @@ G - Toggle GUI";
         }
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = Scale.ToDouble() * Screen.width / PixelsPerPixel();
+        doubleDataArray[0] = Scale.ToDouble() * ReducedWidth();
         doubleDataArray[1] = MiddleX.ToDouble();
         doubleDataArray[2] = MiddleY.ToDouble();
         floatDataArray[0] = (float)doubleDataArray[0];
@@ -674,8 +759,10 @@ G - Toggle GUI";
         RenderShader.SetBool("_Smooth", smoothGradient);
         RenderShader.SetBool("_Upscaling", upscaling);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
-        RenderShader.SetInt("_PixelWidth", PixelsPerPixel());
-        RenderShader.SetInt("_OldPixelWidth", MathFunctions.IntPow(pixelizationBase, preUpscalePixLvl));
+        RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(pixelizationBase,Math.Abs(pixelizationLevel)));
+        RenderShader.SetBool("_Superresolution", pixelizationLevel < 0);
+        RenderShader.SetBool("_RenderExact", false);
+        RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, Math.Abs(preUpscalePixLvl)));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
         reset = false;
@@ -801,19 +888,21 @@ G - Toggle GUI";
     }
     public override void DispatchShaders()
     {
+      
         switch (precision)
         {
             case Precision.INFINTE:
-                PixelizedShaders.Dispatch(RenderShader,InfiniteShader, targetTexture, dummyTexture, pixelizationBase, pixelizationLevel);
+                PixelizedShaders.Dispatch(InfiniteShader, dummyTexture);
                 break;
             case Precision.DOUBLE:
-                PixelizedShaders.Dispatch(RenderShader,  DoubleShader, targetTexture, dummyTexture, pixelizationBase, pixelizationLevel);
+                PixelizedShaders.Dispatch(DoubleShader, dummyTexture);
                 break;
             case Precision.FLOAT:
-                PixelizedShaders.Dispatch(RenderShader, FloatShader, targetTexture, dummyTexture, pixelizationBase, pixelizationLevel);
+                PixelizedShaders.Dispatch(FloatShader, dummyTexture);
                 break;
-        }       
-        
+        }
+        PixelizedShaders.Dispatch(RenderShader, targetTexture);
+
     }
 
     public override void BlitTexture(RenderTexture destination)
