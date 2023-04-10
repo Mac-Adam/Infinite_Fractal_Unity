@@ -110,15 +110,16 @@ Visual:
     double middleX = -1.0f;
     double middleY = 0.0f;
 
-    string pixelizationLevelUpControl = "i";
-    string pixelizationLevelDownControl = "o";
-    string resetControl = "r";
-    string togleInterpolationTypeContorl = "l";
-    string colorPaletteTogleContorl = "c";
-    string antialiasTogleContorl = "a";
-    string upscaleControl = "u";
-    string guiToggleControl = "g";
+    string pixelizationLevelUpKey = "i";
+    string pixelizationLevelDownKey = "o";
+    string resetKey = "r";
+    string togleInterpolationTypeKey = "l";
+    string colorPaletteTogleKey = "c";
+    string antialiasTogleKey = "a";
+    string upscaleKey = "u";
+    string guiToggleKey = "g";
     string scrennShotKey = "s";
+    string zoomVideoKey = "z";
 
 
     //Controlls Handleing
@@ -130,6 +131,7 @@ Visual:
     FixedPointNumber MiddleX = new(cpuPrecision);
     FixedPointNumber MiddleY = new(cpuPrecision);
     FixedPointNumber Scale = new(cpuPrecision);
+    bool zoomVideo = false;
 
     //precision
     int maxIter = 1000;
@@ -468,8 +470,13 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             SaveCurrentRenderTextureAsAPng();
         }
 
+        if (Input.GetKeyDown(zoomVideoKey))
+        {
+            zoomVideo = true;
+            pixelizationLevel = MaxPixelizationLevel();
+        }
 
-        if (Input.GetKeyDown(guiToggleControl))
+        if (Input.GetKeyDown(guiToggleKey))
         {
             SetGuiActive(!guiOn);
         }
@@ -478,18 +485,18 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             Exit();
         }
        
-        if (Input.GetKeyDown(antialiasTogleContorl))
+        if (Input.GetKeyDown(antialiasTogleKey))
         {
             SetAnitialiasing(!doAntialasing);
         }
       
-        if (Input.GetKeyDown(pixelizationLevelUpControl))
+        if (Input.GetKeyDown(pixelizationLevelUpKey))
         {
             preUpscalePixLvl = pixelizationLevel;
             pixelizationLevel += 1;
             upscaling = false;
         }
-        if (Input.GetKeyDown(pixelizationLevelDownControl))
+        if (Input.GetKeyDown(pixelizationLevelDownKey))
     {
             if (MaxPixelizationLevel() < pixelizationLevel)
             {
@@ -502,20 +509,20 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
            
         }
         
-        if (Input.GetKeyDown(colorPaletteTogleContorl))
+        if (Input.GetKeyDown(colorPaletteTogleKey))
         {
             SetColorPalette(currColorPalette + 1);
         }
-        if (Input.GetKeyDown(resetControl))
+        if (Input.GetKeyDown(resetKey))
         {
             ResetParams();
             ResetAntialias();
         }
-        if (Input.GetKeyDown(togleInterpolationTypeContorl))
+        if (Input.GetKeyDown(togleInterpolationTypeKey))
         {
             SetSmoothGradient(!smoothGradient);
         }
-        if (Input.GetKeyDown(upscaleControl))
+        if (Input.GetKeyDown(upscaleKey))
         {
             if (MaxPixelizationLevel() < pixelizationLevel)
             {
@@ -799,6 +806,18 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
 
             }
         }
+        if (zoomVideo)
+        {
+            if (renderFinished)
+            {
+                SaveCurrentRenderTextureAsAPng();
+                FixedPointNumber mul = new(cpuPrecision);
+                mul.SetDouble(pixelizationBase);
+                Scale *= mul;
+                ResetParams();
+            }
+        }
+
         int tagretPrecison = 0;
         foreach(int digit in Scale.digits)
         {
