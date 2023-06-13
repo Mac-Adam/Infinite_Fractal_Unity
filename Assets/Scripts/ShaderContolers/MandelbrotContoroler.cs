@@ -295,7 +295,7 @@ Visual:
     {
         RenderShader.SetBool("_RenderExact", true);
         PixelizedShaders.Dispatch(RenderShader, dummyTexture);
-        OtherFunctions.SaveRenderTextureToFile(dummyTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt"));
+        OtherFunctions.SaveRenderTextureToFile(dummyTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
     }
 
 

@@ -6,9 +6,12 @@ import bpy
 
 
 def clean_sequencer(sequence_context):
-    with bpy.context.temp_override(active_obj = sequence_context):
-        bpy.ops.sequencer.select_all(action="SELECT")
-        bpy.ops.sequencer.delete()
+    area = bpy.context.area
+    old_type = area.type
+    area.type = 'SEQUENCE_EDITOR'
+    bpy.ops.sequencer.select_all(action="SELECT")
+    bpy.ops.sequencer.delete()
+    area.type = old_type
 
 
 def find_sequence_editor():
