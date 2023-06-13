@@ -62,13 +62,14 @@ public class MandelbrotContoroler : ShadeContoler
     bool renderFinished = false;
     public UIControler guiControler;
     UITemplate guiTemplate;
-    string resolutionInfo;
+    string generalInfo;
     const string tooltip = @"Controls:
 Pixelization:
     I - Zoom In
     O - Zoom Out
     U - Upscale Image
 Visual:
+    Z - Make a zoom in video
     S - Make a Screenshot
     L - Smooth Gradient
     C - Cycle Color Palette
@@ -136,7 +137,7 @@ Visual:
     //precision
     int maxIter = 1000;
     //constanst are a starting point the other one is dynamicly set based on hardware capabilities
-    int[] itersPerCycle = new int[] { 50, 10, 3 };
+    int[] itersPerCycle = new int[] { 50, 10, 1 };
     int IterPerCycle;
     const float minTargetFramerate = 60;
     const float maxTagretFramerate = 200;
@@ -236,6 +237,11 @@ Visual:
         currIter = 0;
         frameFinished = false;
         renderFinished = false;
+    }
+
+    void OnMoveComand()
+    {
+        zoomVideo = false;
     }
     public void SetPrecision(Precision val)
     {
@@ -357,8 +363,6 @@ Visual:
    
     public override void InitializeGui()
     {
-        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
-Calculating {ReducedWidth()} x {ReducedHeight()}";
         guiTemplate = new UITemplate(
         DefaultTemlates.sizes,
         new List<ToggleTemplate>(){
@@ -425,7 +429,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
         new List<TextTemplate>()
         {
             new TextTemplate(tooltip),
-            new TextTemplate(resolutionInfo)
+            new TextTemplate("")
         }
 
         );
@@ -472,8 +476,9 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
 
         if (Input.GetKeyDown(zoomVideoKey))
         {
-            zoomVideo = true;
-            pixelizationLevel = MaxPixelizationLevel();
+            zoomVideo = !zoomVideo;
+            
+           
         }
 
         if (Input.GetKeyDown(guiToggleKey))
@@ -488,6 +493,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
         if (Input.GetKeyDown(antialiasTogleKey))
         {
             SetAnitialiasing(!doAntialasing);
+            OnMoveComand();
         }
       
         if (Input.GetKeyDown(pixelizationLevelUpKey))
@@ -495,6 +501,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             preUpscalePixLvl = pixelizationLevel;
             pixelizationLevel += 1;
             upscaling = false;
+            OnMoveComand();
         }
         if (Input.GetKeyDown(pixelizationLevelDownKey))
     {
@@ -503,15 +510,17 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
                 lastPixelizationLevel = pixelizationLevel;
                 pixelizationLevel -= 1;
                 upscaling = false;
+                OnMoveComand();
             }
-          
             
-           
+
+
         }
         
         if (Input.GetKeyDown(colorPaletteTogleKey))
         {
             SetColorPalette(currColorPalette + 1);
+            OnMoveComand();
         }
         if (Input.GetKeyDown(resetKey))
         {
@@ -521,6 +530,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
         if (Input.GetKeyDown(togleInterpolationTypeKey))
         {
             SetSmoothGradient(!smoothGradient);
+            OnMoveComand();
         }
         if (Input.GetKeyDown(upscaleKey))
         {
@@ -545,6 +555,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
                 upscaling = true;
                 renderFinished = false;
                 currIter = 0;
+                OnMoveComand();
             }
             
 
@@ -579,12 +590,13 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             {
                 RegenereateFractalComputeBuffers();
                 reset = true;
+                OnMoveComand();
             }
 
-           
+
             
-           
-           
+
+
 
 
 
@@ -631,8 +643,9 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             multiplyer.SetDouble(1.0 - scaleDifference);
             MiddleX += differenceX * multiplyer;
             MiddleY += differenceY * multiplyer;
+            OnMoveComand();
             ResetParams();
-            
+           
 
         }
         if (mouseTextureCoordinatesX != oldMouseTextureCoordinatesX || mouseTextureCoordinatesY != oldMouseTextureCoordinatesY)
@@ -650,6 +663,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
                 MiddleX -= multiplyer * Scale;
                 multiplyer.SetDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
                 MiddleY -= multiplyer * Scale;
+                OnMoveComand();
                 ResetParams();
 
             }
@@ -662,8 +676,13 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
     }
     public override void HandleGuiUpdates()
     {
-        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
-Calculating {ReducedWidth()} x {ReducedHeight()}";
+        string precisionText = precision == Precision.FLOAT ? "float" : precision == Precision.DOUBLE ? "double" : $"infine with precision {precisionLevel}";
+        string timeLeft = renderFinished?"0.0": String.Format("{0:0.0}", (maxIter - currIter) * IterPerCycle * Time.deltaTime);
+        generalInfo = @$"
+Rendering {Screen.width} x {Screen.height}
+Calculating {ReducedWidth()} x {ReducedHeight()}
+Numer System: {precisionText}
+Estimated time left: {timeLeft}s";
         guiControler.UpdateUI(
             new List<bool>() {
                 doAntialasing,
@@ -686,7 +705,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             new List<string>()
             {
                 tooltip,
-                resolutionInfo
+                generalInfo
             }
          );
 
@@ -811,10 +830,16 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             if (renderFinished)
             {
                 SaveCurrentRenderTextureAsAPng();
+              
                 FixedPointNumber mul = new(cpuPrecision);
                 mul.SetDouble(pixelizationBase);
                 Scale *= mul;
                 ResetParams();
+                if (Scale.ToDouble() >= 0.003)
+                {
+                    zoomVideo = false;
+                }
+
             }
         }
 
