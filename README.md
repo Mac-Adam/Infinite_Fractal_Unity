@@ -80,6 +80,7 @@ If you want to dive deep into the fractal rendering each image on the way in ful
 - Various performance enhancements
 - Simple gui
 - Antyaliasing
+- Video Rendering
 
 ### Planned
 
@@ -90,6 +91,64 @@ If you want to dive deep into the fractal rendering each image on the way in ful
 - Finding unknown bugs
 - More control over colors
 - More render options
+
+## How to use this app properly
+
+### Basic Functions
+
+Basic functionality including panning and zooming can be controlled via your mouse
+In order to pan just press the left mouse button and move your mouse
+In order to zoom in scroll up and in order to zoom out scroll down
+
+### Proper Navigation
+
+Zooming with the scroll wheel is inefficient, because after each scale change whole image has to be rerendered.
+In order to navigate smoothly use those keys:
+
+- I immediately zooms in while decreasing render resolution
+- U starts upcasing the image behind the scene and gradually puts it on screen
+- O immediately zooms out increasing render resolution
+  If you ever get lost what resolution you are rendering in check the GUI that can be opened by pressing G
+
+### Visual Settings
+
+Before you get the perfect image, tweak the render setting to your liking:
+
+- color theme allows you to change the colors
+- max Iterations increases precision ( but it also increases render time )
+- color strength controls how wide a color stripe is ( increase this setting if the image is "glitchy" )
+
+### Screenshots and Video
+
+Pressing S key allows you to take a screenshot.
+Use it instead of print screen or any other way for those reasons:
+
+- GUI will always be hidden on screenshots taken this way
+- You can increase the resolution above your screen resolution and render an image in 4K or more
+
+Pressing Z key starts a video capture procedure.
+
+the procedure is automatic and doesn't require any other input.
+if you insert a move command like zoom or pan the procedure stops!
+It will capture a set of frames later used to render a video out of it.
+Make sure that the render resolution is double the resolution of the video you want to have
+
+Every screenshot and frame will be saved in /renders folder
+
+#### Automatic video rendering with blender
+
+After you captured your frames you can compose them into a video with any video editing software you'd like.
+I created a simple blender macro that allows to create this video in blender with just a few clicks.
+
+- Open Blender Video Editor
+- Open the text editor window (shift F11)
+- Open the /blenderMacro/createVideo.py file in it
+- Make sure that every image in the /renders folder is meant for the video ( delete or move old ones )
+- ( optional ) Tweak setting to your linking by altering the two variables fps and frames per image
+- ( optional ) Open console to see the progress
+- run the macro with the run script button ( alt P )
+
+finished video will be saved to /renders folder
 
 ## Gallery
 
