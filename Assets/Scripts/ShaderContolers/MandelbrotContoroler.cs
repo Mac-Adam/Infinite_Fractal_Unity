@@ -62,13 +62,14 @@ public class MandelbrotContoroler : ShadeContoler
     bool renderFinished = false;
     public UIControler guiControler;
     UITemplate guiTemplate;
-    string resolutionInfo;
+    string generalInfo;
     const string tooltip = @"Controls:
 Pixelization:
     I - Zoom In
     O - Zoom Out
     U - Upscale Image
 Visual:
+    Z - Make a zoom in video
     S - Make a Screenshot
     L - Smooth Gradient
     C - Cycle Color Palette
@@ -110,15 +111,16 @@ Visual:
     double middleX = -1.0f;
     double middleY = 0.0f;
 
-    string pixelizationLevelUpControl = "i";
-    string pixelizationLevelDownControl = "o";
-    string resetControl = "r";
-    string togleInterpolationTypeContorl = "l";
-    string colorPaletteTogleContorl = "c";
-    string antialiasTogleContorl = "a";
-    string upscaleControl = "u";
-    string guiToggleControl = "g";
+    string pixelizationLevelUpKey = "i";
+    string pixelizationLevelDownKey = "o";
+    string resetKey = "r";
+    string togleInterpolationTypeKey = "l";
+    string colorPaletteTogleKey = "c";
+    string antialiasTogleKey = "a";
+    string upscaleKey = "u";
+    string guiToggleKey = "g";
     string scrennShotKey = "s";
+    string zoomVideoKey = "z";
 
 
     //Controlls Handleing
@@ -130,11 +132,12 @@ Visual:
     FixedPointNumber MiddleX = new(cpuPrecision);
     FixedPointNumber MiddleY = new(cpuPrecision);
     FixedPointNumber Scale = new(cpuPrecision);
+    bool zoomVideo = false;
 
     //precision
     int maxIter = 1000;
     //constanst are a starting point the other one is dynamicly set based on hardware capabilities
-    int[] itersPerCycle = new int[] { 50, 10, 3 };
+    int[] itersPerCycle = new int[] { 50, 10, 1 };
     int IterPerCycle;
     const float minTargetFramerate = 60;
     const float maxTagretFramerate = 200;
@@ -235,6 +238,11 @@ Visual:
         frameFinished = false;
         renderFinished = false;
     }
+
+    void OnMoveComand()
+    {
+        zoomVideo = false;
+    }
     public void SetPrecision(Precision val)
     {
         if(val == precision)
@@ -287,7 +295,7 @@ Visual:
     {
         RenderShader.SetBool("_RenderExact", true);
         PixelizedShaders.Dispatch(RenderShader, dummyTexture);
-        OtherFunctions.SaveRenderTextureToFile(dummyTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt"));
+        OtherFunctions.SaveRenderTextureToFile(dummyTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
     }
 
 
@@ -355,8 +363,6 @@ Visual:
    
     public override void InitializeGui()
     {
-        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
-Calculating {ReducedWidth()} x {ReducedHeight()}";
         guiTemplate = new UITemplate(
         DefaultTemlates.sizes,
         new List<ToggleTemplate>(){
@@ -423,7 +429,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
         new List<TextTemplate>()
         {
             new TextTemplate(tooltip),
-            new TextTemplate(resolutionInfo)
+            new TextTemplate("")
         }
 
         );
@@ -468,8 +474,14 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             SaveCurrentRenderTextureAsAPng();
         }
 
+        if (Input.GetKeyDown(zoomVideoKey))
+        {
+            zoomVideo = !zoomVideo;
+            
+           
+        }
 
-        if (Input.GetKeyDown(guiToggleControl))
+        if (Input.GetKeyDown(guiToggleKey))
         {
             SetGuiActive(!guiOn);
         }
@@ -478,44 +490,49 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             Exit();
         }
        
-        if (Input.GetKeyDown(antialiasTogleContorl))
+        if (Input.GetKeyDown(antialiasTogleKey))
         {
             SetAnitialiasing(!doAntialasing);
+            OnMoveComand();
         }
       
-        if (Input.GetKeyDown(pixelizationLevelUpControl))
+        if (Input.GetKeyDown(pixelizationLevelUpKey))
         {
             preUpscalePixLvl = pixelizationLevel;
             pixelizationLevel += 1;
             upscaling = false;
+            OnMoveComand();
         }
-        if (Input.GetKeyDown(pixelizationLevelDownControl))
+        if (Input.GetKeyDown(pixelizationLevelDownKey))
     {
             if (MaxPixelizationLevel() < pixelizationLevel)
             {
                 lastPixelizationLevel = pixelizationLevel;
                 pixelizationLevel -= 1;
                 upscaling = false;
+                OnMoveComand();
             }
-          
             
-           
+
+
         }
         
-        if (Input.GetKeyDown(colorPaletteTogleContorl))
+        if (Input.GetKeyDown(colorPaletteTogleKey))
         {
             SetColorPalette(currColorPalette + 1);
+            OnMoveComand();
         }
-        if (Input.GetKeyDown(resetControl))
+        if (Input.GetKeyDown(resetKey))
         {
             ResetParams();
             ResetAntialias();
         }
-        if (Input.GetKeyDown(togleInterpolationTypeContorl))
+        if (Input.GetKeyDown(togleInterpolationTypeKey))
         {
             SetSmoothGradient(!smoothGradient);
+            OnMoveComand();
         }
-        if (Input.GetKeyDown(upscaleControl))
+        if (Input.GetKeyDown(upscaleKey))
         {
             if (MaxPixelizationLevel() < pixelizationLevel)
             {
@@ -538,6 +555,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
                 upscaling = true;
                 renderFinished = false;
                 currIter = 0;
+                OnMoveComand();
             }
             
 
@@ -572,12 +590,13 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             {
                 RegenereateFractalComputeBuffers();
                 reset = true;
+                OnMoveComand();
             }
 
-           
+
             
-           
-           
+
+
 
 
 
@@ -624,8 +643,9 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             multiplyer.SetDouble(1.0 - scaleDifference);
             MiddleX += differenceX * multiplyer;
             MiddleY += differenceY * multiplyer;
+            OnMoveComand();
             ResetParams();
-            
+           
 
         }
         if (mouseTextureCoordinatesX != oldMouseTextureCoordinatesX || mouseTextureCoordinatesY != oldMouseTextureCoordinatesY)
@@ -643,6 +663,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
                 MiddleX -= multiplyer * Scale;
                 multiplyer.SetDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
                 MiddleY -= multiplyer * Scale;
+                OnMoveComand();
                 ResetParams();
 
             }
@@ -655,8 +676,13 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
     }
     public override void HandleGuiUpdates()
     {
-        resolutionInfo = @$"Rendering {Screen.width} x {Screen.height}
-Calculating {ReducedWidth()} x {ReducedHeight()}";
+        string precisionText = precision == Precision.FLOAT ? "float" : precision == Precision.DOUBLE ? "double" : $"infine with precision {precisionLevel}";
+        string timeLeft = renderFinished?"0.0": String.Format("{0:0.0}", (maxIter - currIter) * IterPerCycle * Time.deltaTime);
+        generalInfo = @$"
+Rendering {Screen.width} x {Screen.height}
+Calculating {ReducedWidth()} x {ReducedHeight()}
+Numer System: {precisionText}
+Estimated time left: {timeLeft}s";
         guiControler.UpdateUI(
             new List<bool>() {
                 doAntialasing,
@@ -679,7 +705,7 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
             new List<string>()
             {
                 tooltip,
-                resolutionInfo
+                generalInfo
             }
          );
 
@@ -799,6 +825,24 @@ Calculating {ReducedWidth()} x {ReducedHeight()}";
 
             }
         }
+        if (zoomVideo)
+        {
+            if (renderFinished)
+            {
+                SaveCurrentRenderTextureAsAPng();
+              
+                FixedPointNumber mul = new(cpuPrecision);
+                mul.SetDouble(pixelizationBase);
+                Scale *= mul;
+                ResetParams();
+                if (Scale.ToDouble() >= 0.003)
+                {
+                    zoomVideo = false;
+                }
+
+            }
+        }
+
         int tagretPrecison = 0;
         foreach(int digit in Scale.digits)
         {

@@ -58,3 +58,5 @@ sysinfo.txt
 crashlytics-build.properties
 *.dwlt
 UserSettings/Layouts/default-2021.dwlt
+
+/[Rr]enders
