@@ -77,6 +77,12 @@ Visual:
     G - Toggle GUI";
 
 
+    //Frankenstein rendering (this probably has some fancy technical term)
+    //Rendering frame by wornikng only on a small portion of it a time in order to decreese memory usage
+    bool frankensteinRendering = true;
+    int frankensteinSteps = 4; 
+    int frankensteinX = 0;
+    int frankensteinY = 0;
 
 
     //shader settings
@@ -158,29 +164,55 @@ Visual:
     float renderStatTime;
     float renderTimeElapsed = 0;
 
+    int FrankensteinCorrection()
+    {
+        if (frankensteinRendering)
+        {
+            return frankensteinSteps;
+        }
+        return 1;
+             
+    }
+    int PixelCount(bool frankenstein = true)
+    {
+        return ReducedHeight(frankenstein) * ReducedWidth(frankenstein);
 
-    int PixelCount()
-    {
-        return ReducedHeight()*ReducedWidth();
     }
-    int LastPixelCount()
+    int LastPixelCount(bool frankenstein = true)
     {
-        return LastReducedHeight()*LastReducedWidth();
+        return LastReducedHeight(frankenstein) * LastReducedWidth(frankenstein);
     }
-    int ReducedWidth()
+    int ReducedWidth(bool frankenstein = true)
     {
-        return OtherFunctions.Reduce(Screen.width,pixelizationBase,pixelizationLevel);
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel) / FrankensteinCorrection();
+        }
+        return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
+
     }
-    int ReducedHeight()
+    int ReducedHeight(bool frankenstein = true)
     {
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel) / FrankensteinCorrection();
+        }
         return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
     }
-    int LastReducedWidth()
+    int LastReducedWidth(bool frankenstein = true)
     {
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
+        }
         return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel);
     }
-    int LastReducedHeight()
+    int LastReducedHeight(bool frankenstein = true)
     {
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
+        }
         return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
     }
 
@@ -205,11 +237,12 @@ Visual:
                     break;
             }
 
-        } while (buffersize <= PixelizedShaders.MAXBYTESPERBUFFER);
+        } while (buffersize <= PixelizedShaders.MAXBYTESPERBUFFER * FrankensteinCorrection());
         return max + 1;
     }
     PixelizationData GetPixelizationData()
     {
+        //TODO fix it probably won't work
         return new(ReducedWidth(),ReducedHeight(),LastReducedWidth(),LastReducedHeight(), PixelCount(), LastPixelCount(), pixelizationBase,register);
     }
 
@@ -361,8 +394,8 @@ Visual:
     }
     public override void InitializeBuffers()
     {
-        IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
-        OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+        IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
+        OldIterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         floatDataBuffer = new ComputeBuffer(3, sizeof(float));
         PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
@@ -376,7 +409,7 @@ Visual:
 
         MiddleX.SetDouble(middleX);
         MiddleY.SetDouble(middleY);
-        Scale.SetDouble( length / ReducedWidth());
+        Scale.SetDouble( length / ReducedWidth(false));
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
@@ -564,10 +597,10 @@ Visual:
             if (MaxPixelizationLevel() < pixelizationLevel)
             {
 
-                int[] arr = new int[PixelCount() * 3];
+                int[] arr = new int[PixelCount(false) * 3];
                 IterBuffer.GetData(arr);
                 OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+                OldIterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
                 OldIterBuffer.SetData(arr);
                 IterBuffer.Dispose();
 
@@ -575,7 +608,7 @@ Visual:
                 preUpscalePixLvl = pixelizationLevel;
                 pixelizationLevel -= 1;
 
-                IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+                IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
                 FixedPointNumber scaleFixer = new(cpuPrecision);
                 scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
                 Scale *= scaleFixer;
@@ -595,7 +628,7 @@ Visual:
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel)
         {
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+            IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
                 switch (precision)
@@ -649,11 +682,11 @@ Visual:
        
         FixedPointNumber mousePosRealX = new(cpuPrecision);
 
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth()/2);
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth(false)/2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(cpuPrecision);
 
-        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight()/2);
+        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight(false)/2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(cpuPrecision);
 
@@ -707,7 +740,7 @@ Visual:
         string timeElapsed = String.Format("{0:0.000}", renderTimeElapsed);
         generalInfo = @$"
 Rendering {Screen.width} x {Screen.height}
-Calculating {ReducedWidth()} x {ReducedHeight()}
+Calculating {ReducedWidth(false)} x {ReducedHeight(false)}
 Numer System: {precisionText}
 Last Frame rendered in: {timeElapsed}s";
         guiControler.UpdateUI(
@@ -742,18 +775,35 @@ Last Frame rendered in: {timeElapsed}s";
     public override void SetShadersParameters()
     {
 
+        FixedPointNumber MiddleXToSend = new(MiddleX);
+        FixedPointNumber MiddleYToSend = new(MiddleY);
+        if (frankensteinRendering)
+        {
+            int frankensteinOffsetX = ReducedWidth() * frankensteinX - (ReducedWidth() * (frankensteinSteps - 1)) / 2;
+            int frankensteinOffsetY = ReducedHeight() * frankensteinY - (ReducedHeight() * (frankensteinSteps - 1)) / 2;
+            FixedPointNumber temp = new(cpuPrecision);
+            temp.SetDouble(frankensteinOffsetX);
+            temp *= Scale;
+            MiddleXToSend += temp;
+            temp.SetDouble(frankensteinOffsetY);
+            temp *= Scale;
+            MiddleYToSend += temp;
+        }
+        
+
+
         for (int i = 0; i < shaderPre; i++)
         {
-            TestPosiotnArray[i] = MiddleX.digits[i];
-            TestPosiotnArray[shaderPre + i] = MiddleY.digits[i];
+            TestPosiotnArray[i] = MiddleXToSend.digits[i];
+            TestPosiotnArray[shaderPre + i] = MiddleYToSend.digits[i];
             TestPosiotnArray[shaderPre * 2 + i] = Scale.digits[i];
 
         }
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = Scale.ToDouble() * ReducedWidth();
-        doubleDataArray[1] = MiddleX.ToDouble();
-        doubleDataArray[2] = MiddleY.ToDouble();
+        doubleDataArray[0] = Scale.ToDouble();
+        doubleDataArray[1] = MiddleXToSend.ToDouble();
+        doubleDataArray[2] = MiddleYToSend.ToDouble();
         floatDataArray[0] = (float)doubleDataArray[0];
         floatDataArray[1] = (float)doubleDataArray[1];
         floatDataArray[2] = (float)doubleDataArray[2];
@@ -778,6 +828,9 @@ Last Frame rendered in: {timeElapsed}s";
                 InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
                 InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
                 InfiniteShader.SetInt("_BailoutRadius", bailoutRadius);
+                InfiniteShader.SetInt("_RenderWidth", ReducedWidth(false));
+                InfiniteShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+                InfiniteShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 break;
             case Precision.DOUBLE:
                 DoubleShader.SetBuffer(0, "_DoubleDataBuffer", doubleDataBuffer);
@@ -791,6 +844,9 @@ Last Frame rendered in: {timeElapsed}s";
                 DoubleShader.SetInt("_IterPerCycle", IterPerCycle);
                 DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
                 DoubleShader.SetInt("_BailoutRadius", bailoutRadius);
+                DoubleShader.SetInt("_RenderWidth", ReducedWidth(false));
+                DoubleShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+                DoubleShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 break;
             case Precision.FLOAT:
                 FloatShader.SetBuffer(0, "_FloatDataBuffer", floatDataBuffer);
@@ -804,6 +860,9 @@ Last Frame rendered in: {timeElapsed}s";
                 FloatShader.SetInt("_IterPerCycle", IterPerCycle);
                 FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
                 FloatShader.SetInt("_BailoutRadius", bailoutRadius);
+                FloatShader.SetInt("_RenderWidth", ReducedWidth(false));
+                FloatShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+                FloatShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 break;
         }
             
@@ -871,6 +930,26 @@ Last Frame rendered in: {timeElapsed}s";
                 }
 
             }
+        }
+        if (frankensteinRendering)
+        {
+            if (renderFinished)
+            {
+                ResetParams();
+                frankensteinX++;
+                if (frankensteinX >= frankensteinSteps)
+                {
+                    frankensteinX = 0;
+                    frankensteinY++;
+                    if (frankensteinY >= frankensteinSteps)
+                    {
+                        frankensteinY = 0;
+                    }
+                }
+
+            }
+
+
         }
 
         int tagretPrecison = 0;
@@ -958,11 +1037,10 @@ Last Frame rendered in: {timeElapsed}s";
     }
     public override void InitializeOtherTextures()
     {
-        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, pixelizationBase, pixelizationLevel, ShouldRegerateTexture());
+        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, ReducedWidth(), ReducedHeight(), ShouldRegerateTexture());
     }
     public override void DispatchShaders()
     {
-      
         switch (precision)
         {
             case Precision.INFINTE:
@@ -976,7 +1054,6 @@ Last Frame rendered in: {timeElapsed}s";
                 break;
         }
         PixelizedShaders.Dispatch(RenderShader, targetTexture);
-
     }
 
     public override void BlitTexture(RenderTexture destination)

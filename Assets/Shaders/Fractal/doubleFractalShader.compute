@@ -8,12 +8,15 @@ float2 _PixelOffset;
 
 uint _MaxIter;
 uint _IterPerCycle = 10;
-double _Length;
+double _Scale;
 double _OffsetX;
 double _OffsetY;
 int _BailoutRadius;
 double _BailoutRadiusSQ;
 StructuredBuffer<double> _DoubleDataBuffer;
+uint _RenderWidth;
+int _FrankensteinOffsetX;
+int _FrankensteinOffsetY;
 
 struct res {
 	uint iter;
@@ -88,7 +91,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_BailoutRadiusSQ = (double)_BailoutRadius * _BailoutRadius;
 
 	//Get double data form buffer
-	_Length = _DoubleDataBuffer[0];
+	_Scale = _DoubleDataBuffer[0];
 	_OffsetX = _DoubleDataBuffer[1];
 	_OffsetY = _DoubleDataBuffer[2];
 
@@ -162,7 +165,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	//check if further computation is nesesary
 	if (!_MultiFrameData[pixelId].finished) {
 		// Transform pixel to correct range
-		double2 scale = _Length / width;
+		double2 scale = _Scale;
 		double2 uv = ((double2)id.xy + _PixelOffset - double2(width / 2, height / 2)) * scale;
 		// add offset
 		uv += double2(_OffsetX, _OffsetY);
@@ -179,8 +182,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		_MultiFrameData[pixelId].iter += currentIter;
 
 	}
-	_IterBuffer[id.x + id.y * width].iter = _MultiFrameData[pixelId].iter;
-	_IterBuffer[id.x + id.y * width].finished = _MultiFrameData[pixelId].finished;
-	_IterBuffer[id.x + id.y * width].offset = _MultiFrameData[pixelId].offset;
+	int iterId = id.x + _FrankensteinOffsetX + (id.y + _FrankensteinOffsetY) * _RenderWidth;
+	_IterBuffer[iterId].iter = _MultiFrameData[pixelId].iter;
+	_IterBuffer[iterId].finished = _MultiFrameData[pixelId].finished;
+	_IterBuffer[iterId].offset = _MultiFrameData[pixelId].offset;
 	
 }

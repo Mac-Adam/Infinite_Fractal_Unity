@@ -8,18 +8,21 @@ float2 _PixelOffset;
 
 uint _MaxIter;
 uint _IterPerCycle = 10;
-float _Length;
+float _Scale;
 float _OffsetX;
 float _OffsetY;
 int _BailoutRadius;
 float _BailoutRadiusSQ;
 StructuredBuffer<float> _FloatDataBuffer;
+uint _RenderWidth;
+int _FrankensteinOffsetX;
+int _FrankensteinOffsetY;
 
 struct res {
 	uint iter;
 	bool finished;
 	float offset;
-};
+}; 
 RWStructuredBuffer<res> _IterBuffer;
 
 struct Pixel {
@@ -87,7 +90,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_BailoutRadiusSQ = (float)_BailoutRadius * _BailoutRadius;
 
 	//Get float data form buffer
-	_Length = _FloatDataBuffer[0];
+	_Scale = _FloatDataBuffer[0];
 	_OffsetX = _FloatDataBuffer[1];
 	_OffsetY = _FloatDataBuffer[2];
 
@@ -161,7 +164,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	//check if further computation is nesesary
 	if (!_MultiFrameData[pixelId].finished) {
 		// Transform pixel to correct range
-		float2 scale = _Length / width;
+		float2 scale = _Scale;
 		float2 uv = ((float2)id.xy + _PixelOffset - float2(width / 2, height / 2)) * scale;
 		// add offset
 		uv += float2(_OffsetX, _OffsetY);
@@ -178,8 +181,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		_MultiFrameData[pixelId].iter += currentIter;
 
 	}
-	_IterBuffer[id.x + id.y * width].iter = _MultiFrameData[pixelId].iter;
-	_IterBuffer[id.x + id.y * width].finished = _MultiFrameData[pixelId].finished;
-	_IterBuffer[id.x + id.y * width].offset = _MultiFrameData[pixelId].offset;
+	int iterId = id.x + _FrankensteinOffsetX + (id.y + _FrankensteinOffsetY) * _RenderWidth;
 
+	_IterBuffer[iterId].iter = _MultiFrameData[pixelId].iter;
+	_IterBuffer[iterId].finished = _MultiFrameData[pixelId].finished;
+	_IterBuffer[iterId].offset = _MultiFrameData[pixelId].offset;
 }
