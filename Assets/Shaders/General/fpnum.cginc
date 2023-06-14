@@ -222,12 +222,12 @@ digits setDouble(double num) {
 	}
 	return a;
 }
-bool inBounds(digits a, digits b) {
+bool inBounds(digits a, digits b, int r) {
 	a = add(a, b);
 	for (int c = 0; c < PRECISION; c++) {
 		b.digits[c] = 0;
 	}
-	b.digits[0] = 4;
+	b.digits[0] = r;
 	return IsGreater(b, a);
 }
 float toFloat(digits num){

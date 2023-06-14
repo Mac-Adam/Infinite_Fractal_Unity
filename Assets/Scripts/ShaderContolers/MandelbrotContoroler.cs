@@ -136,6 +136,7 @@ Visual:
 
     //precision
     int maxIter = 1000;
+    int bailoutRadius = 128;
     //constanst are a starting point the other one is dynamicly set based on hardware capabilities
     int[] itersPerCycle = new int[] { 50, 10, 1 };
     int IterPerCycle;
@@ -153,6 +154,9 @@ Visual:
     int pixelizationLevel = 0;
     int lastPixelizationLevel;
     int preUpscalePixLvl;
+
+    float renderStatTime;
+    float renderTimeElapsed = 0;
 
 
     int PixelCount()
@@ -236,7 +240,7 @@ Visual:
         currentSample = 0;
         currIter = 0;
         frameFinished = false;
-        renderFinished = false;
+        SetRenderFinished(false);
     }
 
     void OnMoveComand()
@@ -280,7 +284,30 @@ Visual:
         ResetParams();
         ResetAntialias();
     }
+    public void SetBailoutRadius(int radius)
+    {
+        bailoutRadius = radius;
+        ResetParams();
+        ResetAntialias();
+    }
+    public void SetRenderFinished(bool val)
+    {
+        if (val == false) {
+            renderStatTime = Time.time;
+        }
 
+        if(renderFinished == val)
+        {
+            return;
+        }
+
+        renderFinished = val;
+        if(renderFinished == true)
+        {
+            renderTimeElapsed = Time.time - renderStatTime;
+        }
+       
+    }
     public void SetGuiActive(bool val)
     {
         guiOn = val;
@@ -394,7 +421,7 @@ Visual:
                 1000000,
                 true,
                 (float f)=> SetMaxIter(Mathf.FloorToInt(f))
-                )
+                ),
         },
         new List<DropdownTemplate>() {
             new DropdownTemplate(
@@ -553,7 +580,7 @@ Visual:
                 scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
                 Scale *= scaleFixer;
                 upscaling = true;
-                renderFinished = false;
+                SetRenderFinished(false);
                 currIter = 0;
                 OnMoveComand();
             }
@@ -677,12 +704,12 @@ Visual:
     public override void HandleGuiUpdates()
     {
         string precisionText = precision == Precision.FLOAT ? "float" : precision == Precision.DOUBLE ? "double" : $"infine with precision {precisionLevel}";
-        string timeLeft = renderFinished?"0.0": String.Format("{0:0.0}", (maxIter - currIter) * IterPerCycle * Time.deltaTime);
+        string timeElapsed = String.Format("{0:0.000}", renderTimeElapsed);
         generalInfo = @$"
 Rendering {Screen.width} x {Screen.height}
 Calculating {ReducedWidth()} x {ReducedHeight()}
 Numer System: {precisionText}
-Estimated time left: {timeLeft}s";
+Last Frame rendered in: {timeElapsed}s";
         guiControler.UpdateUI(
             new List<bool>() {
                 doAntialasing,
@@ -750,6 +777,7 @@ Estimated time left: {timeLeft}s";
                 InfiniteShader.SetInt("_Register", register);
                 InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
                 InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+                InfiniteShader.SetInt("_BailoutRadius", bailoutRadius);
                 break;
             case Precision.DOUBLE:
                 DoubleShader.SetBuffer(0, "_DoubleDataBuffer", doubleDataBuffer);
@@ -762,6 +790,7 @@ Estimated time left: {timeLeft}s";
                 DoubleShader.SetInt("_Register", register);
                 DoubleShader.SetInt("_IterPerCycle", IterPerCycle);
                 DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+                DoubleShader.SetInt("_BailoutRadius", bailoutRadius);
                 break;
             case Precision.FLOAT:
                 FloatShader.SetBuffer(0, "_FloatDataBuffer", floatDataBuffer);
@@ -774,6 +803,7 @@ Estimated time left: {timeLeft}s";
                 FloatShader.SetInt("_Register", register);
                 FloatShader.SetInt("_IterPerCycle", IterPerCycle);
                 FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+                FloatShader.SetInt("_BailoutRadius", bailoutRadius);
                 break;
         }
             
@@ -803,8 +833,8 @@ Estimated time left: {timeLeft}s";
         currentSample = 0;
         currIter = 0;
         upscaling = false;
-        renderFinished = false;
-        renderFinished = false;
+        frameFinished = false;
+        SetRenderFinished(false);
         ResetIterPerCycle();
     }
 
@@ -907,12 +937,12 @@ Estimated time left: {timeLeft}s";
             }
             else
             {
-                renderFinished = true;
+                SetRenderFinished(true);
             }
         }
         else if (currIter > maxIter)
         {
-            renderFinished = true;
+            SetRenderFinished(true);
         }
 
     }

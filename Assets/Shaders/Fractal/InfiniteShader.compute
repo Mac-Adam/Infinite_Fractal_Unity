@@ -26,13 +26,15 @@
 
 #include "Assets/Shaders/General/fpnum.cginc"
 
+#define BIGNUM 10000.0
 RWTexture2D<float4> Result;
 
 float2 _PixelOffset;
 
 uint _MaxIter;
 uint _IterPerCycle = 5;
-
+int _BailoutRadius;
+int _BailoutRadiusSQ;
 
 StructuredBuffer<int> _PossitionBuffer;
 static const int MiddleX = 0;
@@ -64,11 +66,15 @@ struct res {
 };
 RWStructuredBuffer<res> _IterBuffer;
 
-float getOffset(float2 squares) {
+
+//This wierd Multiplication by BIGNUM and conversion to INT is done 
+//beacause I need to encode float in range 0.0 - 1.0 in an INT datatype
+//this allows to store everything in one array insed of makeing a seprate array for the offsets
+int getOffset(float2 squares) {
 	float logz = log(squares.x + squares.y) / 2.0;
-	float res = log(logz / log(2.0)) / log(2.0);
-	res = clamp(res, 0.0, 1.0);
-	return res;
+	float res = log(logz / log(_BailoutRadius)) / log(2.0);
+	res = clamp(res, 0.0, 1.0) * BIGNUM;
+	return (int)res;
 }
 uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits cX;
@@ -122,8 +128,9 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		iter++;
 
 
-		if (!inBounds(squareX, squareY)) {
-			_FpMultiframeBuffer[idx + iterOffset] = digitBase * getOffset(float2(toFloat(squareX), toFloat(squareY)));
+		if (!inBounds(squareX, squareY, _BailoutRadiusSQ)) {
+			_FpMultiframeBuffer[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
+			//_FpMultiframeBuffer[idx + iterOffset] = getOffset(float2(squareX.digits[0], squareY.digits[0]));
 			_FpMultiframeBuffer[idx + finished] = true;
 			return iter;
 		}
@@ -147,7 +154,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	uint width, height;
 	Result.GetDimensions(width, height);
-	 
+	
+	_BailoutRadiusSQ = _BailoutRadius * _BailoutRadius;
 	
 	uint basePixelId = id.x + id.y * width + width * height * _Register;
 
@@ -222,7 +230,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	_IterBuffer[id.x + id.y * width].iter = _FpMultiframeBuffer[pixelId + iter];
 	_IterBuffer[id.x + id.y * width].finished = _FpMultiframeBuffer[pixelId + finished];
-	_IterBuffer[id.x + id.y * width].offset = (float)(_FpMultiframeBuffer[pixelId + iterOffset]) / digitBase;
+	_IterBuffer[id.x + id.y * width].offset = (float)(_FpMultiframeBuffer[pixelId + iterOffset]) / BIGNUM;
 
 
 }

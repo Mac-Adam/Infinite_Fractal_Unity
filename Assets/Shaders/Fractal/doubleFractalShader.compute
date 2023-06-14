@@ -11,6 +11,8 @@ uint _IterPerCycle = 10;
 double _Length;
 double _OffsetX;
 double _OffsetY;
+int _BailoutRadius;
+double _BailoutRadiusSQ;
 StructuredBuffer<double> _DoubleDataBuffer;
 
 struct res {
@@ -42,7 +44,7 @@ bool _reset;
 
 float getOffset(float2 squares) {
 	float logz = log((squares.x + squares.y)) / 2.0;
-	float res = log(logz / log(2.0)) / log(2.0);
+	float res = log(logz / log(_BailoutRadius)) / log(2.0);
 	res = clamp(res, 0.0, 1.0); 
 	return res;
 }
@@ -51,7 +53,7 @@ uint getIteration(double2 possition, double2 InitialZ, int idx) {
 	uint iter = 0;
 	double2 z = InitialZ;
 	double2 squares = double2(z.x*z.x,z.y*z.y);
-	while (squares.x + squares.y < 4.0) {
+	while (squares.x + squares.y < _BailoutRadiusSQ) {
 		if (iter >= (_IterPerCycle)) {
 
 			_MultiFrameData[idx].CurrentZX = z.x;
@@ -83,7 +85,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	uint width, height;
 	Result.GetDimensions(width, height);
 
-
+	_BailoutRadiusSQ = (double)_BailoutRadius * _BailoutRadius;
 
 	//Get double data form buffer
 	_Length = _DoubleDataBuffer[0];
