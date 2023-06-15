@@ -149,7 +149,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	}
 
-	else if (_reset) {
+	if (_reset) {
 		_MultiFrameData[pixelId].iter = 0;
 		_MultiFrameData[pixelId].CurrentZX = 0;
 		_MultiFrameData[pixelId].CurrentZY = 0;

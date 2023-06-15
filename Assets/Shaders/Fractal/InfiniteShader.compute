@@ -211,7 +211,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
 	}
-	else if (_reset) {
+	if (_reset) {
 		for (int k = 0; k < PixelSize; k++) {
 			_FpMultiframeBuffer[pixelId + k] = 0;
 		}
