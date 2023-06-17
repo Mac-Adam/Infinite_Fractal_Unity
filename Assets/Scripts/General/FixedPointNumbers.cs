@@ -51,6 +51,16 @@ namespace FixedPointNumberSystem
                 digits[i] = 0;
             }
         }
+
+        public FixedPointNumber(FixedPointNumber other)
+        {
+            precision=other.precision;
+            digits = new int[precision];
+            for (int i = 0; i < precision; i++)
+            {
+                digits[i] = other.digits[i];
+            }
+        }
         public void SetDouble(double num)
         {
             bool negate = false;
@@ -260,8 +270,8 @@ namespace FixedPointNumberSystem
         }
         public static FixedPointNumber operator +(FixedPointNumber aPassed, FixedPointNumber bPassed)
         {
-            FixedPointNumber a = aPassed.Replicate();
-            FixedPointNumber b = bPassed.Replicate();
+            FixedPointNumber a = new(aPassed);
+            FixedPointNumber b = new(bPassed);
            
             for(int i = 0; i < a.precision; i++)
             {
@@ -272,8 +282,8 @@ namespace FixedPointNumberSystem
         }
         public static FixedPointNumber operator *(FixedPointNumber aPassed, FixedPointNumber bPassed)
         {
-            FixedPointNumber a = aPassed.Replicate();
-            FixedPointNumber b = bPassed.Replicate();
+            FixedPointNumber a = new(aPassed);
+            FixedPointNumber b = new(bPassed);
             FixedPointNumber res = new(a.precision);
             FixedPointNumber temp1 = new(a.precision);
             FixedPointNumber temp2 = new(a.precision);
@@ -330,23 +340,14 @@ namespace FixedPointNumberSystem
         }
         public static FixedPointNumber operator -(FixedPointNumber aPassed, FixedPointNumber bPassed)
         {
-            FixedPointNumber a = aPassed.Replicate();
-            FixedPointNumber b = bPassed.Replicate();
-            for(int i = 0; i < a.precision; i++)
+            FixedPointNumber a = new(aPassed);
+            FixedPointNumber b = new(bPassed);
+            for (int i = 0; i < a.precision; i++)
             {
                 a.digits[i] -= b.digits[i];
             }
             a.Normalize();
             return a;
-        }
-        public FixedPointNumber Replicate()
-        {
-            FixedPointNumber res = new(precision);
-            for (int i = 0; i < precision; i++)
-            {
-                res.digits[i] = digits[i];
-            }
-            return res;
         }
 
     }

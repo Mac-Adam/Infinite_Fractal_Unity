@@ -49,6 +49,9 @@ static const int finished = 2 * PRECISION + 1;
 static const int iterOffset = 2 * PRECISION + 2;
 static const int PixelSize = 2 * PRECISION + 3;
 
+uint _RenderWidth;
+int _FrankensteinOffsetX;
+int _FrankensteinOffsetY;
 
 int _ShiftX;
 int _ShiftY;
@@ -208,7 +211,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
 	}
-	else if (_reset) {
+	if (_reset) {
 		for (int k = 0; k < PixelSize; k++) {
 			_FpMultiframeBuffer[pixelId + k] = 0;
 		}
@@ -227,10 +230,11 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
 	}
+	int iterId = id.x + _FrankensteinOffsetX + (id.y + _FrankensteinOffsetY) * _RenderWidth;
 
-	_IterBuffer[id.x + id.y * width].iter = _FpMultiframeBuffer[pixelId + iter];
-	_IterBuffer[id.x + id.y * width].finished = _FpMultiframeBuffer[pixelId + finished];
-	_IterBuffer[id.x + id.y * width].offset = (float)(_FpMultiframeBuffer[pixelId + iterOffset]) / BIGNUM;
+	_IterBuffer[iterId].iter = _FpMultiframeBuffer[pixelId + iter];
+	_IterBuffer[iterId].finished = _FpMultiframeBuffer[pixelId + finished];
+	_IterBuffer[iterId].offset = (float)(_FpMultiframeBuffer[pixelId + iterOffset]) / BIGNUM;
 
 
 }

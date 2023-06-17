@@ -20,6 +20,7 @@ public class MandelbrotContoroler : ShadeContoler
     public Shader AddShader;
 
     RenderTexture dummyTexture;
+    RenderTexture screenshotTexture;
     Material addMaterial;
 
     //DoubleShader
@@ -51,6 +52,7 @@ public class MandelbrotContoroler : ShadeContoler
 
     //Shader control
     bool reset = false;
+    bool turboReset = false;
     int shiftX = 0;
     int shiftY = 0;
     int register = 0;
@@ -77,6 +79,13 @@ Visual:
     G - Toggle GUI";
 
 
+    //Frankenstein rendering (this probably has some fancy technical term)
+    //Rendering frame by wornikng only on a small portion of it a time in order to decreese memory usage
+    bool frankensteinRendering = false;
+    int frankensteinSteps = 1; 
+    int frankensteinX = 0;
+    int frankensteinY = 0;
+    bool frankensteinStepFinished = false;
 
 
     //shader settings
@@ -86,21 +95,34 @@ Visual:
 
 
     //Anti-Alias
-    uint currentSample = 0;
+    private uint currentSample = 0;
     bool frameFinished = false;
     int currIter = 0;
     bool doAntialasing = false;
     int maxAntiAliasyncReruns = 9;
-    private Vector2[] antialiasLookupTable = {
+    private Vector2[] antialiasLookupTable;
+    private Vector2[] antialiasLookupTableSmooth = {
         new Vector2(0,0),
-        new Vector2((float)-2/3,(float)-2/3),
-        new Vector2((float)-2/3,0),
-        new Vector2((float)-2/3,(float)2/3),
-        new Vector2(0,(float)2/3),
-        new Vector2((float)2/3,(float)2/3),
-        new Vector2((float)2/3,0),
-        new Vector2((float)2/3,(float)-2/3),
-        new Vector2(0,(float)-2/3),
+        new Vector2(-2.0f/3,-2.0f/3),
+        new Vector2(-2.0f/3,0),
+        new Vector2(-2.0f/3,2.0f/3),
+        new Vector2(0,2.0f/3),
+        new Vector2(2.0f/3,2.0f/3),
+        new Vector2(2.0f/3,0),
+        new Vector2(2.0f/3,-2.0f/3),
+        new Vector2(0,-2.0f/3),
+
+    }; 
+    private Vector2[] antialiasLookupTableSharp = {
+        new Vector2(0,0),
+        new Vector2(-1.0f/3,-1.0f/3),
+        new Vector2(-1.0f/3,0),
+        new Vector2(-1.0f/3,1.0f/3),
+        new Vector2(0,1.0f/3),
+        new Vector2(1.0f/3,1.0f/3),
+        new Vector2(1.0f/3,0),
+        new Vector2(1.0f/3,-1.0f/3),
+        new Vector2(0,-1.0f/3),
 
     };
 
@@ -158,58 +180,88 @@ Visual:
     float renderStatTime;
     float renderTimeElapsed = 0;
 
+    int FrankensteinCorrection()
+    {
+        if (frankensteinRendering)
+        {
+            return frankensteinSteps;
+        }
+        return 1;
+             
+    }
+    int PixelCount(bool frankenstein = true)
+    {
+        return ReducedHeight(frankenstein) * ReducedWidth(frankenstein);
 
-    int PixelCount()
-    {
-        return ReducedHeight()*ReducedWidth();
     }
-    int LastPixelCount()
+    int LastPixelCount(bool frankenstein = true)
     {
-        return LastReducedHeight()*LastReducedWidth();
+        return LastReducedHeight(frankenstein) * LastReducedWidth(frankenstein);
     }
-    int ReducedWidth()
+    int ReducedWidth(bool frankenstein = true)
     {
-        return OtherFunctions.Reduce(Screen.width,pixelizationBase,pixelizationLevel);
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel) / FrankensteinCorrection();
+        }
+        return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
+
     }
-    int ReducedHeight()
+    int ReducedHeight(bool frankenstein = true)
     {
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel) / FrankensteinCorrection();
+        }
         return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
     }
-    int LastReducedWidth()
+    int LastReducedWidth(bool frankenstein = true)
     {
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
+        }
         return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel);
     }
-    int LastReducedHeight()
+    int LastReducedHeight(bool frankenstein = true)
     {
+        if (frankenstein)
+        {
+            return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
+        }
         return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
     }
 
     int MaxPixelizationLevel()
     {
         int max = 6; //This will allways be a valid level
-        long buffersize;
+        long pixelCount;
+        long bufferSize = 0;
+        long iterSize;
         do
         {
             max--;
-            buffersize = 2 * OtherFunctions.Reduce(Screen.width, pixelizationBase, max) * OtherFunctions.Reduce(Screen.height, pixelizationBase, max);
+            pixelCount = OtherFunctions.Reduce(Screen.width, pixelizationBase, max) * OtherFunctions.Reduce(Screen.height, pixelizationBase, max);
+            iterSize = pixelCount * 3 * sizeof(int);
             switch (precision)
             {
                 case Precision.FLOAT:
-                    buffersize *= FloatPixelPacket.size;
+                    bufferSize = 2 * pixelCount * FloatPixelPacket.size;
                     break;
                 case Precision.DOUBLE:
-                    buffersize *= DoublePixelPacket.size;
+                    bufferSize = 2 * pixelCount * DoublePixelPacket.size;
                     break;
                 case Precision.INFINTE:
-                    buffersize *= sizeof(int) * shaderPixelSize;
+                    bufferSize = 2 * pixelCount * sizeof(int) * shaderPixelSize;
                     break;
             }
 
-        } while (buffersize <= PixelizedShaders.MAXBYTESPERBUFFER);
+        } while (bufferSize <= PixelizedShaders.MAXBYTESPERBUFFER * FrankensteinCorrection() && iterSize <= PixelizedShaders.MAXBYTESPERBUFFER); ;
         return max + 1;
     }
     PixelizationData GetPixelizationData()
     {
+        //TODO fix it probably won't work
         return new(ReducedWidth(),ReducedHeight(),LastReducedWidth(),LastReducedHeight(), PixelCount(), LastPixelCount(), pixelizationBase,register);
     }
 
@@ -239,13 +291,24 @@ Visual:
     {
         currentSample = 0;
         currIter = 0;
-        frameFinished = false;
+        SetFrameFinished(false);
+        SetFrankensteinFinished(false);
         SetRenderFinished(false);
+        if (frankensteinRendering)
+        {
+            ResetParams();
+            turboReset = true;
+        }
     }
 
     void OnMoveComand()
     {
         zoomVideo = false;
+        if (frankensteinRendering)
+        {
+            ResetParams();
+            turboReset = true;
+        }
     }
     public void SetPrecision(Precision val)
     {
@@ -290,7 +353,21 @@ Visual:
         ResetParams();
         ResetAntialias();
     }
-    public void SetRenderFinished(bool val)
+
+    public void SetFrankensteinLevel(int level){
+        int steps = OtherFunctions.IntPow(2, level);
+        if(steps == frankensteinSteps)
+        {
+            return;
+        }
+        frankensteinRendering = steps != 1;
+        frankensteinSteps = steps;
+        frankensteinX = 0;
+        frankensteinY = 0;
+        ResetParams();
+        turboReset = true;
+    }
+    void SetRenderFinished(bool val)
     {
         if (val == false) {
             renderStatTime = Time.time;
@@ -308,6 +385,79 @@ Visual:
         }
        
     }
+    void SetFrameFinished(bool val)
+    {
+        if(frameFinished == val)
+        {
+            return;
+        }
+    
+        currIter = 0;
+        if (doAntialasing)
+        {
+            if (currentSample >= maxAntiAliasyncReruns)
+            {
+                SetRenderFinished(true);
+            }
+        }
+        else
+        {
+            SetRenderFinished(true);
+        }
+        
+        frameFinished = val;
+        if(frameFinished == false)
+        {
+            frankensteinX = 0;
+            frankensteinY = 0;
+
+        }
+    }
+    void SetFrankensteinFinished(bool val)
+    {
+        if (!frankensteinRendering)
+        {
+            if (val == true)
+            {
+                Debug.Log("3");
+            }
+            SetFrameFinished(val);
+          
+            frankensteinStepFinished = val;
+            return;
+        }
+        if (frankensteinStepFinished == val)
+        {
+            return;
+        }
+        if(val == true)
+        {
+            if(frankensteinX == frankensteinSteps - 1 && frankensteinY == frankensteinSteps - 1)
+            {
+                frankensteinStepFinished = true;
+                Debug.Log("2");
+                SetFrameFinished(true);
+            }
+            else
+            {           
+                ResetIterPerCycle();
+                reset = true;
+                currIter = 0;
+                frankensteinX++;
+                if (frankensteinX >= frankensteinSteps)
+                {
+                    frankensteinX = 0;
+                    frankensteinY++;
+                }
+
+            }
+        }
+        else
+        {
+            frankensteinStepFinished = false;
+        }
+        
+    }
     public void SetGuiActive(bool val)
     {
         guiOn = val;
@@ -321,8 +471,9 @@ Visual:
     void SaveCurrentRenderTextureAsAPng()
     {
         RenderShader.SetBool("_RenderExact", true);
-        PixelizedShaders.Dispatch(RenderShader, dummyTexture);
-        OtherFunctions.SaveRenderTextureToFile(dummyTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
+        screenshotTexture = PixelizedShaders.InitializePixelizedTexture(screenshotTexture, ReducedWidth(false), ReducedHeight(false),true);
+        PixelizedShaders.Dispatch(RenderShader, screenshotTexture);
+        OtherFunctions.SaveRenderTextureToFile(screenshotTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
     }
 
 
@@ -361,8 +512,8 @@ Visual:
     }
     public override void InitializeBuffers()
     {
-        IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
-        OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+        IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
+        OldIterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         floatDataBuffer = new ComputeBuffer(3, sizeof(float));
         PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
@@ -376,10 +527,11 @@ Visual:
 
         MiddleX.SetDouble(middleX);
         MiddleY.SetDouble(middleY);
-        Scale.SetDouble( length / ReducedWidth());
+        Scale.SetDouble( length / ReducedWidth(false));
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
+        antialiasLookupTable = antialiasLookupTableSharp;
     }
     public override void HandleLastValues()
     {
@@ -421,6 +573,14 @@ Visual:
                 1000000,
                 true,
                 (float f)=> SetMaxIter(Mathf.FloorToInt(f))
+                ),
+             new SliderTemplate(
+                "Tiles",
+                (float)Math.Log(frankensteinSteps)/(float)Math.Log(2.0),//basicly log2
+                0,
+                6,
+                false,
+                (float f)=> SetFrankensteinLevel(Mathf.FloorToInt(f))
                 ),
         },
         new List<DropdownTemplate>() {
@@ -491,6 +651,7 @@ Visual:
     public override void AdditionalCleanup()
     {
         Destroy(dummyTexture);
+        Destroy(screenshotTexture);
     }
 
     public override void HandleKeyInput()
@@ -528,6 +689,7 @@ Visual:
             preUpscalePixLvl = pixelizationLevel;
             pixelizationLevel += 1;
             upscaling = false;
+            currIter = 0;
             OnMoveComand();
         }
         if (Input.GetKeyDown(pixelizationLevelDownKey))
@@ -537,6 +699,7 @@ Visual:
                 lastPixelizationLevel = pixelizationLevel;
                 pixelizationLevel -= 1;
                 upscaling = false;
+                currIter = 0;
                 OnMoveComand();
             }
             
@@ -551,6 +714,7 @@ Visual:
         }
         if (Input.GetKeyDown(resetKey))
         {
+            turboReset = true;
             ResetParams();
             ResetAntialias();
         }
@@ -564,10 +728,10 @@ Visual:
             if (MaxPixelizationLevel() < pixelizationLevel)
             {
 
-                int[] arr = new int[PixelCount() * 3];
+                int[] arr = new int[PixelCount(false) * 3];
                 IterBuffer.GetData(arr);
                 OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+                OldIterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
                 OldIterBuffer.SetData(arr);
                 IterBuffer.Dispose();
 
@@ -575,12 +739,14 @@ Visual:
                 preUpscalePixLvl = pixelizationLevel;
                 pixelizationLevel -= 1;
 
-                IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+                IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
                 FixedPointNumber scaleFixer = new(cpuPrecision);
                 scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
                 Scale *= scaleFixer;
                 upscaling = true;
                 SetRenderFinished(false);
+                SetFrankensteinFinished(false);
+                SetFrameFinished(false);
                 currIter = 0;
                 OnMoveComand();
             }
@@ -595,7 +761,7 @@ Visual:
         if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel != pixelizationLevel)
         {
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(PixelCount(), IterPixelPacket.size);
+            IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
             if (lastPixelizationLevel != pixelizationLevel && !upscaling)
             {
                 switch (precision)
@@ -611,7 +777,7 @@ Visual:
                         break;
 
                 }
-             
+                SetFrameFinished(false);
             }
             else
             {
@@ -632,6 +798,7 @@ Visual:
     }
     public override void HandleMouseInput()
     {
+        
         if(guiOn &&Input.mousePosition.x > Screen.width - guiTemplate.sizes.width)
         {
             return;
@@ -640,8 +807,6 @@ Visual:
         {
             return;
         }
-
-
         Vector2 mousePosPix = Input.mousePosition;
         int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, pixelizationBase, pixelizationLevel);
         int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, pixelizationBase, pixelizationLevel);
@@ -649,11 +814,11 @@ Visual:
        
         FixedPointNumber mousePosRealX = new(cpuPrecision);
 
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth()/2);
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth(false)/2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(cpuPrecision);
 
-        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight()/2);
+        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight(false)/2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(cpuPrecision);
 
@@ -705,9 +870,16 @@ Visual:
     {
         string precisionText = precision == Precision.FLOAT ? "float" : precision == Precision.DOUBLE ? "double" : $"infine with precision {precisionLevel}";
         string timeElapsed = String.Format("{0:0.000}", renderTimeElapsed);
+        float RenderComplete = (float)(frankensteinY * frankensteinSteps + frankensteinX) / (frankensteinSteps * frankensteinSteps);
+        if (doAntialasing)
+        {
+            RenderComplete += currentSample;
+        }
+        float wholeRender = doAntialasing ? maxAntiAliasyncReruns : 1.0f;
+
         generalInfo = @$"
 Rendering {Screen.width} x {Screen.height}
-Calculating {ReducedWidth()} x {ReducedHeight()}
+Calculating {ReducedWidth(false)} x {ReducedHeight(false)}
 Numer System: {precisionText}
 Last Frame rendered in: {timeElapsed}s";
         guiControler.UpdateUI(
@@ -718,7 +890,8 @@ Last Frame rendered in: {timeElapsed}s";
             new List<float>()
             {
                 colorStrength,
-                maxIter
+                maxIter,
+                (float)Math.Log(frankensteinSteps)/(float)Math.Log(2.0)
             },
             new List<int>()
             {
@@ -727,7 +900,7 @@ Last Frame rendered in: {timeElapsed}s";
             new List<float>()
             {
                 renderFinished ? 1 : currIter/(float)maxIter,
-                renderFinished ? 1 : currentSample/(float)maxAntiAliasyncReruns
+                renderFinished ? 1 : RenderComplete/wholeRender
             },
             new List<string>()
             {
@@ -742,24 +915,46 @@ Last Frame rendered in: {timeElapsed}s";
     public override void SetShadersParameters()
     {
 
+        FixedPointNumber MiddleXToSend = new(MiddleX);
+        FixedPointNumber MiddleYToSend = new(MiddleY);
+        if (frankensteinRendering)
+        {
+            int frankensteinOffsetX = ReducedWidth() * frankensteinX - (ReducedWidth() * (frankensteinSteps - 1)) / 2;
+            int frankensteinOffsetY = ReducedHeight() * frankensteinY - (ReducedHeight() * (frankensteinSteps - 1)) / 2;
+            FixedPointNumber temp = new(cpuPrecision);
+            temp.SetDouble(frankensteinOffsetX);
+            temp *= Scale;
+            MiddleXToSend += temp;
+            temp.SetDouble(frankensteinOffsetY);
+            temp *= Scale;
+            MiddleYToSend += temp;
+        }
+        
+
+
         for (int i = 0; i < shaderPre; i++)
         {
-            TestPosiotnArray[i] = MiddleX.digits[i];
-            TestPosiotnArray[shaderPre + i] = MiddleY.digits[i];
+            TestPosiotnArray[i] = MiddleXToSend.digits[i];
+            TestPosiotnArray[shaderPre + i] = MiddleYToSend.digits[i];
             TestPosiotnArray[shaderPre * 2 + i] = Scale.digits[i];
 
         }
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = Scale.ToDouble() * ReducedWidth();
-        doubleDataArray[1] = MiddleX.ToDouble();
-        doubleDataArray[2] = MiddleY.ToDouble();
+        doubleDataArray[0] = Scale.ToDouble();
+        doubleDataArray[1] = MiddleXToSend.ToDouble();
+        doubleDataArray[2] = MiddleYToSend.ToDouble();
         floatDataArray[0] = (float)doubleDataArray[0];
         floatDataArray[1] = (float)doubleDataArray[1];
         floatDataArray[2] = (float)doubleDataArray[2];
         floatDataBuffer.SetData(floatDataArray);
         doubleDataBuffer.SetData(doubleDataArray);
         ColorBuffer.SetData(MyColoringSystem.colorPalettes[currColorPalette].colors);
+       
+        if(shiftX != 0|| shiftY !=0)
+        {
+            reset = false;
+        }
         switch (precision)
         {
             case Precision.INFINTE:
@@ -770,7 +965,7 @@ Last Frame rendered in: {timeElapsed}s";
                 InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
                 InfiniteShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
                 InfiniteShader.SetInt("_MaxIter", maxIter);
-                InfiniteShader.SetBool("_reset", reset);
+                InfiniteShader.SetBool("_reset", reset || turboReset);
                 InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
                 InfiniteShader.SetInt("_ShiftX", shiftX);
                 InfiniteShader.SetInt("_ShiftY", shiftY);
@@ -778,32 +973,41 @@ Last Frame rendered in: {timeElapsed}s";
                 InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
                 InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
                 InfiniteShader.SetInt("_BailoutRadius", bailoutRadius);
+                InfiniteShader.SetInt("_RenderWidth", ReducedWidth(false));
+                InfiniteShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+                InfiniteShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 break;
             case Precision.DOUBLE:
                 DoubleShader.SetBuffer(0, "_DoubleDataBuffer", doubleDataBuffer);
                 DoubleShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
                 DoubleShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
                 DoubleShader.SetInt("_MaxIter", maxIter);
-                DoubleShader.SetBool("_reset", reset);
+                DoubleShader.SetBool("_reset", reset || turboReset);
                 DoubleShader.SetInt("_ShiftX", shiftX);
                 DoubleShader.SetInt("_ShiftY", shiftY);
                 DoubleShader.SetInt("_Register", register);
                 DoubleShader.SetInt("_IterPerCycle", IterPerCycle);
                 DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
                 DoubleShader.SetInt("_BailoutRadius", bailoutRadius);
+                DoubleShader.SetInt("_RenderWidth", ReducedWidth(false));
+                DoubleShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+                DoubleShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 break;
             case Precision.FLOAT:
                 FloatShader.SetBuffer(0, "_FloatDataBuffer", floatDataBuffer);
                 FloatShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
                 FloatShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
                 FloatShader.SetInt("_MaxIter", maxIter);
-                FloatShader.SetBool("_reset", reset);
+                FloatShader.SetBool("_reset", reset || turboReset);
                 FloatShader.SetInt("_ShiftX", shiftX);
                 FloatShader.SetInt("_ShiftY", shiftY);
                 FloatShader.SetInt("_Register", register);
                 FloatShader.SetInt("_IterPerCycle", IterPerCycle);
                 FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
                 FloatShader.SetInt("_BailoutRadius", bailoutRadius);
+                FloatShader.SetInt("_RenderWidth", ReducedWidth(false));
+                FloatShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+                FloatShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 break;
         }
             
@@ -814,6 +1018,7 @@ Last Frame rendered in: {timeElapsed}s";
         RenderShader.SetFloat("_ColorStrength", colorStrength);
         RenderShader.SetBool("_Smooth", smoothGradient);
         RenderShader.SetBool("_Upscaling", upscaling);
+        RenderShader.SetBool("_Reset", turboReset);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[currColorPalette].gradientType);
         RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(pixelizationBase,Math.Abs(pixelizationLevel)));
         RenderShader.SetBool("_Superresolution", pixelizationLevel < 0);
@@ -822,6 +1027,7 @@ Last Frame rendered in: {timeElapsed}s";
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
         reset = false;
+        turboReset = false;
         shiftX = 0;
         shiftY = 0;
 
@@ -833,14 +1039,20 @@ Last Frame rendered in: {timeElapsed}s";
         currentSample = 0;
         currIter = 0;
         upscaling = false;
-        frameFinished = false;
+        SetFrameFinished(false);
+        SetFrankensteinFinished(false);
         SetRenderFinished(false);
         ResetIterPerCycle();
+        if (frankensteinRendering)
+        {
+            frankensteinX = 0;
+            frankensteinY = 0;
+        }
     }
 
     public override void AutomaticParametersChange()
     {
-        if (!frameFinished && !renderFinished)
+        if (!frankensteinStepFinished && !renderFinished)
         {
             if (1 / Time.deltaTime > maxTagretFramerate)
             {
@@ -916,33 +1128,15 @@ Last Frame rendered in: {timeElapsed}s";
 
     public override void HandleAntialias()
     {
-
-        if (!renderFinished)
+        if (!frankensteinStepFinished)
         {
             currIter += IterPerCycle;
         }
-        
 
-        if (doAntialasing)
+        if (currIter > maxIter)
         {
-            if (currentSample < maxAntiAliasyncReruns)
-            {
-                if (currIter > maxIter)
-                {
-
-                    frameFinished = true;
-                    currIter = 0;
-                }
-
-            }
-            else
-            {
-                SetRenderFinished(true);
-            }
-        }
-        else if (currIter > maxIter)
-        {
-            SetRenderFinished(true);
+            Debug.Log("1");
+            SetFrankensteinFinished(true);
         }
 
     }
@@ -958,11 +1152,10 @@ Last Frame rendered in: {timeElapsed}s";
     }
     public override void InitializeOtherTextures()
     {
-        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, pixelizationBase, pixelizationLevel, ShouldRegerateTexture());
+        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, ReducedWidth(), ReducedHeight());
     }
     public override void DispatchShaders()
     {
-      
         switch (precision)
         {
             case Precision.INFINTE:
@@ -976,15 +1169,18 @@ Last Frame rendered in: {timeElapsed}s";
                 break;
         }
         PixelizedShaders.Dispatch(RenderShader, targetTexture);
-
     }
 
     public override void BlitTexture(RenderTexture destination)
     {
-        Antialiasing.BlitWitthAntialiasing(currentSample, frameFinished, destination, targetTexture, addMaterial,
+        
+        Antialiasing.BlitWitthAntialiasing(currentSample, frameFinished, renderFinished,
+            Input.GetMouseButton(0) && Input.mousePosition.x < Screen.width - guiTemplate.sizes.width
+            , destination, targetTexture, addMaterial,
             () =>
             {
-                frameFinished = false;
+                SetFrameFinished(false);
+                SetFrankensteinFinished(false);
                 currentSample++;
                 reset = true;
             });

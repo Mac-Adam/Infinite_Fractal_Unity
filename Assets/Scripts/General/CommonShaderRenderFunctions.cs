@@ -57,18 +57,17 @@ namespace CommonShaderRenderFunctions
     class PixelizedShaders
     {
         public const uint MAXBYTESPERBUFFER = 2147483648;
-        public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int pixelizationBase, int pixelizationLevel, bool additionalCondition = false)
+        public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int reducedWidth, int reducedHeight, bool smallSize = false)
         {
-            int reducedWidth = OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
-            int reducedHeight = OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
-            if (texture == null || texture.width != reducedWidth || texture.height != reducedHeight || additionalCondition)
+            if (texture == null || texture.width != reducedWidth || texture.height != reducedHeight)
             {
                 
                 if (texture != null)
                     texture.Release();
 
                 texture = new RenderTexture(reducedWidth, reducedHeight, 0,
-                    RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
+                   smallSize ? RenderTextureFormat.ARGB32 : RenderTextureFormat.ARGBFloat
+                   , RenderTextureReadWrite.Linear)
                 {
                     enableRandomWrite = true
                 };
@@ -177,17 +176,20 @@ namespace CommonShaderRenderFunctions
     }
     class Antialiasing
     {
-        public static void BlitWitthAntialiasing(uint currentSample,bool frameFinished,RenderTexture destination,RenderTexture renderedTexture,Material addMaterial,Action NewFrameCallback)
+        public static void BlitWitthAntialiasing(uint currentSample,bool frameFinished, bool renderFinished, bool liveOverride,RenderTexture destination,RenderTexture renderedTexture,Material addMaterial,Action NewFrameCallback)
         {
-            if ((currentSample == 0 && !frameFinished) || Input.GetMouseButton(0))
+            
+            if ((currentSample == 0 && !frameFinished) || liveOverride)
             {
                 Graphics.Blit(renderedTexture, destination);
+                Debug.Log("live");
 
-
+            }else if (renderFinished)
+            {
+                return;
             }
             else if (frameFinished)
             {
-
 
                 addMaterial.SetFloat("_Sample", currentSample);
                 Graphics.Blit(renderedTexture, destination, addMaterial);
