@@ -176,13 +176,13 @@ namespace CommonShaderRenderFunctions
     }
     class Antialiasing
     {
-        public static void BlitWitthAntialiasing(uint currentSample,bool frameFinished, bool renderFinished,RenderTexture destination,RenderTexture renderedTexture,Material addMaterial,Action NewFrameCallback)
+        public static void BlitWitthAntialiasing(uint currentSample,bool frameFinished, bool renderFinished, bool liveOverride,RenderTexture destination,RenderTexture renderedTexture,Material addMaterial,Action NewFrameCallback)
         {
             
-            if ((currentSample == 0 && !frameFinished) || Input.GetMouseButton(0))
+            if ((currentSample == 0 && !frameFinished) || liveOverride)
             {
                 Graphics.Blit(renderedTexture, destination);
-
+                Debug.Log("live");
 
             }else if (renderFinished)
             {
@@ -190,7 +190,6 @@ namespace CommonShaderRenderFunctions
             }
             else if (frameFinished)
             {
-
 
                 addMaterial.SetFloat("_Sample", currentSample);
                 Graphics.Blit(renderedTexture, destination, addMaterial);

@@ -81,8 +81,8 @@ Visual:
 
     //Frankenstein rendering (this probably has some fancy technical term)
     //Rendering frame by wornikng only on a small portion of it a time in order to decreese memory usage
-    bool frankensteinRendering = true;
-    int frankensteinSteps = 2; 
+    bool frankensteinRendering = false;
+    int frankensteinSteps = 1; 
     int frankensteinX = 0;
     int frankensteinY = 0;
     bool frankensteinStepFinished = false;
@@ -95,21 +95,34 @@ Visual:
 
 
     //Anti-Alias
-    uint currentSample = 0;
+    private uint currentSample = 0;
     bool frameFinished = false;
     int currIter = 0;
     bool doAntialasing = false;
     int maxAntiAliasyncReruns = 9;
-    private Vector2[] antialiasLookupTable = {
+    private Vector2[] antialiasLookupTable;
+    private Vector2[] antialiasLookupTableSmooth = {
         new Vector2(0,0),
-        new Vector2((float)-2/3,(float)-2/3),
-        new Vector2((float)-2/3,0),
-        new Vector2((float)-2/3,(float)2/3),
-        new Vector2(0,(float)2/3),
-        new Vector2((float)2/3,(float)2/3),
-        new Vector2((float)2/3,0),
-        new Vector2((float)2/3,(float)-2/3),
-        new Vector2(0,(float)-2/3),
+        new Vector2(-2.0f/3,-2.0f/3),
+        new Vector2(-2.0f/3,0),
+        new Vector2(-2.0f/3,2.0f/3),
+        new Vector2(0,2.0f/3),
+        new Vector2(2.0f/3,2.0f/3),
+        new Vector2(2.0f/3,0),
+        new Vector2(2.0f/3,-2.0f/3),
+        new Vector2(0,-2.0f/3),
+
+    }; 
+    private Vector2[] antialiasLookupTableSharp = {
+        new Vector2(0,0),
+        new Vector2(-1.0f/3,-1.0f/3),
+        new Vector2(-1.0f/3,0),
+        new Vector2(-1.0f/3,1.0f/3),
+        new Vector2(0,1.0f/3),
+        new Vector2(1.0f/3,1.0f/3),
+        new Vector2(1.0f/3,0),
+        new Vector2(1.0f/3,-1.0f/3),
+        new Vector2(0,-1.0f/3),
 
     };
 
@@ -340,6 +353,20 @@ Visual:
         ResetParams();
         ResetAntialias();
     }
+
+    public void SetFrankensteinLevel(int level){
+        int steps = OtherFunctions.IntPow(2, level);
+        if(steps == frankensteinSteps)
+        {
+            return;
+        }
+        frankensteinRendering = steps != 1;
+        frankensteinSteps = steps;
+        frankensteinX = 0;
+        frankensteinY = 0;
+        ResetParams();
+        turboReset = true;
+    }
     void SetRenderFinished(bool val)
     {
         if (val == false) {
@@ -390,7 +417,12 @@ Visual:
     {
         if (!frankensteinRendering)
         {
+            if (val == true)
+            {
+                Debug.Log("3");
+            }
             SetFrameFinished(val);
+          
             frankensteinStepFinished = val;
             return;
         }
@@ -403,6 +435,7 @@ Visual:
             if(frankensteinX == frankensteinSteps - 1 && frankensteinY == frankensteinSteps - 1)
             {
                 frankensteinStepFinished = true;
+                Debug.Log("2");
                 SetFrameFinished(true);
             }
             else
@@ -498,6 +531,7 @@ Visual:
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
+        antialiasLookupTable = antialiasLookupTableSharp;
     }
     public override void HandleLastValues()
     {
@@ -539,6 +573,14 @@ Visual:
                 1000000,
                 true,
                 (float f)=> SetMaxIter(Mathf.FloorToInt(f))
+                ),
+             new SliderTemplate(
+                "Tiles",
+                (float)Math.Log(frankensteinSteps)/(float)Math.Log(2.0),//basicly log2
+                0,
+                6,
+                false,
+                (float f)=> SetFrankensteinLevel(Mathf.FloorToInt(f))
                 ),
         },
         new List<DropdownTemplate>() {
@@ -756,6 +798,7 @@ Visual:
     }
     public override void HandleMouseInput()
     {
+        
         if(guiOn &&Input.mousePosition.x > Screen.width - guiTemplate.sizes.width)
         {
             return;
@@ -764,8 +807,6 @@ Visual:
         {
             return;
         }
-
-
         Vector2 mousePosPix = Input.mousePosition;
         int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, pixelizationBase, pixelizationLevel);
         int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, pixelizationBase, pixelizationLevel);
@@ -829,6 +870,13 @@ Visual:
     {
         string precisionText = precision == Precision.FLOAT ? "float" : precision == Precision.DOUBLE ? "double" : $"infine with precision {precisionLevel}";
         string timeElapsed = String.Format("{0:0.000}", renderTimeElapsed);
+        float RenderComplete = (float)(frankensteinY * frankensteinSteps + frankensteinX) / (frankensteinSteps * frankensteinSteps);
+        if (doAntialasing)
+        {
+            RenderComplete += currentSample;
+        }
+        float wholeRender = doAntialasing ? maxAntiAliasyncReruns : 1.0f;
+
         generalInfo = @$"
 Rendering {Screen.width} x {Screen.height}
 Calculating {ReducedWidth(false)} x {ReducedHeight(false)}
@@ -842,7 +890,8 @@ Last Frame rendered in: {timeElapsed}s";
             new List<float>()
             {
                 colorStrength,
-                maxIter
+                maxIter,
+                (float)Math.Log(frankensteinSteps)/(float)Math.Log(2.0)
             },
             new List<int>()
             {
@@ -851,7 +900,7 @@ Last Frame rendered in: {timeElapsed}s";
             new List<float>()
             {
                 renderFinished ? 1 : currIter/(float)maxIter,
-                renderFinished ? 1 : (currentSample + (float)(frankensteinY*frankensteinSteps+frankensteinX)/(frankensteinSteps*frankensteinSteps))/(float)maxAntiAliasyncReruns
+                renderFinished ? 1 : RenderComplete/wholeRender
             },
             new List<string>()
             {
@@ -1079,7 +1128,6 @@ Last Frame rendered in: {timeElapsed}s";
 
     public override void HandleAntialias()
     {
-        Debug.Log(frankensteinStepFinished);
         if (!frankensteinStepFinished)
         {
             currIter += IterPerCycle;
@@ -1087,6 +1135,7 @@ Last Frame rendered in: {timeElapsed}s";
 
         if (currIter > maxIter)
         {
+            Debug.Log("1");
             SetFrankensteinFinished(true);
         }
 
@@ -1125,7 +1174,9 @@ Last Frame rendered in: {timeElapsed}s";
     public override void BlitTexture(RenderTexture destination)
     {
         
-        Antialiasing.BlitWitthAntialiasing(currentSample, frameFinished, renderFinished, destination, targetTexture, addMaterial,
+        Antialiasing.BlitWitthAntialiasing(currentSample, frameFinished, renderFinished,
+            Input.GetMouseButton(0) && Input.mousePosition.x < Screen.width - guiTemplate.sizes.width
+            , destination, targetTexture, addMaterial,
             () =>
             {
                 SetFrameFinished(false);
