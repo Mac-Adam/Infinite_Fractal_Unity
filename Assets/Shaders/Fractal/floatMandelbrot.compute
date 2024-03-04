@@ -41,8 +41,6 @@ int _ShiftY;
 
 uint _Register;
 
-bool _reset;
-
 
 
 float getOffset(float2 squares) {
@@ -148,18 +146,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
 	}
-
-	if (_reset) {
-		_MultiFrameData[pixelId].iter = 0;
-		_MultiFrameData[pixelId].CurrentZX = 0;
-		_MultiFrameData[pixelId].CurrentZY = 0;
-		_MultiFrameData[pixelId].finished = false;
-		_MultiFrameData[pixelId].offset = 0;
-
-
-	}
-
-
 
 	//check if further computation is nesesary
 	if (!_MultiFrameData[pixelId].finished) {

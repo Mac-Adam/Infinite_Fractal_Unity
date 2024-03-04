@@ -318,6 +318,7 @@ MonoBehaviour:
   FloatShader: {fileID: 7200000, guid: 3f2e0da2785481c4cbf4f7ad9fc41ec5, type: 3}
   DoubleShader: {fileID: 7200000, guid: 678fa519bb5d3234c9b765bd06a8b293, type: 3}
   RenderShader: {fileID: 7200000, guid: d622378c12d34354090ba291bd17275b, type: 3}
+  ResetShader: {fileID: 7200000, guid: 97399c10c02de9744a9d6342972f84fd, type: 3}
   AddShader: {fileID: 4800000, guid: 33e4928eb071c54458beaf83662e765d, type: 3}
   guiControler: {fileID: 1652624213}
 --- !u!1001 &1652624212

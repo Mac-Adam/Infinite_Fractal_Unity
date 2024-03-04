@@ -2,6 +2,12 @@
 #pragma kernel CSMain
 #include "Assets/Shaders/General/colorSpaces.cginc"
 
+/*This shader doesn't care how the data was created, it simply renders the image on the screen based on the parameters
+	TODO: when I figure it out once again write a brief waht everything does
+
+
+*/
+
 RWTexture2D<float4> Result;
 uint _ReduceAmount;
 bool _Superresolution;

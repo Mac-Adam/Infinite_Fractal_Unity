@@ -17,6 +17,7 @@ public class MandelbrotContoroler : ShadeContoler
     public ComputeShader FloatShader;
     public ComputeShader DoubleShader;
     public ComputeShader RenderShader;
+    public ComputeShader ResetShader;
     public Shader AddShader;
 
     RenderTexture dummyTexture;
@@ -955,9 +956,13 @@ Last Frame rendered in: {timeElapsed}s";
         {
             reset = false;
         }
+        Shader.DisableKeyword("FLOAT");
+        Shader.DisableKeyword("DOUBLE");
+        Shader.DisableKeyword("INFINITE");
         switch (precision)
         {
             case Precision.INFINTE:
+                Shader.EnableKeyword("INFINITE");
                 GPUCode.ResetAllKeywords();
                 Shader.EnableKeyword(GPUCode.precisions[precisionLevel].name);
 
@@ -976,8 +981,12 @@ Last Frame rendered in: {timeElapsed}s";
                 InfiniteShader.SetInt("_RenderWidth", ReducedWidth(false));
                 InfiniteShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
                 InfiniteShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+                ResetShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
+                ResetShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
+                ResetShader.SetInt("_Register", register);
                 break;
             case Precision.DOUBLE:
+                Shader.EnableKeyword("DOUBLE");
                 DoubleShader.SetBuffer(0, "_DoubleDataBuffer", doubleDataBuffer);
                 DoubleShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
                 DoubleShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
@@ -992,13 +1001,15 @@ Last Frame rendered in: {timeElapsed}s";
                 DoubleShader.SetInt("_RenderWidth", ReducedWidth(false));
                 DoubleShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
                 DoubleShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+                ResetShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
+                ResetShader.SetInt("_Register", register);
                 break;
             case Precision.FLOAT:
+                Shader.EnableKeyword("FLOAT");
                 FloatShader.SetBuffer(0, "_FloatDataBuffer", floatDataBuffer);
                 FloatShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
                 FloatShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
                 FloatShader.SetInt("_MaxIter", maxIter);
-                FloatShader.SetBool("_reset", reset || turboReset);
                 FloatShader.SetInt("_ShiftX", shiftX);
                 FloatShader.SetInt("_ShiftY", shiftY);
                 FloatShader.SetInt("_Register", register);
@@ -1008,6 +1019,8 @@ Last Frame rendered in: {timeElapsed}s";
                 FloatShader.SetInt("_RenderWidth", ReducedWidth(false));
                 FloatShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
                 FloatShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+                ResetShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
+                ResetShader.SetInt("_Register", register);
                 break;
         }
             
@@ -1026,8 +1039,6 @@ Last Frame rendered in: {timeElapsed}s";
         RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, Math.Abs(preUpscalePixLvl)));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
-        reset = false;
-        turboReset = false;
         shiftX = 0;
         shiftY = 0;
 
@@ -1156,19 +1167,27 @@ Last Frame rendered in: {timeElapsed}s";
     }
     public override void DispatchShaders()
     {
+        if (reset || turboReset)
+        {
+            PixelizedShaders.Dispatch(ResetShader, dummyTexture);
+        }
         switch (precision)
         {
             case Precision.INFINTE:
                 PixelizedShaders.Dispatch(InfiniteShader, dummyTexture);
                 break;
             case Precision.DOUBLE:
+               
                 PixelizedShaders.Dispatch(DoubleShader, dummyTexture);
                 break;
             case Precision.FLOAT:
+              
                 PixelizedShaders.Dispatch(FloatShader, dummyTexture);
                 break;
         }
         PixelizedShaders.Dispatch(RenderShader, targetTexture);
+        reset = false;
+        turboReset = false;
     }
 
     public override void BlitTexture(RenderTexture destination)

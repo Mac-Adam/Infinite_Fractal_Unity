@@ -1,0 +1,58 @@
+#pragma kernel CSMain
+
+
+#pragma multi_compile FLOAT DOUBLE INFINITE
+
+#if FLOAT
+#define TYPE float
+#elif DOUBLE
+#define TYPE double
+#elif INFINITE
+#define INF
+#endif
+
+//This shader resets a buffer
+
+
+int _Precision;
+static const int PixelSize = 2 * _Precision + 3;
+
+RWTexture2D<float4> Result;
+
+#ifdef INF
+RWStructuredBuffer<int> _MultiFrameData;
+#else
+struct Pixel {
+	TYPE CurrentZX;
+	TYPE CurrentZY;
+	uint iter;
+	bool finished;
+	TYPE offset;
+};
+RWStructuredBuffer<Pixel> _MultiFrameData;
+#endif
+uint _Register;
+[numthreads(8, 8, 1)]
+
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+
+	uint width, height;
+	Result.GetDimensions(width, height);
+
+	uint pixelId = id.x + id.y * width + width * height * _Register;
+#ifdef INF
+	pixelId *= PixelSize;
+	for (int k = 0; k < PixelSize; k++) {
+		_MultiFrameData[pixelId + k] = 0;
+	}
+#else
+	_MultiFrameData[pixelId].iter = 0;
+	_MultiFrameData[pixelId].CurrentZX = 0;
+	_MultiFrameData[pixelId].CurrentZY = 0;
+	_MultiFrameData[pixelId].finished = false;
+	_MultiFrameData[pixelId].offset = 0;
+#endif
+	
+	
+}
