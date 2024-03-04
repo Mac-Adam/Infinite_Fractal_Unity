@@ -15,7 +15,6 @@ public class MandelbrotContoroler : ShadeContoler
     //Shaders
     public ComputeShader InfiniteShader;
     public ComputeShader FloatShader;
-    public ComputeShader DoubleShader;
     public ComputeShader RenderShader;
     public ComputeShader ResetShader;
     public ComputeShader ShiftShader;
@@ -25,10 +24,12 @@ public class MandelbrotContoroler : ShadeContoler
     RenderTexture screenshotTexture;
     Material addMaterial;
 
+
+    //the reason for the buffers of size 3 is that it is simpler this way to set it with the same code for both float and double
     //DoubleShader
     double[] doubleDataArray = new double[3];
     ComputeBuffer doubleDataBuffer;
-    ComputeBuffer MultiFrameRenderBuffer;
+    ComputeBuffer doubleMultiFrameRenderBuffer;
 
     //FloatShader
     float[] floatDataArray = new float[3];
@@ -481,9 +482,9 @@ Visual:
 
     void RegenereateFractalComputeBuffers()
     {
-        if (MultiFrameRenderBuffer != null)
+        if (doubleMultiFrameRenderBuffer != null)
         {
-            MultiFrameRenderBuffer.Dispose();
+            doubleMultiFrameRenderBuffer.Dispose();
         }
         if (floatMultiFrameRenderBuffer != null)
         {
@@ -502,7 +503,7 @@ Visual:
                 FpMultiframeBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(int) * shaderPixelSize);
                 break;
             case Precision.DOUBLE:
-                MultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, DoublePixelPacket.size);
+                doubleMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, DoublePixelPacket.size);
                 break;
             case Precision.FLOAT:
                 floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, FloatPixelPacket.size);
@@ -636,9 +637,9 @@ Visual:
         ColorBuffer.Dispose();
        
         PossionBuffer.Dispose();
-        if (MultiFrameRenderBuffer != null)
+        if (doubleMultiFrameRenderBuffer != null)
         {
-            MultiFrameRenderBuffer.Dispose();
+            doubleMultiFrameRenderBuffer.Dispose();
         }
         if (floatMultiFrameRenderBuffer != null)
         {
@@ -772,7 +773,7 @@ Visual:
                         PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
                         break;
                     case Precision.DOUBLE:
-                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(MultiFrameRenderBuffer, DoublePixelPacket.size, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { MultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(doubleMultiFrameRenderBuffer, DoublePixelPacket.size, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { doubleMultiFrameRenderBuffer = buffer; });
                         break;
                     case Precision.FLOAT:
                         PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, FloatPixelPacket.size, lastPixelizationLevel < pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
@@ -960,71 +961,70 @@ Last Frame rendered in: {timeElapsed}s";
         Shader.DisableKeyword("FLOAT");
         Shader.DisableKeyword("DOUBLE");
         Shader.DisableKeyword("INFINITE");
-        switch (precision)
+      
+        if(precision == Precision.INFINTE)
         {
-            case Precision.INFINTE:
-                Shader.EnableKeyword("INFINITE");
-                GPUCode.ResetAllKeywords();
-                Shader.EnableKeyword(GPUCode.precisions[precisionLevel].name);
+            Shader.EnableKeyword("INFINITE");
+            GPUCode.ResetAllKeywords();
+            Shader.EnableKeyword(GPUCode.precisions[precisionLevel].name);
 
-                InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
-                InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
-                InfiniteShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
-                InfiniteShader.SetInt("_MaxIter", maxIter);
-                InfiniteShader.SetBool("_reset", reset || turboReset);
-                InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
-                InfiniteShader.SetInt("_ShiftX", shiftX);
-                InfiniteShader.SetInt("_ShiftY", shiftY);
-                InfiniteShader.SetInt("_Register", register);
-                InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
-                InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
-                InfiniteShader.SetInt("_BailoutRadius", bailoutRadius);
-                InfiniteShader.SetInt("_RenderWidth", ReducedWidth(false));
-                InfiniteShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
-                InfiniteShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
-                ResetShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
-                ResetShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
-                ShiftShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
-                ShiftShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
-                break;
-            case Precision.DOUBLE:
+            InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
+            InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
+            InfiniteShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
+            InfiniteShader.SetInt("_MaxIter", maxIter);
+            InfiniteShader.SetBool("_reset", reset || turboReset);
+            InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
+            InfiniteShader.SetInt("_ShiftX", shiftX);
+            InfiniteShader.SetInt("_ShiftY", shiftY);
+            InfiniteShader.SetInt("_Register", register);
+            InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
+            InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+            InfiniteShader.SetInt("_BailoutRadius", bailoutRadius);
+            InfiniteShader.SetInt("_RenderWidth", ReducedWidth(false));
+            InfiniteShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+            InfiniteShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+
+            ResetShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
+            ResetShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
+
+            ShiftShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
+            ShiftShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
+        }
+        else if (precision == Precision.DOUBLE || precision == Precision.FLOAT)
+        {
+            if (precision == Precision.DOUBLE)
+            {
                 Shader.EnableKeyword("DOUBLE");
-                DoubleShader.SetBuffer(0, "_DoubleDataBuffer", doubleDataBuffer);
-                DoubleShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
-                DoubleShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
-                DoubleShader.SetInt("_MaxIter", maxIter);
-                DoubleShader.SetBool("_reset", reset || turboReset);
-                DoubleShader.SetInt("_ShiftX", shiftX);
-                DoubleShader.SetInt("_ShiftY", shiftY);
-                DoubleShader.SetInt("_Register", register);
-                DoubleShader.SetInt("_IterPerCycle", IterPerCycle);
-                DoubleShader.SetBuffer(0, "_IterBuffer", IterBuffer);
-                DoubleShader.SetInt("_BailoutRadius", bailoutRadius);
-                DoubleShader.SetInt("_RenderWidth", ReducedWidth(false));
-                DoubleShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
-                DoubleShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
-                ResetShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
-                ShiftShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
+                FloatShader.SetBuffer(0, "_DataBuffer", doubleDataBuffer);
+                FloatShader.SetBuffer(0, "_MultiFrameData", doubleMultiFrameRenderBuffer);
 
-                break;
-            case Precision.FLOAT:
+
+                ResetShader.SetBuffer(0, "_MultiFrameData", doubleMultiFrameRenderBuffer);
+                ShiftShader.SetBuffer(0, "_MultiFrameData", doubleMultiFrameRenderBuffer);
+
+            }
+            else
+            {
                 Shader.EnableKeyword("FLOAT");
-                FloatShader.SetBuffer(0, "_FloatDataBuffer", floatDataBuffer);
+                FloatShader.SetBuffer(0, "_DataBuffer", floatDataBuffer);
                 FloatShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
-                FloatShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
-                FloatShader.SetInt("_MaxIter", maxIter);
-                FloatShader.SetInt("_ShiftX", shiftX);
-                FloatShader.SetInt("_ShiftY", shiftY);
-                FloatShader.SetInt("_Register", register);
-                FloatShader.SetInt("_IterPerCycle", IterPerCycle);
-                FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
-                FloatShader.SetInt("_BailoutRadius", bailoutRadius);
-                FloatShader.SetInt("_RenderWidth", ReducedWidth(false));
-                FloatShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
-                FloatShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+
                 ResetShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
                 ShiftShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
-                break;
+            }
+
+            FloatShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
+            FloatShader.SetInt("_MaxIter", maxIter);
+            FloatShader.SetInt("_ShiftX", shiftX);
+            FloatShader.SetInt("_ShiftY", shiftY);
+            FloatShader.SetInt("_Register", register);
+            FloatShader.SetInt("_IterPerCycle", IterPerCycle);
+            FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
+            FloatShader.SetInt("_BailoutRadius", bailoutRadius);
+            FloatShader.SetInt("_RenderWidth", ReducedWidth(false));
+            FloatShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
+            FloatShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+       
         }
 
 
@@ -1189,9 +1189,6 @@ Last Frame rendered in: {timeElapsed}s";
                 PixelizedShaders.Dispatch(InfiniteShader, dummyTexture);
                 break;
             case Precision.DOUBLE:
-               
-                PixelizedShaders.Dispatch(DoubleShader, dummyTexture);
-                break;
             case Precision.FLOAT:
               
                 PixelizedShaders.Dispatch(FloatShader, dummyTexture);

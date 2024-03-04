@@ -1,6 +1,18 @@
 #pragma kernel CSMain
 
 
+#pragma multi_compile FLOAT DOUBLE
+
+#if FLOAT
+#define TYPE float
+#define TYPE2 float2
+#elif DOUBLE
+#define TYPE double
+#define TYPE2 double2
+#endif
+
+
+
 RWTexture2D<float4> Result;
 
 
@@ -8,12 +20,12 @@ float2 _PixelOffset;
 
 uint _MaxIter;
 uint _IterPerCycle = 10;
-float _Scale;
-float _OffsetX;
-float _OffsetY;
+TYPE _Scale;
+TYPE _OffsetX;
+TYPE _OffsetY;
 int _BailoutRadius;
-float _BailoutRadiusSQ;
-StructuredBuffer<float> _FloatDataBuffer;
+TYPE _BailoutRadiusSQ;
+StructuredBuffer<TYPE> _DataBuffer;
 uint _RenderWidth;
 int _FrankensteinOffsetX;
 int _FrankensteinOffsetY;
@@ -26,8 +38,8 @@ struct res {
 RWStructuredBuffer<res> _IterBuffer;
 
 struct Pixel {
-	float CurrentZX;
-	float CurrentZY;
+	TYPE CurrentZX;
+	TYPE CurrentZY;
 	uint iter;
 	bool finished;
 	float offset;
@@ -49,11 +61,11 @@ float getOffset(float2 squares) {
 	res = clamp(res, 0.0, 1.0);
 	return res;
 }
-uint getIteration(float2 possition, float2 InitialZ, int idx) {
-	float2 c = possition;
+uint getIteration(TYPE2 possition, TYPE2 InitialZ, int idx) {
+	TYPE2 c = possition;
 	uint iter = 0;
-	float2 z = InitialZ;
-	float2 squares = float2(z.x * z.x, z.y * z.y);
+	TYPE2 z = InitialZ;
+	TYPE2 squares = TYPE2(z.x * z.x, z.y * z.y);
 	while (squares.x + squares.y < _BailoutRadiusSQ) {
 		if (iter >= (_IterPerCycle)) {
 
@@ -85,12 +97,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	uint width, height;
 	Result.GetDimensions(width, height);
-	_BailoutRadiusSQ = (float)_BailoutRadius * _BailoutRadius;
+	_BailoutRadiusSQ = (TYPE)_BailoutRadius * _BailoutRadius;
 
-	//Get float data form buffer
-	_Scale = _FloatDataBuffer[0];
-	_OffsetX = _FloatDataBuffer[1];
-	_OffsetY = _FloatDataBuffer[2];
+	//Get data form buffer
+	_Scale = _DataBuffer[0];
+	_OffsetX = _DataBuffer[1];
+	_OffsetY = _DataBuffer[2];
 
 
 	// Get the dimensions of the RenderTexture
@@ -103,16 +115,16 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	//check if further computation is nesesary
 	if (!_MultiFrameData[pixelId].finished) {
 		// Transform pixel to correct range
-		float2 scale = _Scale;
-		float2 uv = ((float2)id.xy + _PixelOffset - float2(width / 2, height / 2)) * scale;
+		TYPE2 scale = _Scale;
+		TYPE2 uv = ((TYPE2)id.xy + _PixelOffset - TYPE2(width / 2, height / 2)) * scale;
 		// add offset
-		uv += float2(_OffsetX, _OffsetY);
+		uv += TYPE2(_OffsetX, _OffsetY);
 
 		if (_MultiFrameData[pixelId].iter == 0) {
-			currentIter = getIteration(uv, float2(0.0, 0.0), pixelId);
+			currentIter = getIteration(uv, TYPE2(0.0, 0.0), pixelId);
 		}
 		else {
-			currentIter = getIteration(uv, float2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
+			currentIter = getIteration(uv, TYPE2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
 		}
 
 

@@ -26,7 +26,7 @@ struct Pixel {
 	TYPE CurrentZY;
 	uint iter;
 	bool finished;
-	TYPE offset;
+	float offset;
 };
 RWStructuredBuffer<Pixel> _MultiFrameData;
 #endif
