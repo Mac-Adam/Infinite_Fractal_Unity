@@ -18,6 +18,7 @@ public class MandelbrotContoroler : ShadeContoler
     public ComputeShader DoubleShader;
     public ComputeShader RenderShader;
     public ComputeShader ResetShader;
+    public ComputeShader ShiftShader;
     public Shader AddShader;
 
     RenderTexture dummyTexture;
@@ -983,7 +984,8 @@ Last Frame rendered in: {timeElapsed}s";
                 InfiniteShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 ResetShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
                 ResetShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
-                ResetShader.SetInt("_Register", register);
+                ShiftShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
+                ShiftShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
                 break;
             case Precision.DOUBLE:
                 Shader.EnableKeyword("DOUBLE");
@@ -1002,7 +1004,8 @@ Last Frame rendered in: {timeElapsed}s";
                 DoubleShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
                 DoubleShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 ResetShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
-                ResetShader.SetInt("_Register", register);
+                ShiftShader.SetBuffer(0, "_MultiFrameData", MultiFrameRenderBuffer);
+
                 break;
             case Precision.FLOAT:
                 Shader.EnableKeyword("FLOAT");
@@ -1020,11 +1023,18 @@ Last Frame rendered in: {timeElapsed}s";
                 FloatShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
                 FloatShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
                 ResetShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
-                ResetShader.SetInt("_Register", register);
+                ShiftShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
                 break;
         }
-            
-       
+
+
+        ShiftShader.SetInt("_Register", register);
+        ShiftShader.SetInt("_ShiftX", shiftX);
+        ShiftShader.SetInt("_ShiftY", shiftY);
+
+        ResetShader.SetInt("_Register", register);
+
+
         RenderShader.SetBuffer(0, "_IterBuffer", IterBuffer);
         RenderShader.SetBuffer(0, "_OldIterBuffer", OldIterBuffer);
         RenderShader.SetInt("_MaxIter", maxIter);
@@ -1039,8 +1049,6 @@ Last Frame rendered in: {timeElapsed}s";
         RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, Math.Abs(preUpscalePixLvl)));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[currColorPalette].length);
-        shiftX = 0;
-        shiftY = 0;
 
     }
 
@@ -1171,6 +1179,10 @@ Last Frame rendered in: {timeElapsed}s";
         {
             PixelizedShaders.Dispatch(ResetShader, dummyTexture);
         }
+        if (shiftX != 0 || shiftY != 0)
+        {
+            PixelizedShaders.Dispatch(ShiftShader, dummyTexture);
+        }
         switch (precision)
         {
             case Precision.INFINTE:
@@ -1188,6 +1200,8 @@ Last Frame rendered in: {timeElapsed}s";
         PixelizedShaders.Dispatch(RenderShader, targetTexture);
         reset = false;
         turboReset = false;
+        shiftX = 0;
+        shiftY = 0;
     }
 
     public override void BlitTexture(RenderTexture destination)

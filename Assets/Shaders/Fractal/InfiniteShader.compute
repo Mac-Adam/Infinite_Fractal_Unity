@@ -166,52 +166,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	int currentIter = 0;
 
-	
-	if (_ShiftX != 0 || _ShiftY != 0) {
-		int oldBasePixelId;
-		int min;
-		int max;
-		if (_Register == 0) {
-			min = width * height;
-			max = width * height *2;
-			oldBasePixelId = basePixelId - _ShiftX - _ShiftY * width + width * height;	
-		}
-		else if (_Register == 1) {
-			min = 0;
-			max = width * height;
-
-			oldBasePixelId = basePixelId - _ShiftX - _ShiftY * width - width * height;
-		}
-		int oldPixelId = oldBasePixelId * PixelSize;
-		
-		if (int(id.x) <= _ShiftX || //left border
-			int(width - id.x) <= -_ShiftX || //rigth  border
-			int(id.y) <= _ShiftY || //top border
-			int(height - id.y) <= -_ShiftY ||//bottom border
-			oldBasePixelId<min|| oldBasePixelId>max){ 
-			
-			
-			//this part  should be rerendered
-			for (int a = 0; a < PixelSize; a++) {
-				_FpMultiframeBuffer[pixelId + a] = 0;
-			}
-
-		}
-		else {
-
-		
-
-			//this part can be salvaged
-			for (int b = 0; b < PixelSize; b++) {
-				_FpMultiframeBuffer[pixelId + b] = _FpMultiframeBuffer[oldPixelId + b];
-			}
-		}
-
-
-
-
-	}
-	
 	//check if further computatuin is nesesary
 	if (!_FpMultiframeBuffer[pixelId + finished]) {
 

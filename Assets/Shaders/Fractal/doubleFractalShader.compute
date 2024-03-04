@@ -99,56 +99,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	//Get id of pixel
 	uint pixelId = id.x + id.y * width + width * height * _Register;
 	int currentIter = 0;
-	if (_ShiftX != 0 || _ShiftY != 0) {
-		int oldPixelId;
-		int min;
-		int max;
-		if (_Register == 0) {
-			min = width * height;
-			max = width * height * 2;
-			oldPixelId = pixelId - _ShiftX - _ShiftY * width + width * height;
-		}
-		else if (_Register == 1) {
-			min = 0;
-			max = width * height;
-
-			oldPixelId = pixelId - _ShiftX - _ShiftY * width - width * height;
-		}		
-		if (int(id.x) <= _ShiftX || //left border
-			int(width - id.x) <= -_ShiftX || //rigth  border
-			int(id.y) <= _ShiftY || //top border
-			int(height - id.y) <= -_ShiftY ||//bottom border
-			oldPixelId<min || oldPixelId>max) {
-
-
-			//this part  should be rerendered
-			_MultiFrameData[pixelId].iter = 0;
-			_MultiFrameData[pixelId].CurrentZX = 0;
-			_MultiFrameData[pixelId].CurrentZY = 0;
-			_MultiFrameData[pixelId].finished = false;
-			_MultiFrameData[pixelId].offset = 0;
-
-
-		}
-		else {
-			_MultiFrameData[pixelId].iter = _MultiFrameData[oldPixelId].iter;
-			_MultiFrameData[pixelId].CurrentZX = _MultiFrameData[oldPixelId].CurrentZX;
-			_MultiFrameData[pixelId].CurrentZY = _MultiFrameData[oldPixelId].CurrentZY;
-			_MultiFrameData[pixelId].finished = _MultiFrameData[oldPixelId].finished;
-			_MultiFrameData[pixelId].offset = _MultiFrameData[oldPixelId].offset;
-
-		}
-
-
-
-
-
-
-
-
-	}
-
-
+	
 	//check if further computation is nesesary
 	if (!_MultiFrameData[pixelId].finished) {
 		// Transform pixel to correct range
