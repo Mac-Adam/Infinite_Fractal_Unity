@@ -3,6 +3,8 @@ using UnityEngine;
 using System;
 namespace CommonShaderRenderFunctions
 {
+
+    public enum Precision { FLOAT = 0, DOUBLE = 1, INFINTE = 2 };
     struct PixelizationData //shortcut to keep everything condensed
     {
         public int reducedWidth;
@@ -91,7 +93,7 @@ namespace CommonShaderRenderFunctions
         {
            
             T[] oldData = new T[pixelizationData.lastPixelCount * arrayCount * 2];
-
+            Debug.Log($"Last: {pixelizationData.lastPixelCount}, This: {pixelizationData.pixelCount}");
           
             Buffer.GetData(oldData);
             Buffer.Dispose();
@@ -182,7 +184,6 @@ namespace CommonShaderRenderFunctions
             if ((currentSample == 0 && !frameFinished) || liveOverride)
             {
                 Graphics.Blit(renderedTexture, destination);
-                Debug.Log("live");
 
             }else if (renderFinished)
             {

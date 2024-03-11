@@ -1,6 +1,14 @@
 #pragma kernel CSMain
 
 
+/*
+This shader calculates the mandelbrot set using floats or doubles
+
+It works by making a few iterations per frame, this allows to keep the frames high 
+while calculating images in high resolution or high detail.
+If the value for the coresponding pixel is not part of the set, the iteration process is skipped 
+*/
+
 #pragma multi_compile FLOAT DOUBLE
 
 #if FLOAT
@@ -120,18 +128,21 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		// add offset
 		uv += TYPE2(_OffsetX, _OffsetY);
 
+		//Iterate
 		if (_MultiFrameData[pixelId].iter == 0) {
 			currentIter = getIteration(uv, TYPE2(0.0, 0.0), pixelId);
 		}
 		else {
 			currentIter = getIteration(uv, TYPE2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
 		}
-
+		//update iteration count
 
 
 		_MultiFrameData[pixelId].iter += currentIter;
 
 	}
+
+	//upadte data for the next frame
 	int iterId = id.x + _FrankensteinOffsetX + (id.y + _FrankensteinOffsetY) * _RenderWidth;
 
 	_IterBuffer[iterId].iter = _MultiFrameData[pixelId].iter;

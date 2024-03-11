@@ -10,11 +10,8 @@ public abstract class ShadeContoler : MonoBehaviour
     public abstract void InitializeValues();
     public abstract void HandleLastValues();
     public abstract void ResetParams();
-    public abstract void InitializeGui();
-    public abstract void HandleKeyInput();
     public abstract void HandleMouseInput();
     public abstract void HandleScreenSizeChange();
-    public abstract void HandleGuiUpdates();
     public abstract void DisposeBuffers();
     public abstract void AdditionalCleanup();
     //TODO figure out antialias;
@@ -27,10 +24,6 @@ public abstract class ShadeContoler : MonoBehaviour
     public abstract void AutomaticParametersChange();
 
     public abstract void BlitTexture(RenderTexture destination);
-    public void Exit()
-    {
-        Application.Quit();
-    }
 
     private void Awake()
     {
@@ -39,16 +32,12 @@ public abstract class ShadeContoler : MonoBehaviour
         InitializeBuffers();
         HandleLastValues();
         ResetParams();
-        InitializeGui();
 
     }
     void Update()
     {
-       
-        HandleKeyInput();
         HandleMouseInput();
         HandleScreenSizeChange();
-        HandleGuiUpdates();
         HandleAntialias();
         AutomaticParametersChange();
 
