@@ -10,7 +10,6 @@ public abstract class ShadeContoler : MonoBehaviour
     public abstract void InitializeValues();
     public abstract void HandleLastValues();
     public abstract void ResetParams();
-    public abstract void HandleMouseInput();
     public abstract void HandleScreenSizeChange();
     public abstract void DisposeBuffers();
     public abstract void AdditionalCleanup();
@@ -34,9 +33,9 @@ public abstract class ShadeContoler : MonoBehaviour
         ResetParams();
 
     }
-    void Update()
+    //Some of the code executed here needs to be executer after the other modules have finishied their code
+    void LateUpdate()
     {
-        HandleMouseInput();
         HandleScreenSizeChange();
         HandleAntialias();
         AutomaticParametersChange();

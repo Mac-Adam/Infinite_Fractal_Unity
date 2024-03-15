@@ -1,9 +1,5 @@
-using System.Collections;
 using System;
-using System.Linq;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using FixedPointNumberSystem;
 using Colors;
 using CommonFunctions;
@@ -59,6 +55,7 @@ public class MandelbrotContoroler : ShadeContoler
     //Not yet sure where this should be
 
     GuiController guiController;
+    CameraController cameraController;
     int currIter = 0;
     bool zoomVideo = false;
     bool renderFinished = false;
@@ -119,24 +116,9 @@ public class MandelbrotContoroler : ShadeContoler
    
 
     //Controls
-    float scrollSlowness = 10.0f;
     double length = 4.0f;
     double middleX = -1.0f;
     double middleY = 0.0f;
-
-
-
-
-    //Controlls Handleing
-    int oldMouseTextureCoordinatesX;
-    int oldMouseTextureCoordinatesY;
-    int PrevScreenX;
-    int PrevScreenY;
-    static int cpuPrecision = GPUCode.precisions[^1].precision + 5;
-    FixedPointNumber MiddleX = new(cpuPrecision);
-    FixedPointNumber MiddleY = new(cpuPrecision);
-    FixedPointNumber Scale = new(cpuPrecision);
-
 
     //constanst are a starting point the other one is dynamicly set based on hardware capabilities
     int[] itersPerCycle = new int[] { 50, 10, 1 };
@@ -460,15 +442,16 @@ public class MandelbrotContoroler : ShadeContoler
     public override void InitializeValues()
     {
         guiController = gameObject.AddComponent<GuiController>();
+        cameraController = gameObject.AddComponent<CameraController>();
         //Fix just for now
         preUpscalePixLvl =pixelizationLevel;
         
         ResetPrecision();
 
 
-        MiddleX.SetDouble(middleX);
-        MiddleY.SetDouble(middleY);
-        Scale.SetDouble( length / ReducedWidth(false));
+        cameraController.MiddleX.SetDouble(middleX);
+        cameraController.MiddleY.SetDouble(middleY);
+        cameraController.Scale.SetDouble( length / ReducedWidth(false));
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
@@ -477,8 +460,6 @@ public class MandelbrotContoroler : ShadeContoler
     public override void HandleLastValues()
     {
         //lastPixelizationLevel = pixelizationLevel;
-        PrevScreenX = Screen.width;
-        PrevScreenY = Screen.height;
     }
    
     public override void DisposeBuffers()
@@ -513,7 +494,7 @@ public class MandelbrotContoroler : ShadeContoler
 
     public override void HandleScreenSizeChange()
     {
-        if (PrevScreenX != Screen.width || PrevScreenY != Screen.height || lastPixelizationLevel !=pixelizationLevel)
+        if (cameraController.screenSizeChanged || lastPixelizationLevel !=pixelizationLevel)
         {
             IterBuffer.Dispose();
             IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
@@ -552,92 +533,22 @@ public class MandelbrotContoroler : ShadeContoler
         }
 
     }
-    public override void HandleMouseInput()
-    {
-        
-        if(guiController.guiOn &&Input.mousePosition.x > Screen.width - guiController.guiTemplate.sizes.width)
-        {
-            return;
-        }
-        if(Screen.width != PrevScreenX || Screen.height != PrevScreenY)
-        {
-            return;
-        }
-        Vector2 mousePosPix = Input.mousePosition;
-        int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, pixelizationBase,pixelizationLevel);
-        int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, pixelizationBase,pixelizationLevel);
-
-       
-        FixedPointNumber mousePosRealX = new(cpuPrecision);
-
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth(false)/2);
-        mousePosRealX = mousePosRealX * Scale + MiddleX;
-        FixedPointNumber mousePosRealY = new(cpuPrecision);
-
-        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight(false)/2);
-        mousePosRealY = mousePosRealY * Scale + MiddleY;
-        FixedPointNumber multiplyer = new(cpuPrecision);
-
-    
-        if (Input.mouseScrollDelta.y != 0)
-        {
-           
-            double scaleDifference = 1 - Input.mouseScrollDelta.y / scrollSlowness;
-            multiplyer.SetDouble(scaleDifference);
-            Scale *= multiplyer;
-
-            FixedPointNumber differenceX = mousePosRealX - MiddleX;
-            FixedPointNumber differenceY = mousePosRealY - MiddleY;
-            multiplyer.SetDouble(1.0 - scaleDifference);
-            MiddleX += differenceX * multiplyer;
-            MiddleY += differenceY * multiplyer;
-            OnMoveComand();
-            ResetParams();
-           
-
-        }
-        if (mouseTextureCoordinatesX != oldMouseTextureCoordinatesX || mouseTextureCoordinatesY != oldMouseTextureCoordinatesY)
-        {
-            if (Input.GetMouseButton(0))
-            {
-                ResetAntialias();
-
-                shiftX = mouseTextureCoordinatesX - oldMouseTextureCoordinatesX;
-                shiftY = mouseTextureCoordinatesY - oldMouseTextureCoordinatesY;
-
-                register = (register + 1) % 2;
-                
-                multiplyer.SetDouble(mouseTextureCoordinatesX - oldMouseTextureCoordinatesX);
-                MiddleX -= multiplyer * Scale;
-                multiplyer.SetDouble(mouseTextureCoordinatesY - oldMouseTextureCoordinatesY);
-                MiddleY -= multiplyer * Scale;
-                OnMoveComand();
-                ResetParams();
-
-            }
-
-        }
-        oldMouseTextureCoordinatesX = mouseTextureCoordinatesX;
-        oldMouseTextureCoordinatesY = mouseTextureCoordinatesY;
-
-
-    }
     
     public override void SetShadersParameters()
     {
 
-        FixedPointNumber MiddleXToSend = new(MiddleX);
-        FixedPointNumber MiddleYToSend = new(MiddleY);
+        FixedPointNumber MiddleXToSend = new(cameraController.MiddleX);
+        FixedPointNumber MiddleYToSend = new(cameraController.MiddleY);
         if (frankensteinRendering)
         {
             int frankensteinOffsetX = ReducedWidth() * frankensteinX - (ReducedWidth() * (frankensteinSteps - 1)) / 2;
             int frankensteinOffsetY = ReducedHeight() * frankensteinY - (ReducedHeight() * (frankensteinSteps - 1)) / 2;
-            FixedPointNumber temp = new(cpuPrecision);
+            FixedPointNumber temp = new(CameraController.cpuPrecision);
             temp.SetDouble(frankensteinOffsetX);
-            temp *= Scale;
+            temp *= cameraController.Scale;
             MiddleXToSend += temp;
             temp.SetDouble(frankensteinOffsetY);
-            temp *= Scale;
+            temp *= cameraController.Scale;
             MiddleYToSend += temp;
         }
         
@@ -647,12 +558,12 @@ public class MandelbrotContoroler : ShadeContoler
         {
             TestPosiotnArray[i] = MiddleXToSend.digits[i];
             TestPosiotnArray[shaderPre + i] = MiddleYToSend.digits[i];
-            TestPosiotnArray[shaderPre * 2 + i] = Scale.digits[i];
+            TestPosiotnArray[shaderPre * 2 + i] = cameraController.Scale.digits[i];
 
         }
 
         PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = Scale.ToDouble();
+        doubleDataArray[0] = cameraController.Scale.ToDouble();
         doubleDataArray[1] = MiddleXToSend.ToDouble();
         doubleDataArray[2] = MiddleYToSend.ToDouble();
         floatDataArray[0] = (float)doubleDataArray[0];
@@ -681,8 +592,6 @@ public class MandelbrotContoroler : ShadeContoler
             InfiniteShader.SetInt("_MaxIter", guiController.maxIter);
             InfiniteShader.SetBool("_reset", reset || turboReset);
             InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
-            InfiniteShader.SetInt("_ShiftX", shiftX);
-            InfiniteShader.SetInt("_ShiftY", shiftY);
             InfiniteShader.SetInt("_Register", register);
             InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
             InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
@@ -722,8 +631,6 @@ public class MandelbrotContoroler : ShadeContoler
 
             FloatShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
             FloatShader.SetInt("_MaxIter", guiController.maxIter);
-            FloatShader.SetInt("_ShiftX", shiftX);
-            FloatShader.SetInt("_ShiftY", shiftY);
             FloatShader.SetInt("_Register", register);
             FloatShader.SetInt("_IterPerCycle", IterPerCycle);
             FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
@@ -843,9 +750,9 @@ public class MandelbrotContoroler : ShadeContoler
                 pixelizationLevel -= 1;
 
                 IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
-                FixedPointNumber scaleFixer = new(cpuPrecision);
+                FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
                 scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
-                Scale *= scaleFixer;
+                cameraController.Scale *= scaleFixer;
                 upscaling = true;
                 SetRenderFinished(false);
                 SetFrankensteinFinished(false);
@@ -872,6 +779,26 @@ public class MandelbrotContoroler : ShadeContoler
             }
             guiController.pixelizationChange = 0;
         }
+        if (cameraController.scrollMoved)
+        {
+            OnMoveComand();
+            ResetParams();
+
+            cameraController.scrollMoved = false;
+        }
+        if(cameraController.shiftX !=0 || cameraController.shiftY!= 0)
+        {
+            shiftX = cameraController.shiftX;
+            shiftY = cameraController.shiftY;
+
+            ResetAntialias();
+            register = (register + 1) % 2;
+            OnMoveComand();
+            ResetParams();
+
+            cameraController.shiftX = 0;
+            cameraController.shiftY = 0;
+        }
         guiController.renderWidth= ReducedWidth(false);
         guiController.renderHeight= ReducedHeight(false);
         guiController.currIter= currIter;
@@ -884,8 +811,11 @@ public class MandelbrotContoroler : ShadeContoler
         guiController.precisionLevel= precisionLevel;
         guiController.renderFinished = renderFinished;
 
+        cameraController.pixelizationBase = pixelizationBase;
+        cameraController.pixelizationLevel = pixelizationLevel;
 
 
+        cameraController.deadZoneRight = guiController.guiOn ? (int)guiController.guiTemplate.sizes.width : 0;
 
         // end of the temp code
 
@@ -912,11 +842,11 @@ public class MandelbrotContoroler : ShadeContoler
             {
                 SaveCurrentRenderTextureAsAPng();
               
-                FixedPointNumber mul = new(cpuPrecision);
+                FixedPointNumber mul = new(CameraController.cpuPrecision);
                 mul.SetDouble(pixelizationBase);
-                Scale *= mul;
+                cameraController.Scale *= mul;
                 ResetParams();
-                if (Scale.ToDouble() >= 0.003)
+                if (cameraController.Scale.ToDouble() >= 0.003)
                 {
                     zoomVideo = false;
                 }
@@ -925,7 +855,7 @@ public class MandelbrotContoroler : ShadeContoler
         }
 
         int tagretPrecison = 0;
-        foreach(int digit in Scale.digits)
+        foreach(int digit in cameraController.Scale.digits)
         {
             if (digit == 0)
             {
@@ -948,11 +878,11 @@ public class MandelbrotContoroler : ShadeContoler
                 SetSPrecision(precisionLevel - 1);
             }
         }
-        if (Scale.ToDouble() > 1E-6)
+        if (cameraController.Scale.ToDouble() > 1E-6)
         {
             SetPrecision(Precision.FLOAT);
         }
-        else if(Scale.ToDouble() > 1E-14)
+        else if(cameraController.Scale.ToDouble() > 1E-14)
         {
             SetPrecision(Precision.DOUBLE);
         }
