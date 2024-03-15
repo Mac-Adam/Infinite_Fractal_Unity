@@ -5,7 +5,7 @@ using Colors;
 using CommonFunctions;
 using CommonShaderRenderFunctions;
 
-public class MandelbrotContoroler : ShadeContoler
+public class MandelbrotContoroler : MonoBehaviour
 {
     //Shaders
     public ComputeShader InfiniteShader;
@@ -14,6 +14,8 @@ public class MandelbrotContoroler : ShadeContoler
     public ComputeShader ResetShader;
     public ComputeShader ShiftShader;
     public Shader AddShader;
+
+    RenderTexture targetTexture;
 
     RenderTexture dummyTexture;
     RenderTexture screenshotTexture;
@@ -428,7 +430,7 @@ public class MandelbrotContoroler : ShadeContoler
 
 
     }
-    public override void InitializeBuffers()
+    public void InitializeBuffers()
     {
         IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
         OldIterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
@@ -439,7 +441,7 @@ public class MandelbrotContoroler : ShadeContoler
         RegenereateFractalComputeBuffers();
     }
  
-    public override void InitializeValues()
+    public void InitializeValues()
     {
         guiController = gameObject.AddComponent<GuiController>();
         cameraController = gameObject.AddComponent<CameraController>();
@@ -457,12 +459,12 @@ public class MandelbrotContoroler : ShadeContoler
         addMaterial = new Material(AddShader);
         antialiasLookupTable = antialiasLookupTableSharp;
     }
-    public override void HandleLastValues()
+    public void HandleLastValues()
     {
         //lastPixelizationLevel = pixelizationLevel;
     }
    
-    public override void DisposeBuffers()
+    public void DisposeBuffers()
     {
         IterBuffer.Dispose();
         OldIterBuffer.Dispose();
@@ -486,13 +488,13 @@ public class MandelbrotContoroler : ShadeContoler
         }
 
     }
-    public override void AdditionalCleanup()
+    public void AdditionalCleanup()
     {
         Destroy(dummyTexture);
         Destroy(screenshotTexture);
     }
 
-    public override void HandleScreenSizeChange()
+    public void HandleScreenSizeChange()
     {
         if (cameraController.screenSizeChanged || lastPixelizationLevel !=pixelizationLevel)
         {
@@ -534,7 +536,7 @@ public class MandelbrotContoroler : ShadeContoler
 
     }
     
-    public override void SetShadersParameters()
+    public void SetShadersParameters()
     {
 
         FixedPointNumber MiddleXToSend = new(cameraController.MiddleX);
@@ -666,7 +668,7 @@ public class MandelbrotContoroler : ShadeContoler
 
     }
 
-    public override void ResetParams()
+    public void ResetParams()
     {
         reset = true;
         currentSample = 0;
@@ -683,7 +685,7 @@ public class MandelbrotContoroler : ShadeContoler
         }
     }
 
-    public override void AutomaticParametersChange()
+    public void AutomaticParametersChange()
     {
         //This code will be somewhere else in the long run
         if (guiController.requestingSS)
@@ -895,7 +897,7 @@ public class MandelbrotContoroler : ShadeContoler
    
     }
 
-    public override void HandleAntialias()
+    public void HandleAntialias()
     {
         if (!frankensteinStepFinished)
         {
@@ -909,20 +911,20 @@ public class MandelbrotContoroler : ShadeContoler
 
     }
 
-    public override void AddiitionalTextureRegenerationHandeling()
+    public void AddiitionalTextureRegenerationHandeling()
     {
         currentSample = 0;
   
     }
-    public override bool ShouldRegerateTexture()
+    public bool ShouldRegerateTexture()
     {
         return lastPixelizationLevel !=pixelizationLevel;
     }
-    public override void InitializeOtherTextures()
+    public void InitializeOtherTextures()
     {
         dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, ReducedWidth(), ReducedHeight());
     }
-    public override void DispatchShaders()
+    public void DispatchShaders()
     {
         if (reset || turboReset)
         {
@@ -950,7 +952,7 @@ public class MandelbrotContoroler : ShadeContoler
         shiftY = 0;
     }
 
-    public override void BlitTexture(RenderTexture destination)
+    public void BlitTexture(RenderTexture destination)
     {
         
         Antialiasing.BlitWitthAntialiasing(currentSample, frameFinished, renderFinished,
@@ -965,5 +967,71 @@ public class MandelbrotContoroler : ShadeContoler
             });
 
     }
+
+
+    private void Awake()
+    {
+        Application.targetFrameRate = -1;
+        InitializeValues();
+        InitializeBuffers();
+        HandleLastValues();
+        ResetParams();
+
+    }
+    //Some of the code executed here needs to be executer after the other modules have finishied their code
+    void LateUpdate()
+    {
+        HandleScreenSizeChange();
+        HandleAntialias();
+        AutomaticParametersChange();
+
+        HandleLastValues();
+    }
+    private void OnDestroy()
+    {
+        Destroy(targetTexture);
+        DisposeBuffers();
+        AdditionalCleanup();
+    }
+
+    private void InitializeRenderTextures()
+    {
+        if (targetTexture == null || targetTexture.width != Screen.width || targetTexture.height != Screen.height || ShouldRegerateTexture())
+        {
+            if (targetTexture != null)
+            {
+                targetTexture.Release();
+            }
+
+            targetTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
+            {
+                enableRandomWrite = true
+            };
+            targetTexture.Create();
+            AddiitionalTextureRegenerationHandeling();
+
+        }
+        InitializeOtherTextures();
+    }
+
+    private void Render(RenderTexture destination)
+    {
+        // Make sure we have a current render target
+        InitializeRenderTextures();
+
+
+        DispatchShaders();
+
+        BlitTexture(destination);
+
+
+    }
+
+    private void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        SetShadersParameters();
+        Render(destination);
+    }
+
 
 }
