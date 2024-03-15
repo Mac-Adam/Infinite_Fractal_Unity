@@ -21,22 +21,11 @@ public class MandelbrotContoroler : MonoBehaviour
     RenderTexture screenshotTexture;
     Material addMaterial;
 
+    //used to transfer position and scale to the shader
+    ComputeBuffer dataBuffer;
+    //used by the gpu to store Data in between frames
+    ComputeBuffer multiFrameRenderBuffer;
 
-    //the reason for the buffers of size 3 is that it is simpler this way to set it with the same code for both float and double
-    //DoubleShader
-    double[] doubleDataArray = new double[3];
-    ComputeBuffer doubleDataBuffer;
-    ComputeBuffer doubleMultiFrameRenderBuffer;
-
-    //FloatShader
-    float[] floatDataArray = new float[3];
-    ComputeBuffer floatDataBuffer;
-    ComputeBuffer floatMultiFrameRenderBuffer;
-
-    //InfiShader
-    ComputeBuffer FpMultiframeBuffer;
-    ComputeBuffer PossionBuffer;
-    int[] TestPosiotnArray;
 
     //RenderShader
     ComputeBuffer IterBuffer;
@@ -58,31 +47,6 @@ public class MandelbrotContoroler : MonoBehaviour
 
     //Anti-Alias
 
-
-    static private Vector2[] antialiasLookupTableSmooth = {
-        new Vector2(0,0),
-        new Vector2(-2.0f/3,-2.0f/3),
-        new Vector2(-2.0f/3,0),
-        new Vector2(-2.0f/3,2.0f/3),
-        new Vector2(0,2.0f/3),
-        new Vector2(2.0f/3,2.0f/3),
-        new Vector2(2.0f/3,0),
-        new Vector2(2.0f/3,-2.0f/3),
-        new Vector2(0,-2.0f/3),
-
-    };
-    static private Vector2[] antialiasLookupTableSharp = {
-        new Vector2(0,0),
-        new Vector2(-1.0f/3,-1.0f/3),
-        new Vector2(-1.0f/3,0),
-        new Vector2(-1.0f/3,1.0f/3),
-        new Vector2(0,1.0f/3),
-        new Vector2(1.0f/3,1.0f/3),
-        new Vector2(1.0f/3,0),
-        new Vector2(1.0f/3,-1.0f/3),
-        new Vector2(0,-1.0f/3),
-
-    };
 
 
 
@@ -107,7 +71,7 @@ public class MandelbrotContoroler : MonoBehaviour
         0,                          //lastPixelizationLevel
         0,                          //currentSample 
         9,                          //maxAntiAliasyncReruns
-        antialiasLookupTableSharp,  //antialiasLookupTable.
+        Antialiasing.antialiasLookupTableSharp,  //antialiasLookupTable.
         false,                      //frankensteinRendering;
         1,                          //frankensteinSteps;
         0,                          //frankensteinX
@@ -145,15 +109,11 @@ public class MandelbrotContoroler : MonoBehaviour
     {
         val = Math.Clamp(val, 0, GPUCode.precisions.Length - 1);
         settings.precisionLevel = val;
-        ResetPrecision();
         DisposeBuffers();
         InitializeBuffers();
         ResetParams();
     }
-    void ResetPrecision()
-    {
-        TestPosiotnArray = new int[3 * settings.GetShaderPre()];
-    }
+
 
     void ResetAntialias()
     {
@@ -293,31 +253,29 @@ public class MandelbrotContoroler : MonoBehaviour
 
     void RegenereateFractalComputeBuffers()
     {
-        if (doubleMultiFrameRenderBuffer != null)
+        if (multiFrameRenderBuffer != null)
         {
-            doubleMultiFrameRenderBuffer.Dispose();
+            multiFrameRenderBuffer.Dispose();
         }
-        if (floatMultiFrameRenderBuffer != null)
+        if(dataBuffer != null)
         {
-            floatMultiFrameRenderBuffer.Dispose();
-        }
-        if (FpMultiframeBuffer != null)
-        {
-            FpMultiframeBuffer.Dispose();
+            dataBuffer.Dispose();
         }
 
-        
-        
+
         switch (settings.precision)
         {
             case Precision.INFINTE:
-                FpMultiframeBuffer = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
+                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
+                dataBuffer = new ComputeBuffer(3 * settings.GetShaderPre(), sizeof(int));
                 break;
             case Precision.DOUBLE:
-                doubleMultiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
+                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
+                dataBuffer = new ComputeBuffer(3, sizeof(double));
                 break;
             case Precision.FLOAT:
-                floatMultiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
+                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
+                dataBuffer = new ComputeBuffer(3, sizeof(float));
                 break;
 
         }
@@ -328,9 +286,7 @@ public class MandelbrotContoroler : MonoBehaviour
     {
         IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
         OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
-        doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
-        floatDataBuffer = new ComputeBuffer(3, sizeof(float));
-        PossionBuffer = new ComputeBuffer(3 * settings.GetShaderPre(), sizeof(int));
+        dataBuffer = new ComputeBuffer(3, sizeof(float));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
         RegenereateFractalComputeBuffers();
     }
@@ -341,9 +297,6 @@ public class MandelbrotContoroler : MonoBehaviour
         cameraController = gameObject.AddComponent<CameraController>();
         //Fix just for now
         preUpscalePixLvl = settings.pixelizationLevel;
-        
-        ResetPrecision();
-
 
         cameraController.MiddleX.SetDouble(middleX);
         cameraController.MiddleY.SetDouble(middleY);
@@ -351,7 +304,6 @@ public class MandelbrotContoroler : MonoBehaviour
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
-        settings.antialiasLookupTable = antialiasLookupTableSharp;
     }
     public void HandleLastValues()
     {
@@ -362,24 +314,13 @@ public class MandelbrotContoroler : MonoBehaviour
     {
         IterBuffer.Dispose();
         OldIterBuffer.Dispose();
-        doubleDataBuffer.Dispose();
-        floatDataBuffer.Dispose();
+        dataBuffer.Dispose();
       
         ColorBuffer.Dispose();
        
-        PossionBuffer.Dispose();
-        if (doubleMultiFrameRenderBuffer != null)
-        {
-            doubleMultiFrameRenderBuffer.Dispose();
-        }
-        if (floatMultiFrameRenderBuffer != null)
-        {
-            floatMultiFrameRenderBuffer.Dispose();
-        }
-        if (FpMultiframeBuffer != null)
-        {
-            FpMultiframeBuffer.Dispose();
-        }
+
+        multiFrameRenderBuffer.Dispose();
+       
 
     }
     public void AdditionalCleanup()
@@ -399,13 +340,13 @@ public class MandelbrotContoroler : MonoBehaviour
                 switch (settings.precision)
                 {
                     case Precision.INFINTE:
-                        PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, settings.GetShaderPixelSize());
+                        PixelizedShaders.HandleZoomPixelization<int>(multiFrameRenderBuffer, sizeof(int), settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { multiFrameRenderBuffer = buffer; }, settings.GetShaderPixelSize());
                         break;
                     case Precision.DOUBLE:
-                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(doubleMultiFrameRenderBuffer, DoublePixelPacket.size, settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { doubleMultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(multiFrameRenderBuffer, DoublePixelPacket.size, settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { multiFrameRenderBuffer = buffer; });
                         break;
                     case Precision.FLOAT:
-                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, FloatPixelPacket.size, settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(multiFrameRenderBuffer, FloatPixelPacket.size, settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { multiFrameRenderBuffer = buffer; });
                         break;
 
                 }
@@ -449,24 +390,6 @@ public class MandelbrotContoroler : MonoBehaviour
         }
         
 
-
-        for (int i = 0; i < settings.GetShaderPre(); i++)
-        {
-            TestPosiotnArray[i] = MiddleXToSend.digits[i];
-            TestPosiotnArray[settings.GetShaderPre() + i] = MiddleYToSend.digits[i];
-            TestPosiotnArray[settings.GetShaderPre() * 2 + i] = cameraController.Scale.digits[i];
-
-        }
-
-        PossionBuffer.SetData(TestPosiotnArray);
-        doubleDataArray[0] = cameraController.Scale.ToDouble();
-        doubleDataArray[1] = MiddleXToSend.ToDouble();
-        doubleDataArray[2] = MiddleYToSend.ToDouble();
-        floatDataArray[0] = (float)doubleDataArray[0];
-        floatDataArray[1] = (float)doubleDataArray[1];
-        floatDataArray[2] = (float)doubleDataArray[2];
-        floatDataBuffer.SetData(floatDataArray);
-        doubleDataBuffer.SetData(doubleDataArray);
         ColorBuffer.SetData(MyColoringSystem.colorPalettes[guiController.currColorPalette].colors);
        
         if(dynamicSettings.shiftX != 0|| dynamicSettings.shiftY !=0)
@@ -478,12 +401,23 @@ public class MandelbrotContoroler : MonoBehaviour
         Shader.DisableKeyword("INFINITE");
         if (settings.precision == Precision.INFINTE)
         {
+            int[] data = new int[3 * settings.GetShaderPre()];
+            for (int i = 0; i < settings.GetShaderPre(); i++)
+            {
+                data[i] = MiddleXToSend.digits[i];
+                data[settings.GetShaderPre() + i] = MiddleYToSend.digits[i];
+                data[settings.GetShaderPre() * 2 + i] = cameraController.Scale.digits[i];
+
+            }
+
+            dataBuffer.SetData(data);
+
             Shader.EnableKeyword("INFINITE");
             GPUCode.ResetAllKeywords();
             Shader.EnableKeyword(GPUCode.precisions[settings.precisionLevel].name);
 
-            InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
-            InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
+            InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", multiFrameRenderBuffer);
+            InfiniteShader.SetBuffer(0, "_PossitionBuffer", dataBuffer);
             InfiniteShader.SetVector("_PixelOffset", settings.antialiasLookupTable[settings.currentSample % settings.antialiasLookupTable.Length]);
             InfiniteShader.SetInt("_MaxIter", guiController.maxIter);
             InfiniteShader.SetBool("_reset", dynamicSettings.reset || dynamicSettings.turboReset);
@@ -496,34 +430,41 @@ public class MandelbrotContoroler : MonoBehaviour
             InfiniteShader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
             InfiniteShader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
 
-            ResetShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
+            ResetShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
             ResetShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
 
-            ShiftShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
+            ShiftShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
             ShiftShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
         }
         else if (settings.precision == Precision.DOUBLE || settings.precision == Precision.FLOAT)
         {
             if (settings.precision == Precision.DOUBLE)
             {
+                double[] data = {
+                    cameraController.Scale.ToDouble(),
+                    MiddleXToSend.ToDouble(),
+                    MiddleYToSend.ToDouble() 
+                };
+                dataBuffer.SetData(data);
                 Shader.EnableKeyword("DOUBLE");
-                FloatShader.SetBuffer(0, "_DataBuffer", doubleDataBuffer);
-                FloatShader.SetBuffer(0, "_MultiFrameData", doubleMultiFrameRenderBuffer);
-
-
-                ResetShader.SetBuffer(0, "_MultiFrameData", doubleMultiFrameRenderBuffer);
-                ShiftShader.SetBuffer(0, "_MultiFrameData", doubleMultiFrameRenderBuffer);
-
             }
             else
             {
+                float[] data = { 
+                    (float)cameraController.Scale.ToDouble(),
+                    (float)MiddleXToSend.ToDouble(),
+                    (float)MiddleYToSend.ToDouble()
+                };
+                dataBuffer.SetData(data);
                 Shader.EnableKeyword("FLOAT");
-                FloatShader.SetBuffer(0, "_DataBuffer", floatDataBuffer);
-                FloatShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
-
-                ResetShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
-                ShiftShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
+              
             }
+
+            FloatShader.SetBuffer(0, "_DataBuffer", dataBuffer);
+            FloatShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
+
+            ResetShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
+            ShiftShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
 
             FloatShader.SetVector("_PixelOffset", settings.antialiasLookupTable[settings.currentSample % settings.antialiasLookupTable.Length]);
             FloatShader.SetInt("_MaxIter", guiController.maxIter);

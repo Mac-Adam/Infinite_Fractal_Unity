@@ -4,7 +4,7 @@ using FixedPointNumberSystem;
 using CommonFunctions;
 namespace CommonShaderRenderFunctions
 {
-
+    
     public enum Precision { FLOAT = 0, DOUBLE = 1, INFINTE = 2 };
     struct PixelizationData //shortcut to keep everything condensed
     {
@@ -377,6 +377,32 @@ namespace CommonShaderRenderFunctions
     }
     class Antialiasing
     {
+
+        static public Vector2[] antialiasLookupTableSmooth = {
+        new Vector2(0,0),
+        new Vector2(-2.0f/3,-2.0f/3),
+        new Vector2(-2.0f/3,0),
+        new Vector2(-2.0f/3,2.0f/3),
+        new Vector2(0,2.0f/3),
+        new Vector2(2.0f/3,2.0f/3),
+        new Vector2(2.0f/3,0),
+        new Vector2(2.0f/3,-2.0f/3),
+        new Vector2(0,-2.0f/3),
+
+    };
+        static public Vector2[] antialiasLookupTableSharp = {
+        new Vector2(0,0),
+        new Vector2(-1.0f/3,-1.0f/3),
+        new Vector2(-1.0f/3,0),
+        new Vector2(-1.0f/3,1.0f/3),
+        new Vector2(0,1.0f/3),
+        new Vector2(1.0f/3,1.0f/3),
+        new Vector2(1.0f/3,0),
+        new Vector2(1.0f/3,-1.0f/3),
+        new Vector2(0,-1.0f/3),
+
+    };
+
         public static void BlitWitthAntialiasing(uint currentSample,bool frameFinished, bool renderFinished, bool liveOverride,RenderTexture destination,RenderTexture renderedTexture,Material addMaterial,Action NewFrameCallback)
         {
             
