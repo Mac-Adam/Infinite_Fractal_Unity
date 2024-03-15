@@ -43,36 +43,23 @@ public class MandelbrotContoroler : MonoBehaviour
     ComputeBuffer OldIterBuffer; //used for upscaling
 
     ComputeBuffer ColorBuffer;
-    bool upscaling;
 
 
-    //Shader control
-    bool reset = false;
-    bool turboReset = false;
-    int shiftX = 0;
-    int shiftY = 0;
-    int register = 0;
 
 
     //Not yet sure where this should be
 
     GuiController guiController;
     CameraController cameraController;
-    int currIter = 0;
-    bool zoomVideo = false;
-    bool renderFinished = false;
+   
+    //not yet sure if needed 
     int preUpscalePixLvl;
-    int pixelizationBase = 2;
-    int pixelizationLevel = 0;
-    int lastPixelizationLevel = 0;
 
 
     //Anti-Alias
-    private uint currentSample = 0;
-    bool frameFinished = false;
-    int maxAntiAliasyncReruns = 9;
-    private Vector2[] antialiasLookupTable;
-    private Vector2[] antialiasLookupTableSmooth = {
+
+
+    static private Vector2[] antialiasLookupTableSmooth = {
         new Vector2(0,0),
         new Vector2(-2.0f/3,-2.0f/3),
         new Vector2(-2.0f/3,0),
@@ -84,7 +71,7 @@ public class MandelbrotContoroler : MonoBehaviour
         new Vector2(0,-2.0f/3),
 
     };
-    private Vector2[] antialiasLookupTableSharp = {
+    static private Vector2[] antialiasLookupTableSharp = {
         new Vector2(0,0),
         new Vector2(-1.0f/3,-1.0f/3),
         new Vector2(-1.0f/3,0),
@@ -98,22 +85,6 @@ public class MandelbrotContoroler : MonoBehaviour
     };
 
 
-    //gui
-
-
-    //Frankenstein rendering (this probably has some fancy technical term)
-    //Rendering frame by wornikng only on a small portion of it a time in order to decreese memory usage
-    bool frankensteinRendering = false;
-    int frankensteinSteps = 1; 
-    int frankensteinX = 0;
-    int frankensteinY = 0;
-    bool frankensteinStepFinished = false;
-
-
-    //shader settings
-    Precision precision = Precision.FLOAT;
-
-
 
    
 
@@ -124,129 +95,56 @@ public class MandelbrotContoroler : MonoBehaviour
 
     //constanst are a starting point the other one is dynamicly set based on hardware capabilities
     int[] itersPerCycle = new int[] { 50, 10, 1 };
-    int IterPerCycle;
     const float minTargetFramerate = 60;
     const float maxTagretFramerate = 200;
 
+    Settings settings = new(
+        false,                      //upscaling
+        0,                          //register
+        false,                      //zoomVideo
+        2,                          //pixelizationBase 
+        0,                          //pixelizationLevel
+        0,                          //lastPixelizationLevel
+        0,                          //currentSample 
+        9,                          //maxAntiAliasyncReruns
+        antialiasLookupTableSharp,  //antialiasLookupTable.
+        false,                      //frankensteinRendering;
+        1,                          //frankensteinSteps;
+        0,                          //frankensteinX
+        0,                          //frankensteinY
+        Precision.FLOAT,            //precision
+        1,                          //precisionLevel
+        50,                         //IterPerCycle
+        false                       //doAntialasing
+    );
 
-    int precisionLevel = 1;
-    int shaderPre;
-    int shaderPixelSize;
+    DynamicSettings dynamicSettings = new(
+        0,                          //currIter
+        false,                      //reset 
+        false,                      //turboReset
+        0,                          //shiftX 
+        0,                          //shiftY 
+        false,                      //renderFinished
+        false,                      //frameFinished
+        false,                      //frankensteinStepFinished
+        0,                          //renderStatTime
+        0                           //renderTimeElapsed
+    );
 
-
-
-
-    float renderStatTime;
-    float renderTimeElapsed = 0;
-
-    int FrankensteinCorrection()
-    {
-        if (frankensteinRendering)
-        {
-            return frankensteinSteps;
-        }
-        return 1;
-             
-    }
-    int PixelCount(bool frankenstein = true)
-    {
-        return ReducedHeight(frankenstein) * ReducedWidth(frankenstein);
-
-    }
-    int LastPixelCount(bool frankenstein = true)
-    {
-        return LastReducedHeight(frankenstein) * LastReducedWidth(frankenstein);
-    }
-    int ReducedWidth(bool frankenstein = true)
-    {
-        if (frankenstein)
-        {
-            return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel) / FrankensteinCorrection();
-        }
-        return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
-
-    }
-    int ReducedHeight(bool frankenstein = true)
-    {
-        if (frankenstein)
-        {
-            return OtherFunctions.Reduce(Screen.height, pixelizationBase,pixelizationLevel) / FrankensteinCorrection();
-        }
-        return OtherFunctions.Reduce(Screen.height, pixelizationBase,pixelizationLevel);
-    }
-    int LastReducedWidth(bool frankenstein = true)
-    {
-        if (frankenstein)
-        {
-            return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
-        }
-        return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel);
-    }
-    int LastReducedHeight(bool frankenstein = true)
-    {
-        if (frankenstein)
-        {
-            return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
-        }
-        return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
-    }
-
-    public void SetFrankensteinLevel(int level)
-    {
-        int steps = OtherFunctions.IntPow(2, level);
-        if (steps == frankensteinSteps)
-        {
-            return;
-        }
-        frankensteinRendering = steps != 1;
-        frankensteinSteps = steps;
-        frankensteinX = 0;
-        frankensteinY = 0;
-        ResetParams();
-        turboReset = true;
-    }
-
-    int MaxPixelizationLevel()
-    {
-        int max = 6; //This will allways be a valid level
-        long pixelCount;
-        long bufferSize = 0;
-        long iterSize;
-        do
-        {
-            max--;
-            pixelCount = OtherFunctions.Reduce(Screen.width, pixelizationBase, max) * OtherFunctions.Reduce(Screen.height, pixelizationBase, max);
-            iterSize = pixelCount * 3 * sizeof(int);
-            switch (precision)
-            {
-                case Precision.FLOAT:
-                    bufferSize = 2 * pixelCount * FloatPixelPacket.size;
-                    break;
-                case Precision.DOUBLE:
-                    bufferSize = 2 * pixelCount * DoublePixelPacket.size;
-                    break;
-                case Precision.INFINTE:
-                    bufferSize = 2 * pixelCount * sizeof(int) * shaderPixelSize;
-                    break;
-            }
-
-        } while (bufferSize <= PixelizedShaders.MAXBYTESPERBUFFER * FrankensteinCorrection() && iterSize <= PixelizedShaders.MAXBYTESPERBUFFER); ;
-        return max + 1;
-    }
     PixelizationData GetPixelizationData()
     {
         //TODO fix it probably won't work
-        return new(ReducedWidth(),ReducedHeight(),LastReducedWidth(),LastReducedHeight(), PixelCount(), LastPixelCount(), pixelizationBase,register);
+        return new(settings.ReducedWidth(), settings.ReducedHeight(), settings.LastReducedWidth(), settings.LastReducedHeight(), settings.PixelCount(), settings.LastPixelCount(), settings.pixelizationBase, settings.register);
     }
 
     void ResetIterPerCycle()
     {
-        IterPerCycle = itersPerCycle[(int)precision];
+        settings.iterPerCycle = itersPerCycle[(int)settings.precision];
     }
     void SetSPrecision(int val)
     {
         val = Math.Clamp(val, 0, GPUCode.precisions.Length - 1);
-        precisionLevel = val;
+        settings.precisionLevel = val;
         ResetPrecision();
         DisposeBuffers();
         InitializeBuffers();
@@ -254,46 +152,42 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     void ResetPrecision()
     {
-
-        shaderPre = GPUCode.precisions[precisionLevel].precision;
-        shaderPixelSize = 2 * shaderPre + 3;
-        TestPosiotnArray = new int[3 * shaderPre];
-
+        TestPosiotnArray = new int[3 * settings.GetShaderPre()];
     }
 
     void ResetAntialias()
     {
-        currentSample = 0;
-        currIter = 0;
+        settings.currentSample = 0;
+        dynamicSettings.currIter = 0;
         SetFrameFinished(false);
         SetFrankensteinFinished(false);
         SetRenderFinished(false);
-        if (frankensteinRendering)
+        if (settings.frankensteinRendering)
         {
             ResetParams();
-            turboReset = true;
+            dynamicSettings.turboReset = true;
         }
     }
 
     void OnMoveComand()
     {
-        zoomVideo = false;
-        if (frankensteinRendering)
+        settings.zoomVideo = false;
+        if (settings.frankensteinRendering)
         {
             ResetParams();
-            turboReset = true;
+            dynamicSettings.turboReset = true;
         }
     }
     public void SetPrecision(Precision val)
     {
-        if(val == precision)
+        if(val == settings.precision)
         {
             return;
         }
-        precision = val;
-        if (pixelizationLevel < MaxPixelizationLevel())
+        settings.precision = val;
+        if (settings.pixelizationLevel < settings.MaxPixelizationLevel())
         {
-           pixelizationLevel = MaxPixelizationLevel();
+            settings.pixelizationLevel = settings.MaxPixelizationLevel();
         }
         RegenereateFractalComputeBuffers();
         ResetParams();
@@ -303,32 +197,32 @@ public class MandelbrotContoroler : MonoBehaviour
     void SetRenderFinished(bool val)
     {
         if (val == false) {
-            renderStatTime = Time.time;
+            dynamicSettings.renderStatTime = Time.time;
         }
 
-        if(renderFinished == val)
+        if(dynamicSettings.renderFinished == val)
         {
             return;
         }
 
-        renderFinished = val;
-        if(renderFinished == true)
+        dynamicSettings.renderFinished = val;
+        if(dynamicSettings.renderFinished == true)
         {
-            renderTimeElapsed = Time.time - renderStatTime;
+            dynamicSettings.renderTimeElapsed = Time.time - dynamicSettings.renderStatTime;
         }
        
     }
     void SetFrameFinished(bool val)
     {
-        if(frameFinished == val)
+        if(dynamicSettings.frameFinished == val)
         {
             return;
         }
-    
-        currIter = 0;
-        if (guiController.doAntialasing)
+
+        dynamicSettings.currIter = 0;
+        if (settings.doAntialasing)
         {
-            if (currentSample >= maxAntiAliasyncReruns)
+            if (settings.currentSample >= settings.maxAntiAliasyncReruns)
             {
                 SetRenderFinished(true);
             }
@@ -337,53 +231,53 @@ public class MandelbrotContoroler : MonoBehaviour
         {
             SetRenderFinished(true);
         }
-        
-        frameFinished = val;
-        if(frameFinished == false)
+
+        dynamicSettings.frameFinished = val;
+        if(dynamicSettings.frameFinished == false)
         {
-            frankensteinX = 0;
-            frankensteinY = 0;
+            settings.frankensteinX = 0;
+            settings.frankensteinY = 0;
 
         }
     }
     void SetFrankensteinFinished(bool val)
     {
-        if (!frankensteinRendering)
+        if (!settings.frankensteinRendering)
         {
             SetFrameFinished(val);
-          
-            frankensteinStepFinished = val;
+
+            dynamicSettings.frankensteinStepFinished = val;
             return;
         }
-        if (frankensteinStepFinished == val)
+        if (dynamicSettings.frankensteinStepFinished == val)
         {
             return;
         }
         if(val == true)
         {
-            if(frankensteinX == frankensteinSteps - 1 && frankensteinY == frankensteinSteps - 1)
+            if(settings.frankensteinX == settings.frankensteinSteps - 1 && settings.frankensteinY == settings.frankensteinSteps - 1)
             {
-                frankensteinStepFinished = true;
+                dynamicSettings.frankensteinStepFinished = true;
                 Debug.Log("2");
                 SetFrameFinished(true);
             }
             else
             {           
                 ResetIterPerCycle();
-                reset = true;
-                currIter = 0;
-                frankensteinX++;
-                if (frankensteinX >= frankensteinSteps)
+                dynamicSettings.reset = true;
+                dynamicSettings.currIter = 0;
+                settings.frankensteinX++;
+                if (settings.frankensteinX >= settings.frankensteinSteps)
                 {
-                    frankensteinX = 0;
-                    frankensteinY++;
+                    settings.frankensteinX = 0;
+                    settings.frankensteinY++;
                 }
 
             }
         }
         else
         {
-            frankensteinStepFinished = false;
+            dynamicSettings.frankensteinStepFinished = false;
         }
         
     }
@@ -391,7 +285,7 @@ public class MandelbrotContoroler : MonoBehaviour
     void SaveCurrentRenderTextureAsAPng()
     {
         RenderShader.SetBool("_RenderExact", true);
-        screenshotTexture = PixelizedShaders.InitializePixelizedTexture(screenshotTexture, ReducedWidth(false), ReducedHeight(false),true);
+        screenshotTexture = PixelizedShaders.InitializePixelizedTexture(screenshotTexture, settings.ReducedWidth(false), settings.ReducedHeight(false),true);
         PixelizedShaders.Dispatch(RenderShader, screenshotTexture);
         OtherFunctions.SaveRenderTextureToFile(screenshotTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
     }
@@ -414,16 +308,16 @@ public class MandelbrotContoroler : MonoBehaviour
 
         
         
-        switch (precision)
+        switch (settings.precision)
         {
             case Precision.INFINTE:
-                FpMultiframeBuffer = new ComputeBuffer(PixelCount() * 2, sizeof(int) * shaderPixelSize);
+                FpMultiframeBuffer = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
                 break;
             case Precision.DOUBLE:
-                doubleMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, DoublePixelPacket.size);
+                doubleMultiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
                 break;
             case Precision.FLOAT:
-                floatMultiFrameRenderBuffer = new ComputeBuffer(PixelCount() * 2, FloatPixelPacket.size);
+                floatMultiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
                 break;
 
         }
@@ -432,11 +326,11 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void InitializeBuffers()
     {
-        IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
-        OldIterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
+        IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+        OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
         doubleDataBuffer = new ComputeBuffer(3, sizeof(double));
         floatDataBuffer = new ComputeBuffer(3, sizeof(float));
-        PossionBuffer = new ComputeBuffer(3 * shaderPre, sizeof(int));
+        PossionBuffer = new ComputeBuffer(3 * settings.GetShaderPre(), sizeof(int));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
         RegenereateFractalComputeBuffers();
     }
@@ -446,18 +340,18 @@ public class MandelbrotContoroler : MonoBehaviour
         guiController = gameObject.AddComponent<GuiController>();
         cameraController = gameObject.AddComponent<CameraController>();
         //Fix just for now
-        preUpscalePixLvl =pixelizationLevel;
+        preUpscalePixLvl = settings.pixelizationLevel;
         
         ResetPrecision();
 
 
         cameraController.MiddleX.SetDouble(middleX);
         cameraController.MiddleY.SetDouble(middleY);
-        cameraController.Scale.SetDouble( length / ReducedWidth(false));
+        cameraController.Scale.SetDouble( length / settings.ReducedWidth(false));
 
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
-        antialiasLookupTable = antialiasLookupTableSharp;
+        settings.antialiasLookupTable = antialiasLookupTableSharp;
     }
     public void HandleLastValues()
     {
@@ -496,32 +390,32 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void HandleScreenSizeChange()
     {
-        if (cameraController.screenSizeChanged || lastPixelizationLevel !=pixelizationLevel)
+        if (cameraController.screenSizeChanged || settings.lastPixelizationLevel != settings.pixelizationLevel)
         {
             IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
-            if (lastPixelizationLevel !=pixelizationLevel && !upscaling)
+            IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+            if (settings.lastPixelizationLevel != settings.pixelizationLevel && !settings.upscaling)
             {
-                switch (precision)
+                switch (settings.precision)
                 {
                     case Precision.INFINTE:
-                        PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), lastPixelizationLevel <pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, shaderPixelSize);
+                        PixelizedShaders.HandleZoomPixelization<int>(FpMultiframeBuffer, sizeof(int), settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { FpMultiframeBuffer = buffer; }, settings.GetShaderPixelSize());
                         break;
                     case Precision.DOUBLE:
-                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(doubleMultiFrameRenderBuffer, DoublePixelPacket.size, lastPixelizationLevel <pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { doubleMultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<DoublePixelPacket>(doubleMultiFrameRenderBuffer, DoublePixelPacket.size, settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { doubleMultiFrameRenderBuffer = buffer; });
                         break;
                     case Precision.FLOAT:
-                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, FloatPixelPacket.size, lastPixelizationLevel <pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
+                        PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(floatMultiFrameRenderBuffer, FloatPixelPacket.size, settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { floatMultiFrameRenderBuffer = buffer; });
                         break;
 
                 }
-                lastPixelizationLevel = pixelizationLevel;
+                settings.lastPixelizationLevel = settings.pixelizationLevel;
                 SetFrameFinished(false);
             }
             else
             {
                 RegenereateFractalComputeBuffers();
-                reset = true;
+                dynamicSettings.reset = true;
                 OnMoveComand();
             }
 
@@ -541,10 +435,10 @@ public class MandelbrotContoroler : MonoBehaviour
 
         FixedPointNumber MiddleXToSend = new(cameraController.MiddleX);
         FixedPointNumber MiddleYToSend = new(cameraController.MiddleY);
-        if (frankensteinRendering)
+        if (settings.frankensteinRendering)
         {
-            int frankensteinOffsetX = ReducedWidth() * frankensteinX - (ReducedWidth() * (frankensteinSteps - 1)) / 2;
-            int frankensteinOffsetY = ReducedHeight() * frankensteinY - (ReducedHeight() * (frankensteinSteps - 1)) / 2;
+            int frankensteinOffsetX = settings.ReducedWidth() * settings.frankensteinX - (settings.ReducedWidth() * (settings.frankensteinSteps - 1)) / 2;
+            int frankensteinOffsetY = settings.ReducedHeight() * settings.frankensteinY - (settings.ReducedHeight() * (settings.frankensteinSteps - 1)) / 2;
             FixedPointNumber temp = new(CameraController.cpuPrecision);
             temp.SetDouble(frankensteinOffsetX);
             temp *= cameraController.Scale;
@@ -556,11 +450,11 @@ public class MandelbrotContoroler : MonoBehaviour
         
 
 
-        for (int i = 0; i < shaderPre; i++)
+        for (int i = 0; i < settings.GetShaderPre(); i++)
         {
             TestPosiotnArray[i] = MiddleXToSend.digits[i];
-            TestPosiotnArray[shaderPre + i] = MiddleYToSend.digits[i];
-            TestPosiotnArray[shaderPre * 2 + i] = cameraController.Scale.digits[i];
+            TestPosiotnArray[settings.GetShaderPre() + i] = MiddleYToSend.digits[i];
+            TestPosiotnArray[settings.GetShaderPre() * 2 + i] = cameraController.Scale.digits[i];
 
         }
 
@@ -575,42 +469,42 @@ public class MandelbrotContoroler : MonoBehaviour
         doubleDataBuffer.SetData(doubleDataArray);
         ColorBuffer.SetData(MyColoringSystem.colorPalettes[guiController.currColorPalette].colors);
        
-        if(shiftX != 0|| shiftY !=0)
+        if(dynamicSettings.shiftX != 0|| dynamicSettings.shiftY !=0)
         {
-            reset = false;
+            dynamicSettings.reset = false;
         }
         Shader.DisableKeyword("FLOAT");
         Shader.DisableKeyword("DOUBLE");
         Shader.DisableKeyword("INFINITE");
-        if (precision == Precision.INFINTE)
+        if (settings.precision == Precision.INFINTE)
         {
             Shader.EnableKeyword("INFINITE");
             GPUCode.ResetAllKeywords();
-            Shader.EnableKeyword(GPUCode.precisions[precisionLevel].name);
+            Shader.EnableKeyword(GPUCode.precisions[settings.precisionLevel].name);
 
             InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", FpMultiframeBuffer);
             InfiniteShader.SetBuffer(0, "_PossitionBuffer", PossionBuffer);
-            InfiniteShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
+            InfiniteShader.SetVector("_PixelOffset", settings.antialiasLookupTable[settings.currentSample % settings.antialiasLookupTable.Length]);
             InfiniteShader.SetInt("_MaxIter", guiController.maxIter);
-            InfiniteShader.SetBool("_reset", reset || turboReset);
-            InfiniteShader.SetInt("_pixelizationBase", pixelizationBase);
-            InfiniteShader.SetInt("_Register", register);
-            InfiniteShader.SetInt("_IterPerCycle", IterPerCycle);
+            InfiniteShader.SetBool("_reset", dynamicSettings.reset || dynamicSettings.turboReset);
+            InfiniteShader.SetInt("_pixelizationBase", settings.pixelizationBase);
+            InfiniteShader.SetInt("_Register", settings.register);
+            InfiniteShader.SetInt("_IterPerCycle", settings.iterPerCycle);
             InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
             InfiniteShader.SetInt("_BailoutRadius", guiController.bailoutRadius);
-            InfiniteShader.SetInt("_RenderWidth", ReducedWidth(false));
-            InfiniteShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
-            InfiniteShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+            InfiniteShader.SetInt("_RenderWidth", settings.ReducedWidth(false));
+            InfiniteShader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
+            InfiniteShader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
 
             ResetShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
-            ResetShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
+            ResetShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
 
             ShiftShader.SetBuffer(0, "_MultiFrameData", FpMultiframeBuffer);
-            ShiftShader.SetInt("_Precision", GPUCode.precisions[precisionLevel].precision);
+            ShiftShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
         }
-        else if (precision == Precision.DOUBLE || precision == Precision.FLOAT)
+        else if (settings.precision == Precision.DOUBLE || settings.precision == Precision.FLOAT)
         {
-            if (precision == Precision.DOUBLE)
+            if (settings.precision == Precision.DOUBLE)
             {
                 Shader.EnableKeyword("DOUBLE");
                 FloatShader.SetBuffer(0, "_DataBuffer", doubleDataBuffer);
@@ -631,24 +525,24 @@ public class MandelbrotContoroler : MonoBehaviour
                 ShiftShader.SetBuffer(0, "_MultiFrameData", floatMultiFrameRenderBuffer);
             }
 
-            FloatShader.SetVector("_PixelOffset", antialiasLookupTable[currentSample % antialiasLookupTable.Length]);
+            FloatShader.SetVector("_PixelOffset", settings.antialiasLookupTable[settings.currentSample % settings.antialiasLookupTable.Length]);
             FloatShader.SetInt("_MaxIter", guiController.maxIter);
-            FloatShader.SetInt("_Register", register);
-            FloatShader.SetInt("_IterPerCycle", IterPerCycle);
+            FloatShader.SetInt("_Register", settings.register);
+            FloatShader.SetInt("_IterPerCycle", settings.iterPerCycle);
             FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
             FloatShader.SetInt("_BailoutRadius", guiController.bailoutRadius);
-            FloatShader.SetInt("_RenderWidth", ReducedWidth(false));
-            FloatShader.SetInt("_FrankensteinOffsetX", frankensteinX * ReducedWidth());
-            FloatShader.SetInt("_FrankensteinOffsetY", frankensteinY * ReducedHeight());
+            FloatShader.SetInt("_RenderWidth", settings.ReducedWidth(false));
+            FloatShader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
+            FloatShader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
        
         }
 
 
-        ShiftShader.SetInt("_Register", register);
-        ShiftShader.SetInt("_ShiftX", shiftX);
-        ShiftShader.SetInt("_ShiftY", shiftY);
+        ShiftShader.SetInt("_Register", settings.register);
+        ShiftShader.SetInt("_ShiftX", dynamicSettings.shiftX);
+        ShiftShader.SetInt("_ShiftY", dynamicSettings.shiftY);
 
-        ResetShader.SetInt("_Register", register);
+        ResetShader.SetInt("_Register", settings.register);
 
 
         RenderShader.SetBuffer(0, "_IterBuffer", IterBuffer);
@@ -656,13 +550,13 @@ public class MandelbrotContoroler : MonoBehaviour
         RenderShader.SetInt("_MaxIter", guiController.maxIter);
         RenderShader.SetFloat("_ColorStrength", guiController.colorStrength);
         RenderShader.SetBool("_Smooth", guiController.smoothGradient);
-        RenderShader.SetBool("_Upscaling", upscaling);
-        RenderShader.SetBool("_Reset", turboReset);
+        RenderShader.SetBool("_Upscaling", settings.upscaling);
+        RenderShader.SetBool("_Reset", dynamicSettings.turboReset);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[guiController.currColorPalette].gradientType);
-        RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(pixelizationBase,Math.Abs(pixelizationLevel)));
-        RenderShader.SetBool("_Superresolution",pixelizationLevel < 0);
+        RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(settings.pixelizationBase,Math.Abs(settings.pixelizationLevel)));
+        RenderShader.SetBool("_Superresolution", settings.pixelizationLevel < 0);
         RenderShader.SetBool("_RenderExact", false);
-        RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(pixelizationBase, Math.Abs(preUpscalePixLvl)));
+        RenderShader.SetInt("_OldPixelWidth", OtherFunctions.IntPow(settings.pixelizationBase, Math.Abs(preUpscalePixLvl)));
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[guiController.currColorPalette].length);
 
@@ -670,18 +564,18 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void ResetParams()
     {
-        reset = true;
-        currentSample = 0;
-        currIter = 0;
-        upscaling = false;
+        dynamicSettings.reset = true;
+        settings.currentSample = 0;
+        dynamicSettings.currIter = 0;
+        settings.upscaling = false;
         SetFrameFinished(false);
         SetFrankensteinFinished(false);
         SetRenderFinished(false);
         ResetIterPerCycle();
-        if (frankensteinRendering)
+        if (settings.frankensteinRendering)
         {
-            frankensteinX = 0;
-            frankensteinY = 0;
+            settings.frankensteinX = 0;
+            settings.frankensteinY = 0;
         }
     }
 
@@ -696,11 +590,12 @@ public class MandelbrotContoroler : MonoBehaviour
         if (guiController.requestedZoomVid)
         {
             //this may need some more code
-            zoomVideo = !zoomVideo;
+            settings.zoomVideo = !settings.zoomVideo;
             guiController.requestedZoomVid = false;
         }
         if (guiController.changedAntialias)
         {
+            settings.doAntialasing = !settings.doAntialasing;
             ResetAntialias();
             OnMoveComand();
             guiController.changedAntialias = false;
@@ -713,7 +608,7 @@ public class MandelbrotContoroler : MonoBehaviour
         }
         if (guiController.resetRequested)
         {
-            turboReset = true;
+            dynamicSettings.turboReset = true;
             ResetParams();
             ResetAntialias();
             guiController.resetRequested = false;
@@ -735,48 +630,58 @@ public class MandelbrotContoroler : MonoBehaviour
             ResetAntialias();
             guiController.changedBailoutRadius = false;
         }
+        if (guiController.changedFrankenstein)
+        {
+            settings.frankensteinSteps = OtherFunctions.IntPow(2, guiController.requestedFrankensteinLevel);
+            settings.frankensteinX = 0;
+            settings.frankensteinY = 0;
+            ResetParams();
+            dynamicSettings.turboReset = true;
+            guiController.changedFrankenstein = false;
+        }
+
         if (guiController.RequestedUpscale)
         {
-            if (MaxPixelizationLevel() < pixelizationLevel)
+            if (settings.MaxPixelizationLevel() < settings.pixelizationLevel)
             {
 
-                int[] arr = new int[PixelCount(false) * 3];
+                int[] arr = new int[settings.PixelCount(false) * 3];
                 IterBuffer.GetData(arr);
                 OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
+                OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
                 OldIterBuffer.SetData(arr);
                 IterBuffer.Dispose();
 
 
-                preUpscalePixLvl =pixelizationLevel;
-                pixelizationLevel -= 1;
+                preUpscalePixLvl = settings.pixelizationLevel;
+                settings.pixelizationLevel -= 1;
 
-                IterBuffer = new ComputeBuffer(PixelCount(false), IterPixelPacket.size);
+                IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
                 FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
-                scaleFixer.SetDouble(pixelizationLevel > lastPixelizationLevel ? pixelizationBase : 1.0 / pixelizationBase);
+                scaleFixer.SetDouble(settings.pixelizationLevel > settings.lastPixelizationLevel ? settings.pixelizationBase : 1.0 / settings.pixelizationBase);
                 cameraController.Scale *= scaleFixer;
-                upscaling = true;
+                settings.upscaling = true;
                 SetRenderFinished(false);
                 SetFrankensteinFinished(false);
                 SetFrameFinished(false);
-                currIter = 0;
+                dynamicSettings.currIter = 0;
                 OnMoveComand();
             }
             guiController.RequestedUpscale = false;
         }
         if (guiController.pixelizationChange != 0)
         {
-            if(MaxPixelizationLevel() < pixelizationLevel + guiController.pixelizationChange)
+            if(settings.MaxPixelizationLevel() < settings.pixelizationLevel + guiController.pixelizationChange)
             {
                 if (guiController.pixelizationChange > 0)
                 {
-                    preUpscalePixLvl = pixelizationLevel;
+                    preUpscalePixLvl = settings.pixelizationLevel;
                 }
-                lastPixelizationLevel = pixelizationLevel;
-                pixelizationLevel += guiController.pixelizationChange;
+                settings.lastPixelizationLevel = settings.pixelizationLevel;
+                settings.pixelizationLevel += guiController.pixelizationChange;
 
-                upscaling = false;
-                currIter = 0;
+                settings.upscaling = false;
+                dynamicSettings.currIter = 0;
                 OnMoveComand();
             }
             guiController.pixelizationChange = 0;
@@ -790,32 +695,21 @@ public class MandelbrotContoroler : MonoBehaviour
         }
         if(cameraController.shiftX !=0 || cameraController.shiftY!= 0)
         {
-            shiftX = cameraController.shiftX;
-            shiftY = cameraController.shiftY;
+            dynamicSettings.shiftX = cameraController.shiftX;
+            dynamicSettings.shiftY = cameraController.shiftY;
 
             ResetAntialias();
-            register = (register + 1) % 2;
+            settings.register = (settings.register + 1) % 2;
             OnMoveComand();
             ResetParams();
 
             cameraController.shiftX = 0;
             cameraController.shiftY = 0;
         }
-        guiController.renderWidth= ReducedWidth(false);
-        guiController.renderHeight= ReducedHeight(false);
-        guiController.currIter= currIter;
-        guiController.maxAntiAliasyncReruns= maxAntiAliasyncReruns;
-        guiController.currentSample = currentSample;
-        guiController.frankensteinX= frankensteinX;
-        guiController.frankensteinY= frankensteinY;
-        guiController.renderTimeElapsed= renderTimeElapsed;
-        guiController.precision = precision;
-        guiController.precisionLevel= precisionLevel;
-        guiController.renderFinished = renderFinished;
+        guiController.settings = settings;
+        guiController.dynamicSettings = dynamicSettings;
 
-        cameraController.pixelizationBase = pixelizationBase;
-        cameraController.pixelizationLevel = pixelizationLevel;
-
+        cameraController.settings = settings;
 
         cameraController.deadZoneRight = guiController.guiOn ? (int)guiController.guiTemplate.sizes.width : 0;
 
@@ -823,34 +717,34 @@ public class MandelbrotContoroler : MonoBehaviour
 
 
 
-        if (!frankensteinStepFinished && !renderFinished)
+        if (!dynamicSettings.frankensteinStepFinished && !dynamicSettings.renderFinished)
         {
             if (1 / Time.deltaTime > maxTagretFramerate)
             {
-                IterPerCycle++;
+                settings.iterPerCycle++;
             }
             else if (1 / Time.deltaTime < minTargetFramerate)
             {
-                if (IterPerCycle > 1)
+                if (settings.iterPerCycle > 1)
                 {
-                    IterPerCycle--;
+                    settings.iterPerCycle--;
                 }
 
             }
         }
-        if (zoomVideo)
+        if (settings.zoomVideo)
         {
-            if (renderFinished)
+            if (dynamicSettings.renderFinished)
             {
                 SaveCurrentRenderTextureAsAPng();
               
                 FixedPointNumber mul = new(CameraController.cpuPrecision);
-                mul.SetDouble(pixelizationBase);
+                mul.SetDouble(settings.pixelizationBase);
                 cameraController.Scale *= mul;
                 ResetParams();
                 if (cameraController.Scale.ToDouble() >= 0.003)
                 {
-                    zoomVideo = false;
+                    settings.zoomVideo = false;
                 }
 
             }
@@ -868,16 +762,16 @@ public class MandelbrotContoroler : MonoBehaviour
                 break;
             }
         }
-        if (tagretPrecison + 1 >= GPUCode.precisions[precisionLevel].precision)
+        if (tagretPrecison + 1 >= GPUCode.precisions[settings.precisionLevel].precision)
         {
-            SetSPrecision(precisionLevel + 1);
+            SetSPrecision(settings.precisionLevel + 1);
 
         }
-        else if (precisionLevel != 0)
+        else if (settings.precisionLevel != 0)
         {
-            if (tagretPrecison + 1 < GPUCode.precisions[precisionLevel - 1].precision)
+            if (tagretPrecison + 1 < GPUCode.precisions[settings.precisionLevel - 1].precision)
             {
-                SetSPrecision(precisionLevel - 1);
+                SetSPrecision(settings.precisionLevel - 1);
             }
         }
         if (cameraController.Scale.ToDouble() > 1E-6)
@@ -899,12 +793,12 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void HandleAntialias()
     {
-        if (!frankensteinStepFinished)
+        if (!dynamicSettings.frankensteinStepFinished)
         {
-            currIter += IterPerCycle;
+            dynamicSettings.currIter += settings.iterPerCycle;
         }
 
-        if (currIter > guiController.maxIter)
+        if (dynamicSettings.currIter > guiController.maxIter)
         {
             SetFrankensteinFinished(true);
         }
@@ -913,28 +807,28 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void AddiitionalTextureRegenerationHandeling()
     {
-        currentSample = 0;
+        settings.currentSample = 0;
   
     }
     public bool ShouldRegerateTexture()
     {
-        return lastPixelizationLevel !=pixelizationLevel;
+        return settings.lastPixelizationLevel != settings.pixelizationLevel;
     }
     public void InitializeOtherTextures()
     {
-        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, ReducedWidth(), ReducedHeight());
+        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, settings.ReducedWidth(), settings.ReducedHeight());
     }
     public void DispatchShaders()
     {
-        if (reset || turboReset)
+        if (dynamicSettings.reset || dynamicSettings.turboReset)
         {
             PixelizedShaders.Dispatch(ResetShader, dummyTexture);
         }
-        if (shiftX != 0 || shiftY != 0)
+        if (dynamicSettings.shiftX != 0 || dynamicSettings.shiftY != 0)
         {
             PixelizedShaders.Dispatch(ShiftShader, dummyTexture);
         }
-        switch (precision)
+        switch (settings.precision)
         {
             case Precision.INFINTE:
                 PixelizedShaders.Dispatch(InfiniteShader, dummyTexture);
@@ -946,24 +840,24 @@ public class MandelbrotContoroler : MonoBehaviour
                 break;
         }
         PixelizedShaders.Dispatch(RenderShader, targetTexture);
-        reset = false;
-        turboReset = false;
-        shiftX = 0;
-        shiftY = 0;
+        dynamicSettings.reset = false;
+        dynamicSettings.turboReset = false;
+        dynamicSettings.shiftX = 0;
+        dynamicSettings.shiftY = 0;
     }
 
     public void BlitTexture(RenderTexture destination)
     {
         
-        Antialiasing.BlitWitthAntialiasing(currentSample, frameFinished, renderFinished,
+        Antialiasing.BlitWitthAntialiasing(settings.currentSample, dynamicSettings.frameFinished, dynamicSettings.renderFinished,
             Input.GetMouseButton(0) && Input.mousePosition.x < Screen.width - guiController.guiTemplate.sizes.width
             , destination, targetTexture, addMaterial,
             () =>
             {
                 SetFrameFinished(false);
                 SetFrankensteinFinished(false);
-                currentSample++;
-                reset = true;
+                settings.currentSample++;
+                dynamicSettings.reset = true;
             });
 
     }

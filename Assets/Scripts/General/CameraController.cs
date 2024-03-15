@@ -39,20 +39,7 @@ public class CameraController : MonoBehaviour
     public int shiftY = 0;
 
     //this script has the be aware of those values:
-    public int pixelizationBase = 1;
-    public int pixelizationLevel = 1;
-
-
-
-    int ReducedWidth()
-    {
-        return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
-
-    }
-    int ReducedHeight()
-    {
-        return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
-    }
+    public Settings settings;
 
     public void HandleMouseInput()
     {
@@ -66,17 +53,17 @@ public class CameraController : MonoBehaviour
             return;
         }
         Vector2 mousePosPix = Input.mousePosition;
-        int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, pixelizationBase, pixelizationLevel);
-        int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, pixelizationBase, pixelizationLevel);
+        int mouseTextureCoordinatesX = OtherFunctions.Reduce((int)mousePosPix.x, settings.pixelizationBase, settings.pixelizationLevel);
+        int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, settings.pixelizationBase, settings.pixelizationLevel);
 
 
         FixedPointNumber mousePosRealX = new(cpuPrecision);
 
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - ReducedWidth() / 2);
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - settings.ReducedWidth() / 2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(cpuPrecision);
 
-        mousePosRealY.SetDouble(mouseTextureCoordinatesY - ReducedHeight() / 2);
+        mousePosRealY.SetDouble(mouseTextureCoordinatesY - settings.ReducedHeight() / 2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(cpuPrecision);
 

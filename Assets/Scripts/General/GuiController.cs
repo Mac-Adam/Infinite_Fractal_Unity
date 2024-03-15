@@ -10,7 +10,7 @@ using GuiTemplates;
 public class GuiController : MonoBehaviour
 {
     /*
-     * This script handles all the gui related stuff, plus all the settings
+     * This script handles all the gui related stuff, plus all the visual settings
      * This script can't do all the necesary things to make the controls work, therefore
      * if sets public flags if somethging is requested by the user, for example ScreenShot.
      * Other conroll script should hande the request and set the flag back to false
@@ -39,7 +39,6 @@ Visual:
     G - Toggle GUI";
 
     //Anti-Alias
-    public bool doAntialasing = false;
     public bool changedAntialias = false;
  
     string resetKey = "r";
@@ -78,8 +77,7 @@ Visual:
     public int lastColorPalette = 0;
 
 
-    public bool frankensteinRendering = false;
-    public int frankensteinSteps = 1;
+    public int requestedFrankensteinLevel = 1;
     public bool changedFrankenstein = false;
 
     public bool requestingSS = false;
@@ -92,28 +90,15 @@ Visual:
 
 
     //this module is not responsible for keeping track of it, it simply displays it
-    public int renderWidth;
-    public int renderHeight;
-    public int currIter;
-    public int maxAntiAliasyncReruns;
-    public uint currentSample;
-    public int frankensteinX;
-    public int frankensteinY;
-    public float renderTimeElapsed;
-    public Precision precision = Precision.FLOAT;
-    public int precisionLevel;
-    public bool renderFinished = false;
+    public Settings settings;
+    public DynamicSettings dynamicSettings;
 
 
     public void SetSmoothGradient(bool val)
     {
+        Debug.Log("Changed");
         changedSmoothGradient = true;
         smoothGradient = val;
-    }
-    public void SetAnitialiasing(bool val)
-    {
-        changedAntialias = true;
-        doAntialasing = val;
     }
     public void SetColorPalette(int val)
     {
@@ -131,6 +116,14 @@ Visual:
         bailoutRadius = radius;
     }
 
+    void SetAntialias(bool val)
+    {
+        if (val != settings.doAntialasing)
+        {
+            changedAntialias = true;
+        } 
+    }
+
     public void SetGuiActive(bool val)
     {
         guiOn = val;
@@ -144,12 +137,11 @@ Visual:
     public void SetFrankensteinLevel(int level)
     {
         int steps = OtherFunctions.IntPow(2, level);
-        if (steps == frankensteinSteps)
+        if (steps == settings.frankensteinSteps)
         {
             return;
         }
-        frankensteinRendering = steps != 1;
-        frankensteinSteps = steps;
+        requestedFrankensteinLevel = level;
         changedFrankenstein = true;
     }
 
@@ -165,8 +157,8 @@ Visual:
         new List<ToggleTemplate>(){
             new ToggleTemplate(
                 "Antialiasing",
-                doAntialasing,
-                (bool b) => SetAnitialiasing(b)
+                settings.doAntialasing,
+                (bool b) => SetAntialias(b)
                 ),
             new ToggleTemplate(
                 "Smooth Gradient",
@@ -194,7 +186,7 @@ Visual:
                 ),
              new SliderTemplate(
                 "Tiles",
-                (float)Math.Log(frankensteinSteps)/(float)Math.Log(2.0),//basicly log2
+                (float)Math.Log(settings.frankensteinSteps)/(float)Math.Log(2.0),//basicly log2
                 0,
                 6,
                 false,
@@ -267,7 +259,7 @@ Visual:
 
         if (Input.GetKeyDown(antialiasTogleKey))
         {
-            SetAnitialiasing(!doAntialasing);
+            SetAntialias(!settings.doAntialasing);
         }
 
  
@@ -302,30 +294,30 @@ Visual:
 
     public void HandleGuiUpdates()
     {
-        string precisionText = precision == Precision.FLOAT ? "float" : precision == Precision.DOUBLE ? "double" : $"infine with precision {precisionLevel}";
-        string timeElapsed = String.Format("{0:0.000}", renderTimeElapsed);
-        float RenderComplete = (float)(frankensteinY * frankensteinSteps + frankensteinX) / (frankensteinSteps * frankensteinSteps);
-        if (doAntialasing)
+        string precisionText = settings.precision == Precision.FLOAT ? "float" : settings.precision == Precision.DOUBLE ? "double" : $"infine with precision {settings.precisionLevel}";
+        string timeElapsed = String.Format("{0:0.000}", dynamicSettings.renderTimeElapsed);
+        float RenderComplete = (float)(settings.frankensteinY * settings.frankensteinSteps + settings.frankensteinX) / (settings.frankensteinSteps * settings.frankensteinSteps);
+        if (settings.doAntialasing)
         {
-            RenderComplete += currentSample;
+            RenderComplete += settings.currentSample;
         }
-        float wholeRender = doAntialasing ? maxAntiAliasyncReruns : 1.0f;
-        Debug.Log($"RC:{RenderComplete} WR:{wholeRender}, CI: {currIter} MI:{maxIter}, RF:{renderFinished}");
+        float wholeRender = settings.doAntialasing ? settings.maxAntiAliasyncReruns : 1.0f;
+        //Debug.Log($"RC:{RenderComplete} WR:{wholeRender}, CI: {dynamicSettings.currIter} MI:{maxIter}, RF:{dynamicSettings.renderFinished}");
         generalInfo = @$"
 Rendering {Screen.width} x {Screen.height}
-Calculating {renderWidth} x {renderHeight}
+Calculating {settings.ReducedWidth(false)} x {settings.ReducedHeight(false)}
 Numer System: {precisionText}
 Last Frame rendered in: {timeElapsed}s";
         guiControler.UpdateUI(
             new List<bool>() {
-                doAntialasing,
+                settings.doAntialasing,
                 smoothGradient 
             },
             new List<float>()
             {
                 colorStrength,
                 maxIter,
-                (float)Math.Log(frankensteinSteps)/(float)Math.Log(2.0)
+                (float)Math.Log(settings.frankensteinSteps)/(float)Math.Log(2.0)
             },
             new List<int>()
             {
@@ -333,8 +325,8 @@ Last Frame rendered in: {timeElapsed}s";
             },
             new List<float>()
             {
-                renderFinished ? 1 : currIter/(float)maxIter,
-                renderFinished ? 1 : RenderComplete/wholeRender
+                dynamicSettings.renderFinished ? 1 : dynamicSettings.currIter/(float)maxIter,
+                dynamicSettings.renderFinished ? 1 : RenderComplete/wholeRender
             },
             new List<string>()
             {

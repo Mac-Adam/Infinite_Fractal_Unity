@@ -1,6 +1,7 @@
-using CommonFunctions;
-using UnityEngine;
 using System;
+using UnityEngine;
+using FixedPointNumberSystem;
+using CommonFunctions;
 namespace CommonShaderRenderFunctions
 {
 
@@ -27,6 +28,204 @@ namespace CommonShaderRenderFunctions
             this.register = register;
         }
 
+    }
+
+    //In order to keep everythong condensed this stuct is used to keep tack of every value that describes the state of renderer
+    // this takes into account only the values needed to describe equelibriun state (shiftX,etc. are excluded)
+    public struct Settings
+    {
+        public bool upscaling;
+        public int register;
+        public bool zoomVideo;
+        public int pixelizationBase;
+        public int pixelizationLevel;
+        public int lastPixelizationLevel;
+        public uint currentSample;
+        public int maxAntiAliasyncReruns;
+        public Vector2[] antialiasLookupTable;
+        public bool frankensteinRendering;
+        public int frankensteinSteps;
+        public int frankensteinX;
+        public int frankensteinY;
+        public Precision precision;
+        public int precisionLevel;
+        public int iterPerCycle;
+        public bool doAntialasing;
+
+        public Settings(
+            bool upscaling,
+            int register,
+            bool zoomVideo,
+            int pixelizationBase,
+            int pixelizationLevel,
+            int lastPixelizationLevel,
+            uint currentSample,
+            int maxAntiAliasyncReruns,
+            Vector2[] antialiasLookupTable,
+            bool frankensteinRendering,
+            int frankensteinSteps,
+            int frankensteinX,
+            int frankensteinY,
+            Precision precision,
+            int precisionLevel,
+            int iterPerCycle,
+            bool doAntialasing
+            )
+        {
+            this.upscaling = upscaling;
+            this.register = register;
+            this.zoomVideo = zoomVideo;
+            this.pixelizationBase = pixelizationBase;
+            this.pixelizationLevel = pixelizationLevel;
+            this.lastPixelizationLevel = lastPixelizationLevel;
+            this.currentSample = currentSample;
+            this.maxAntiAliasyncReruns = maxAntiAliasyncReruns;
+            this.antialiasLookupTable = antialiasLookupTable;
+            this.frankensteinRendering = frankensteinRendering;
+            this.frankensteinSteps = frankensteinSteps;
+            this.frankensteinX = frankensteinX;
+            this.frankensteinY = frankensteinY;
+            this.precision = precision;
+            this.precisionLevel = precisionLevel;
+            this.iterPerCycle = iterPerCycle;
+            this.doAntialasing = doAntialasing;
+;
+        }
+
+
+
+        public int GetShaderPre()
+        {
+            return GPUCode.precisions[precisionLevel].precision;
+        }
+        public int GetShaderPixelSize()
+        {
+            return  2 * GetShaderPre() + 3;
+        }
+
+
+        public int FrankensteinCorrection()
+        {
+            if (frankensteinRendering)
+            {
+                return frankensteinSteps;
+            }
+            return 1;
+
+        }
+        public int PixelCount(bool frankenstein = true)
+        {
+            return ReducedHeight(frankenstein) * ReducedWidth(frankenstein);
+
+        }
+        public int ReducedWidth(bool frankenstein = true)
+        {
+            if (frankenstein)
+            {
+                return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel) / FrankensteinCorrection();
+            }
+            return OtherFunctions.Reduce(Screen.width, pixelizationBase, pixelizationLevel);
+
+        }
+        public int ReducedHeight(bool frankenstein = true)
+        {
+            if (frankenstein)
+            {
+                return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel) / FrankensteinCorrection();
+            }
+            return OtherFunctions.Reduce(Screen.height, pixelizationBase, pixelizationLevel);
+        }
+
+        public int LastPixelCount( bool frankenstein = true)
+        {
+            return LastReducedHeight( frankenstein) * LastReducedWidth( frankenstein);
+        }
+        public  int LastReducedWidth(bool frankenstein = true)
+        {
+            if (frankenstein)
+            {
+                return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
+            }
+            return OtherFunctions.Reduce(Screen.width, pixelizationBase, lastPixelizationLevel);
+        }
+        public  int LastReducedHeight(bool frankenstein = true)
+        {
+            if (frankenstein)
+            {
+                return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel) / FrankensteinCorrection();
+            }
+            return OtherFunctions.Reduce(Screen.height, pixelizationBase, lastPixelizationLevel);
+        }
+
+
+        public int MaxPixelizationLevel()
+        {
+            int max = 6; //This will allways be a valid level
+            long pixelCount;
+            long bufferSize = 0;
+            long iterSize;
+            do
+            {
+                max--;
+                pixelCount = OtherFunctions.Reduce(Screen.width, pixelizationBase, max) * OtherFunctions.Reduce(Screen.height, pixelizationBase, max);
+                iterSize = pixelCount * 3 * sizeof(int);
+                switch (precision)
+                {
+                    case Precision.FLOAT:
+                        bufferSize = 2 * pixelCount * FloatPixelPacket.size;
+                        break;
+                    case Precision.DOUBLE:
+                        bufferSize = 2 * pixelCount * DoublePixelPacket.size;
+                        break;
+                    case Precision.INFINTE:
+                        bufferSize = 2 * pixelCount * sizeof(int) * GetShaderPixelSize();
+                        break;
+                }
+
+            } while (bufferSize <= PixelizedShaders.MAXBYTESPERBUFFER * FrankensteinCorrection() && iterSize <= PixelizedShaders.MAXBYTESPERBUFFER); ;
+            return max + 1;
+        }
+
+    }
+    //values keept in this struct change frequently
+    //Every value is prone to changes so the devision is arbitrary
+    public struct DynamicSettings 
+    {
+        public int currIter;
+        public bool reset;
+        public bool turboReset;
+        public int shiftX;
+        public int shiftY;
+        public bool renderFinished;
+        public bool frameFinished;
+        public bool frankensteinStepFinished;
+        public float renderStatTime;
+        public float renderTimeElapsed;
+
+        public DynamicSettings(
+            int currIter,
+            bool reset,
+            bool turboReset,
+            int shiftX,
+            int shiftY,
+            bool renderFinished,
+            bool frameFinished,
+            bool frankensteinStepFinished,
+            float renderStatTime,
+            float renderTimeElapsed
+            )
+        {
+            this.currIter = currIter;
+            this.reset = reset;
+            this.turboReset = turboReset;
+            this.shiftX = shiftX;
+            this.shiftY = shiftY;
+            this.renderFinished = renderFinished;
+            this.frameFinished = frameFinished;
+            this.frankensteinStepFinished = frankensteinStepFinished;
+            this.renderStatTime = renderStatTime;
+            this.renderTimeElapsed = renderTimeElapsed;
+        }
     }
 
     public struct DoublePixelPacket
