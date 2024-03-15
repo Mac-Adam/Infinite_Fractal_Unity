@@ -15,10 +15,13 @@ public class MandelbrotContoroler : MonoBehaviour
     public ComputeShader ShiftShader;
     public Shader AddShader;
 
-    RenderTexture targetTexture;
 
+    // the render texture
+    RenderTexture renderTexture;
+    // texture the calculations are done on (can be different size than the render texture)
     RenderTexture dummyTexture;
     RenderTexture screenshotTexture;
+
     Material addMaterial;
 
     //used to transfer position and scale to the shader
@@ -43,14 +46,6 @@ public class MandelbrotContoroler : MonoBehaviour
    
     //not yet sure if needed 
     int preUpscalePixLvl;
-
-
-    //Anti-Alias
-
-
-
-
-   
 
     //Controls
     double length = 4.0f;
@@ -305,10 +300,6 @@ public class MandelbrotContoroler : MonoBehaviour
         ResetIterPerCycle();
         addMaterial = new Material(AddShader);
     }
-    public void HandleLastValues()
-    {
-        //lastPixelizationLevel = pixelizationLevel;
-    }
    
     public void DisposeBuffers()
     {
@@ -323,8 +314,9 @@ public class MandelbrotContoroler : MonoBehaviour
        
 
     }
-    public void AdditionalCleanup()
+    public void DestroyTextures()
     {
+        Destroy(renderTexture);
         Destroy(dummyTexture);
         Destroy(screenshotTexture);
     }
@@ -373,7 +365,7 @@ public class MandelbrotContoroler : MonoBehaviour
     
     public void SetShadersParameters()
     {
-
+        //calculate render place
         FixedPointNumber MiddleXToSend = new(cameraController.MiddleX);
         FixedPointNumber MiddleYToSend = new(cameraController.MiddleY);
         if (settings.frankensteinRendering)
@@ -745,20 +737,6 @@ public class MandelbrotContoroler : MonoBehaviour
         }
 
     }
-
-    public void AddiitionalTextureRegenerationHandeling()
-    {
-        settings.currentSample = 0;
-  
-    }
-    public bool ShouldRegerateTexture()
-    {
-        return settings.lastPixelizationLevel != settings.pixelizationLevel;
-    }
-    public void InitializeOtherTextures()
-    {
-        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, settings.ReducedWidth(), settings.ReducedHeight());
-    }
     public void DispatchShaders()
     {
         if (dynamicSettings.reset || dynamicSettings.turboReset)
@@ -780,7 +758,7 @@ public class MandelbrotContoroler : MonoBehaviour
                 PixelizedShaders.Dispatch(FloatShader, dummyTexture);
                 break;
         }
-        PixelizedShaders.Dispatch(RenderShader, targetTexture);
+        PixelizedShaders.Dispatch(RenderShader, renderTexture);
         dynamicSettings.reset = false;
         dynamicSettings.turboReset = false;
         dynamicSettings.shiftX = 0;
@@ -792,7 +770,7 @@ public class MandelbrotContoroler : MonoBehaviour
         
         Antialiasing.BlitWitthAntialiasing(settings.currentSample, dynamicSettings.frameFinished, dynamicSettings.renderFinished,
             Input.GetMouseButton(0) && Input.mousePosition.x < Screen.width - guiController.guiTemplate.sizes.width
-            , destination, targetTexture, addMaterial,
+            , destination, renderTexture, addMaterial,
             () =>
             {
                 SetFrameFinished(false);
@@ -809,7 +787,6 @@ public class MandelbrotContoroler : MonoBehaviour
         Application.targetFrameRate = -1;
         InitializeValues();
         InitializeBuffers();
-        HandleLastValues();
         ResetParams();
 
     }
@@ -819,34 +796,37 @@ public class MandelbrotContoroler : MonoBehaviour
         HandleScreenSizeChange();
         HandleAntialias();
         AutomaticParametersChange();
-
-        HandleLastValues();
     }
     private void OnDestroy()
     {
-        Destroy(targetTexture);
+        
         DisposeBuffers();
-        AdditionalCleanup();
+        DestroyTextures();
     }
 
     private void InitializeRenderTextures()
     {
-        if (targetTexture == null || targetTexture.width != Screen.width || targetTexture.height != Screen.height || ShouldRegerateTexture())
+        if (
+            renderTexture == null || 
+            renderTexture.width != Screen.width || 
+            renderTexture.height != Screen.height || 
+            settings.lastPixelizationLevel != settings.pixelizationLevel
+            )
         {
-            if (targetTexture != null)
+            if (renderTexture != null)
             {
-                targetTexture.Release();
+                renderTexture.Release();
             }
 
-            targetTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
+            renderTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
             {
                 enableRandomWrite = true
             };
-            targetTexture.Create();
-            AddiitionalTextureRegenerationHandeling();
+            renderTexture.Create();
+            settings.currentSample = 0;
 
         }
-        InitializeOtherTextures();
+        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, settings.ReducedWidth(), settings.ReducedHeight());
     }
 
     private void Render(RenderTexture destination)
