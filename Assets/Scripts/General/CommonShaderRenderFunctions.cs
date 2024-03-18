@@ -51,45 +51,27 @@ namespace CommonShaderRenderFunctions
         public int precisionLevel;
         public int iterPerCycle;
         public bool doAntialasing;
-
-        public Settings(
-            bool upscaling,
-            int register,
-            bool zoomVideo,
-            int pixelizationBase,
-            int pixelizationLevel,
-            int lastPixelizationLevel,
-            uint currentSample,
-            int maxAntiAliasyncReruns,
-            Vector2[] antialiasLookupTable,
-            bool frankensteinRendering,
-            int frankensteinSteps,
-            int frankensteinX,
-            int frankensteinY,
-            Precision precision,
-            int precisionLevel,
-            int iterPerCycle,
-            bool doAntialasing
-            )
+    
+        //There are probably better ways to do this, but I want to initialize it to the same thing allways
+        public Settings(bool _)
         {
-            this.upscaling = upscaling;
-            this.register = register;
-            this.zoomVideo = zoomVideo;
-            this.pixelizationBase = pixelizationBase;
-            this.pixelizationLevel = pixelizationLevel;
-            this.lastPixelizationLevel = lastPixelizationLevel;
-            this.currentSample = currentSample;
-            this.maxAntiAliasyncReruns = maxAntiAliasyncReruns;
-            this.antialiasLookupTable = antialiasLookupTable;
-            this.frankensteinRendering = frankensteinRendering;
-            this.frankensteinSteps = frankensteinSteps;
-            this.frankensteinX = frankensteinX;
-            this.frankensteinY = frankensteinY;
-            this.precision = precision;
-            this.precisionLevel = precisionLevel;
-            this.iterPerCycle = iterPerCycle;
-            this.doAntialasing = doAntialasing;
-;
+            upscaling = false;
+            register = 0;
+            zoomVideo = false;
+            pixelizationBase = 2;
+            pixelizationLevel = 0;
+            lastPixelizationLevel = 0;
+            currentSample = 0;
+            maxAntiAliasyncReruns = 9;
+            antialiasLookupTable = Antialiasing.antialiasLookupTableSharp;
+            frankensteinRendering = false;
+            frankensteinSteps = 1;
+            frankensteinX = 0;
+            frankensteinY = 0;
+            precision = Precision.FLOAT;
+            precisionLevel = 1;
+            iterPerCycle = 50;
+            doAntialasing = false;
         }
 
 
@@ -201,31 +183,6 @@ namespace CommonShaderRenderFunctions
         public bool frankensteinStepFinished;
         public float renderStatTime;
         public float renderTimeElapsed;
-
-        public DynamicSettings(
-            int currIter,
-            bool reset,
-            bool turboReset,
-            int shiftX,
-            int shiftY,
-            bool renderFinished,
-            bool frameFinished,
-            bool frankensteinStepFinished,
-            float renderStatTime,
-            float renderTimeElapsed
-            )
-        {
-            this.currIter = currIter;
-            this.reset = reset;
-            this.turboReset = turboReset;
-            this.shiftX = shiftX;
-            this.shiftY = shiftY;
-            this.renderFinished = renderFinished;
-            this.frameFinished = frameFinished;
-            this.frankensteinStepFinished = frankensteinStepFinished;
-            this.renderStatTime = renderStatTime;
-            this.renderTimeElapsed = renderTimeElapsed;
-        }
     }
 
     public struct DoublePixelPacket
@@ -258,11 +215,11 @@ namespace CommonShaderRenderFunctions
     class PixelizedShaders
     {
         public const uint MAXBYTESPERBUFFER = 2147483648;
-        public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int reducedWidth, int reducedHeight, bool smallSize = false)
+        public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int reducedWidth, int reducedHeight, bool additionalCondition,Action callback,bool smallSize = false)
         {
-            if (texture == null || texture.width != reducedWidth || texture.height != reducedHeight)
+            if (texture == null || texture.width != reducedWidth || texture.height != reducedHeight || additionalCondition)
             {
-                
+
                 if (texture != null)
                     texture.Release();
 
@@ -273,9 +230,13 @@ namespace CommonShaderRenderFunctions
                     enableRandomWrite = true
                 };
                 texture.Create();
-
+                callback.Invoke();
             }
             return texture;
+        }
+        public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int reducedWidth, int reducedHeight, bool smallSize = false)
+        {
+            return InitializePixelizedTexture(texture, reducedWidth, reducedHeight, false, () => { }, smallSize);
         }
 
         public static void Dispatch(ComputeShader shader, RenderTexture texture)
@@ -292,7 +253,6 @@ namespace CommonShaderRenderFunctions
         {
            
             T[] oldData = new T[pixelizationData.lastPixelCount * arrayCount * 2];
-            Debug.Log($"Last: {pixelizationData.lastPixelCount}, This: {pixelizationData.pixelCount}");
           
             Buffer.GetData(oldData);
             Buffer.Dispose();

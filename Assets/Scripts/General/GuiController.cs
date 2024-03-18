@@ -102,6 +102,11 @@ Visual:
     }
     public void SetColorPalette(int val)
     {
+        if (val % MyColoringSystem.colorPalettes.Length == currColorPalette)
+        {
+            return;
+        }
+
         lastColorPalette = currColorPalette;
         currColorPalette = val % MyColoringSystem.colorPalettes.Length;
     }

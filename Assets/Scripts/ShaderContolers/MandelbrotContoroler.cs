@@ -13,6 +13,7 @@ public class MandelbrotContoroler : MonoBehaviour
     public ComputeShader RenderShader;
     public ComputeShader ResetShader;
     public ComputeShader ShiftShader;
+    public ComputeShader ZoomInShader;
     public Shader AddShader;
 
 
@@ -36,9 +37,6 @@ public class MandelbrotContoroler : MonoBehaviour
 
     ComputeBuffer ColorBuffer;
 
-
-
-
     //Not yet sure where this should be
 
     GuiController guiController;
@@ -57,38 +55,8 @@ public class MandelbrotContoroler : MonoBehaviour
     const float minTargetFramerate = 60;
     const float maxTagretFramerate = 200;
 
-    Settings settings = new(
-        false,                      //upscaling
-        0,                          //register
-        false,                      //zoomVideo
-        2,                          //pixelizationBase 
-        0,                          //pixelizationLevel
-        0,                          //lastPixelizationLevel
-        0,                          //currentSample 
-        9,                          //maxAntiAliasyncReruns
-        Antialiasing.antialiasLookupTableSharp,  //antialiasLookupTable.
-        false,                      //frankensteinRendering;
-        1,                          //frankensteinSteps;
-        0,                          //frankensteinX
-        0,                          //frankensteinY
-        Precision.FLOAT,            //precision
-        1,                          //precisionLevel
-        50,                         //IterPerCycle
-        false                       //doAntialasing
-    );
-
-    DynamicSettings dynamicSettings = new(
-        0,                          //currIter
-        false,                      //reset 
-        false,                      //turboReset
-        0,                          //shiftX 
-        0,                          //shiftY 
-        false,                      //renderFinished
-        false,                      //frameFinished
-        false,                      //frankensteinStepFinished
-        0,                          //renderStatTime
-        0                           //renderTimeElapsed
-    );
+    Settings settings = new(true);
+    DynamicSettings dynamicSettings = new();
 
     PixelizationData GetPixelizationData()
     {
@@ -213,7 +181,6 @@ public class MandelbrotContoroler : MonoBehaviour
             if(settings.frankensteinX == settings.frankensteinSteps - 1 && settings.frankensteinY == settings.frankensteinSteps - 1)
             {
                 dynamicSettings.frankensteinStepFinished = true;
-                Debug.Log("2");
                 SetFrameFinished(true);
             }
             else
@@ -308,7 +275,6 @@ public class MandelbrotContoroler : MonoBehaviour
         dataBuffer.Dispose();
       
         ColorBuffer.Dispose();
-       
 
         multiFrameRenderBuffer.Dispose();
        
@@ -325,11 +291,13 @@ public class MandelbrotContoroler : MonoBehaviour
     {
         if (cameraController.screenSizeChanged || settings.lastPixelizationLevel != settings.pixelizationLevel)
         {
+            //Move this part
+
             IterBuffer.Dispose();
             IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
             if (settings.lastPixelizationLevel != settings.pixelizationLevel && !settings.upscaling)
             {
-                switch (settings.precision)
+                /*switch (settings.precision)
                 {
                     case Precision.INFINTE:
                         PixelizedShaders.HandleZoomPixelization<int>(multiFrameRenderBuffer, sizeof(int), settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { multiFrameRenderBuffer = buffer; }, settings.GetShaderPixelSize());
@@ -341,6 +309,44 @@ public class MandelbrotContoroler : MonoBehaviour
                         PixelizedShaders.HandleZoomPixelization<FloatPixelPacket>(multiFrameRenderBuffer, FloatPixelPacket.size, settings.lastPixelizationLevel < settings.pixelizationLevel, GetPixelizationData(), (ComputeBuffer buffer) => { multiFrameRenderBuffer = buffer; });
                         break;
 
+                }*/
+                Shader.DisableKeyword("FLOAT");
+                Shader.DisableKeyword("DOUBLE");
+                Shader.DisableKeyword("INFINITE");
+                if (settings.lastPixelizationLevel< settings.pixelizationLevel)
+                {
+                    ComputeBuffer temp;
+                    switch (settings.precision)
+                    {
+                        case Precision.INFINTE:
+                            Shader.EnableKeyword("INFINITE");
+                            Debug.Log(settings.precisionLevel);
+                            ZoomInShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
+                            temp = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
+                            break;
+                        case Precision.DOUBLE:
+                            Shader.EnableKeyword("DOUBLE");
+                            temp = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
+                            break;
+                        default: // idk why i need to do this thike that :/
+                            Shader.EnableKeyword("FLOAT");
+                            temp = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
+                            break;
+                    }
+                    //Debug.Log($"Created a buffer of size:{temp.count}, Old one was: {multiFrameRenderBuffer.count}");
+                    Debug.Log($"Reg during: {settings.register}");
+                    ZoomInShader.SetBuffer(0,"_MultiFrameData", temp);
+                    ZoomInShader.SetBuffer(0, "_OldMultiFrameData", multiFrameRenderBuffer);
+                    ZoomInShader.SetInt("_Register", settings.register);
+                    ZoomInShader.SetInt("_PixelizationBase", settings.pixelizationBase);
+                    dummyTexture = PixelizedShaders.InitializePixelizedTexture(
+                    dummyTexture,
+                    settings.ReducedWidth(),
+                    settings.ReducedHeight());
+                    PixelizedShaders.Dispatch(ZoomInShader, dummyTexture);
+                    Debug.Log($"{dummyTexture.width}x{dummyTexture.height}");
+                    multiFrameRenderBuffer.Dispose();
+                    multiFrameRenderBuffer = temp;
                 }
                 settings.lastPixelizationLevel = settings.pixelizationLevel;
                 SetFrameFinished(false);
@@ -380,7 +386,6 @@ public class MandelbrotContoroler : MonoBehaviour
             temp *= cameraController.Scale;
             MiddleYToSend += temp;
         }
-        
 
         ColorBuffer.SetData(MyColoringSystem.colorPalettes[guiController.currColorPalette].colors);
        
@@ -514,142 +519,7 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void AutomaticParametersChange()
     {
-        //This code will be somewhere else in the long run
-        if (guiController.requestingSS)
-        {
-            SaveCurrentRenderTextureAsAPng();
-            guiController.requestingSS = false;
-        }
-        if (guiController.requestedZoomVid)
-        {
-            //this may need some more code
-            settings.zoomVideo = !settings.zoomVideo;
-            guiController.requestedZoomVid = false;
-        }
-        if (guiController.changedAntialias)
-        {
-            settings.doAntialasing = !settings.doAntialasing;
-            ResetAntialias();
-            OnMoveComand();
-            guiController.changedAntialias = false;
-        }
-        if (guiController.currColorPalette != guiController.lastColorPalette)
-        {
-            ColorBuffer.Dispose();
-            ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
-            OnMoveComand();
-        }
-        if (guiController.resetRequested)
-        {
-            dynamicSettings.turboReset = true;
-            ResetParams();
-            ResetAntialias();
-            guiController.resetRequested = false;
-        }
-        if (guiController.changedSmoothGradient)
-        {
-            OnMoveComand();
-            guiController.changedSmoothGradient = false;
-        }
-        if (guiController.changedMaxIter)
-        {
-            ResetParams();
-            ResetAntialias();
-            guiController.changedMaxIter = false;
-        }
-        if (guiController.changedBailoutRadius)
-        {
-            ResetParams();
-            ResetAntialias();
-            guiController.changedBailoutRadius = false;
-        }
-        if (guiController.changedFrankenstein)
-        {
-            settings.frankensteinSteps = OtherFunctions.IntPow(2, guiController.requestedFrankensteinLevel);
-            settings.frankensteinX = 0;
-            settings.frankensteinY = 0;
-            ResetParams();
-            dynamicSettings.turboReset = true;
-            guiController.changedFrankenstein = false;
-        }
-
-        if (guiController.RequestedUpscale)
-        {
-            if (settings.MaxPixelizationLevel() < settings.pixelizationLevel)
-            {
-
-                int[] arr = new int[settings.PixelCount(false) * 3];
-                IterBuffer.GetData(arr);
-                OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
-                OldIterBuffer.SetData(arr);
-                IterBuffer.Dispose();
-
-
-                preUpscalePixLvl = settings.pixelizationLevel;
-                settings.pixelizationLevel -= 1;
-
-                IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
-                FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
-                scaleFixer.SetDouble(settings.pixelizationLevel > settings.lastPixelizationLevel ? settings.pixelizationBase : 1.0 / settings.pixelizationBase);
-                cameraController.Scale *= scaleFixer;
-                settings.upscaling = true;
-                SetRenderFinished(false);
-                SetFrankensteinFinished(false);
-                SetFrameFinished(false);
-                dynamicSettings.currIter = 0;
-                OnMoveComand();
-            }
-            guiController.RequestedUpscale = false;
-        }
-        if (guiController.pixelizationChange != 0)
-        {
-            if(settings.MaxPixelizationLevel() < settings.pixelizationLevel + guiController.pixelizationChange)
-            {
-                if (guiController.pixelizationChange > 0)
-                {
-                    preUpscalePixLvl = settings.pixelizationLevel;
-                }
-                settings.lastPixelizationLevel = settings.pixelizationLevel;
-                settings.pixelizationLevel += guiController.pixelizationChange;
-
-                settings.upscaling = false;
-                dynamicSettings.currIter = 0;
-                OnMoveComand();
-            }
-            guiController.pixelizationChange = 0;
-        }
-        if (cameraController.scrollMoved)
-        {
-            OnMoveComand();
-            ResetParams();
-
-            cameraController.scrollMoved = false;
-        }
-        if(cameraController.shiftX !=0 || cameraController.shiftY!= 0)
-        {
-            dynamicSettings.shiftX = cameraController.shiftX;
-            dynamicSettings.shiftY = cameraController.shiftY;
-
-            ResetAntialias();
-            settings.register = (settings.register + 1) % 2;
-            OnMoveComand();
-            ResetParams();
-
-            cameraController.shiftX = 0;
-            cameraController.shiftY = 0;
-        }
-        guiController.settings = settings;
-        guiController.dynamicSettings = dynamicSettings;
-
-        cameraController.settings = settings;
-
-        cameraController.deadZoneRight = guiController.guiOn ? (int)guiController.guiTemplate.sizes.width : 0;
-
-        // end of the temp code
-
-
-
+        
         if (!dynamicSettings.frankensteinStepFinished && !dynamicSettings.renderFinished)
         {
             if (1 / Time.deltaTime > maxTagretFramerate)
@@ -723,7 +593,146 @@ public class MandelbrotContoroler : MonoBehaviour
 
    
     }
+    public void HandleFlags()
+    {
+        //This code will be somewhere else in the long run
+        if (guiController.requestingSS)
+        {
+            SaveCurrentRenderTextureAsAPng();
+            guiController.requestingSS = false;
+        }
+        if (guiController.requestedZoomVid)
+        {
+            //this may need some more code
+            settings.zoomVideo = !settings.zoomVideo;
+            guiController.requestedZoomVid = false;
+        }
+        if (guiController.changedAntialias)
+        {
+            settings.doAntialasing = !settings.doAntialasing;
+            ResetAntialias();
+            OnMoveComand();
+            guiController.changedAntialias = false;
+        }
+        if (guiController.currColorPalette != guiController.lastColorPalette)
+        {
+            ColorBuffer.Dispose();
+            ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
+            OnMoveComand();
+            guiController.lastColorPalette = guiController.currColorPalette;
+        }
+        if (guiController.resetRequested)
+        {
+            dynamicSettings.turboReset = true;
+            ResetParams();
+            ResetAntialias();
+            guiController.resetRequested = false;
+        }
+        if (guiController.changedSmoothGradient)
+        {
+            OnMoveComand();
+            guiController.changedSmoothGradient = false;
+        }
+        if (guiController.changedMaxIter)
+        {
+            ResetParams();
+            ResetAntialias();
+            guiController.changedMaxIter = false;
+        }
+        if (guiController.changedBailoutRadius)
+        {
+            ResetParams();
+            ResetAntialias();
+            guiController.changedBailoutRadius = false;
+        }
+        if (guiController.changedFrankenstein)
+        {
+            settings.frankensteinSteps = OtherFunctions.IntPow(2, guiController.requestedFrankensteinLevel);
+            settings.frankensteinX = 0;
+            settings.frankensteinY = 0;
+            ResetParams();
+            dynamicSettings.turboReset = true;
+            guiController.changedFrankenstein = false;
+        }
 
+        if (guiController.RequestedUpscale)
+        {
+            if (settings.MaxPixelizationLevel() < settings.pixelizationLevel)
+            {
+
+                int[] arr = new int[settings.PixelCount(false) * 3];
+                IterBuffer.GetData(arr);
+                OldIterBuffer.Dispose();
+                OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+                OldIterBuffer.SetData(arr);
+                IterBuffer.Dispose();
+
+
+                preUpscalePixLvl = settings.pixelizationLevel;
+                settings.pixelizationLevel -= 1;
+
+                IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+                FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
+                scaleFixer.SetDouble(settings.pixelizationLevel > settings.lastPixelizationLevel ? settings.pixelizationBase : 1.0 / settings.pixelizationBase);
+                cameraController.Scale *= scaleFixer;
+                settings.upscaling = true;
+                SetRenderFinished(false);
+                SetFrankensteinFinished(false);
+                SetFrameFinished(false);
+                dynamicSettings.currIter = 0;
+                OnMoveComand();
+            }
+            guiController.RequestedUpscale = false;
+        }
+        if (guiController.pixelizationChange != 0)
+        {
+            if (settings.MaxPixelizationLevel() < settings.pixelizationLevel + guiController.pixelizationChange)
+            {
+                if (guiController.pixelizationChange > 0)
+                {
+                    preUpscalePixLvl = settings.pixelizationLevel;
+                }
+                settings.lastPixelizationLevel = settings.pixelizationLevel;
+                settings.pixelizationLevel += guiController.pixelizationChange;
+
+                settings.upscaling = false;
+                dynamicSettings.currIter = 0;
+                OnMoveComand();
+            }
+            guiController.pixelizationChange = 0;
+        }
+        if (cameraController.scrollMoved)
+        {
+            OnMoveComand();
+            ResetParams();
+
+            cameraController.scrollMoved = false;
+        }
+        if (cameraController.shiftX != 0 || cameraController.shiftY != 0)
+        {
+            dynamicSettings.shiftX = cameraController.shiftX;
+            dynamicSettings.shiftY = cameraController.shiftY;
+
+            ResetAntialias();
+            settings.register = (settings.register + 1) % 2;
+            OnMoveComand();
+            ResetParams();
+
+            cameraController.shiftX = 0;
+            cameraController.shiftY = 0;
+        }
+        guiController.settings = settings;
+        guiController.dynamicSettings = dynamicSettings;
+
+        cameraController.settings = settings;
+
+        cameraController.deadZoneRight = guiController.guiOn ? (int)guiController.guiTemplate.sizes.width : 0;
+
+        // end of the temp code
+
+
+
+    }
     public void HandleAntialias()
     {
         if (!dynamicSettings.frankensteinStepFinished)
@@ -767,18 +776,38 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void BlitTexture(RenderTexture destination)
     {
-        
-        Antialiasing.BlitWitthAntialiasing(settings.currentSample, dynamicSettings.frameFinished, dynamicSettings.renderFinished,
-            Input.GetMouseButton(0) && Input.mousePosition.x < Screen.width - guiController.guiTemplate.sizes.width
-            , destination, renderTexture, addMaterial,
-            () =>
-            {
-                SetFrameFinished(false);
-                SetFrankensteinFinished(false);
-                settings.currentSample++;
-                dynamicSettings.reset = true;
-            });
 
+        //Should be probably changed 
+
+
+        //If not dooing antialiasting allways display live
+        if (!settings.doAntialasing)
+        {
+            Graphics.Blit(renderTexture, destination);
+            return;
+        }
+
+        //otherwise display live only if none renders were finished
+        if ((settings.currentSample == 0 && !dynamicSettings.frameFinished) || Input.GetMouseButton(0) && Input.mousePosition.x < Screen.width - guiController.guiTemplate.sizes.width)
+        {
+            Graphics.Blit(renderTexture, destination);
+
+        }//if the render is finished no need to do anything
+        else if (dynamicSettings.renderFinished)
+        {
+            return;
+        }// if the frame is finished continue to the next sample
+        else if (dynamicSettings.frameFinished)
+        {
+
+            addMaterial.SetFloat("_Sample", settings.currentSample);
+            Graphics.Blit(renderTexture, destination, addMaterial);
+            SetFrameFinished(false);
+            SetFrankensteinFinished(false);
+            settings.currentSample++;
+            dynamicSettings.reset = true;
+
+        }
     }
 
 
@@ -793,53 +822,41 @@ public class MandelbrotContoroler : MonoBehaviour
     //Some of the code executed here needs to be executer after the other modules have finishied their code
     void LateUpdate()
     {
+        HandleFlags();
         HandleScreenSizeChange();
         HandleAntialias();
         AutomaticParametersChange();
+
     }
     private void OnDestroy()
     {
-        
         DisposeBuffers();
         DestroyTextures();
     }
 
     private void InitializeRenderTextures()
     {
-        if (
-            renderTexture == null || 
-            renderTexture.width != Screen.width || 
-            renderTexture.height != Screen.height || 
-            settings.lastPixelizationLevel != settings.pixelizationLevel
-            )
-        {
-            if (renderTexture != null)
-            {
-                renderTexture.Release();
-            }
+        renderTexture = PixelizedShaders.InitializePixelizedTexture(
+            renderTexture,
+            Screen.width,
+            Screen.height,
+            settings.lastPixelizationLevel != settings.pixelizationLevel,
+            ()=>settings.currentSample = 0);
 
-            renderTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
-            {
-                enableRandomWrite = true
-            };
-            renderTexture.Create();
-            settings.currentSample = 0;
-
-        }
-        dummyTexture = PixelizedShaders.InitializePixelizedTexture(dummyTexture, settings.ReducedWidth(), settings.ReducedHeight());
+        dummyTexture = PixelizedShaders.InitializePixelizedTexture(
+            dummyTexture, 
+            settings.ReducedWidth(),
+            settings.ReducedHeight());
     }
 
     private void Render(RenderTexture destination)
     {
         // Make sure we have a current render target
         InitializeRenderTextures();
-
-
+        //Debug.Log($"Reg renderd: {settings.register}");
         DispatchShaders();
 
         BlitTexture(destination);
-
-
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

@@ -319,6 +319,7 @@ MonoBehaviour:
   RenderShader: {fileID: 7200000, guid: d622378c12d34354090ba291bd17275b, type: 3}
   ResetShader: {fileID: 7200000, guid: 97399c10c02de9744a9d6342972f84fd, type: 3}
   ShiftShader: {fileID: 7200000, guid: e947e86e79ba4164eb686b088cf2f72b, type: 3}
+  ZoomInShader: {fileID: 7200000, guid: fa1fc18634395864b95f16ad9c1cb385, type: 3}
   AddShader: {fileID: 4800000, guid: 33e4928eb071c54458beaf83662e765d, type: 3}
 --- !u!1001 &1652624212
 PrefabInstance:
