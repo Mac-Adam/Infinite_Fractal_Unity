@@ -286,83 +286,6 @@ public class MandelbrotContoroler : MonoBehaviour
         Destroy(dummyTexture);
         Destroy(screenshotTexture);
     }
-
-    public void HandleScreenSizeChange()
-    {
-        if (cameraController.screenSizeChanged || settings.lastPixelizationLevel != settings.pixelizationLevel)
-        {
-            //Move this part
-
-            IterBuffer.Dispose();
-            IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
-            if (settings.lastPixelizationLevel != settings.pixelizationLevel && !settings.upscaling)
-            {
-                GPUCode.ResetAllKeywords();
-                Shader.EnableKeyword(settings.lastPixelizationLevel < settings.pixelizationLevel ? "IN" : "OUT");
-               
-                ComputeBuffer temp;
-                switch (settings.precision)
-                {
-                    case Precision.INFINTE:
-                        Shader.EnableKeyword("INFINITE");
-                        Debug.Log(settings.precisionLevel);
-                        ZoomShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
-                        temp = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
-                        break;
-                    case Precision.DOUBLE:
-                        Shader.EnableKeyword("DOUBLE");
-                        temp = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
-                        break;
-                    default: // idk why i need to do this thike that :/
-                        Shader.EnableKeyword("FLOAT");
-                        temp = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
-                        break;
-                }
-                ZoomShader.SetBuffer(0,"_MultiFrameData", temp);
-                ZoomShader.SetBuffer(0, "_OldMultiFrameData", multiFrameRenderBuffer);
-                ZoomShader.SetInt("_Register", settings.register);
-                ZoomShader.SetInt("_PixelizationBase", settings.pixelizationBase);
-                if(settings.lastPixelizationLevel < settings.pixelizationLevel)
-                {
-                    dummyTexture = PixelizedShaders.InitializePixelizedTexture(
-                        dummyTexture,
-                        settings.ReducedWidth(),
-                        settings.ReducedHeight());
-                }
-                else
-                {
-                    dummyTexture = PixelizedShaders.InitializePixelizedTexture(
-                       dummyTexture,
-                       settings.LastReducedWidth(),
-                       settings.LastReducedHeight());
-
-                }
-                PixelizedShaders.Dispatch(ZoomShader, dummyTexture);
-                Debug.Log($"{dummyTexture.width}x{dummyTexture.height}");
-                multiFrameRenderBuffer.Dispose();
-                multiFrameRenderBuffer = temp;
-                
-                settings.lastPixelizationLevel = settings.pixelizationLevel;
-                SetFrameFinished(false);
-            }
-            else
-            {
-                RegenereateFractalComputeBuffers();
-                dynamicSettings.reset = true;
-                OnMoveComand();
-            }
-
-
-            
-
-
-
-
-
-        }
-
-    }
-    
     public void SetShadersParameters()
     {
         //calculate render place
@@ -678,7 +601,7 @@ public class MandelbrotContoroler : MonoBehaviour
         }
         if (guiController.pixelizationChange != 0)
         {
-            if (settings.MaxPixelizationLevel() < settings.pixelizationLevel + guiController.pixelizationChange)
+            if (settings.MaxPixelizationLevel() <= settings.pixelizationLevel + guiController.pixelizationChange)
             {
                 if (guiController.pixelizationChange > 0)
                 {
@@ -690,6 +613,57 @@ public class MandelbrotContoroler : MonoBehaviour
                 settings.upscaling = false;
                 dynamicSettings.currIter = 0;
                 OnMoveComand();
+                //Dispose old buffer
+                IterBuffer.Dispose();
+                IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+                //setup Shader
+                GPUCode.ResetAllKeywords();
+                Shader.EnableKeyword(settings.lastPixelizationLevel < settings.pixelizationLevel ? "IN" : "OUT");
+                ComputeBuffer temp;
+                switch (settings.precision)
+                {
+                    case Precision.INFINTE:
+                        Shader.EnableKeyword("INFINITE");
+                        ZoomShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
+                        temp = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
+                        break;
+                    case Precision.DOUBLE:
+                        Shader.EnableKeyword("DOUBLE");
+                        temp = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
+                        break;
+                    default: // idk why i need to do this thike that :/
+                        Shader.EnableKeyword("FLOAT");
+                        temp = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
+                        break;
+                }
+                ZoomShader.SetBuffer(0, "_MultiFrameData", temp);
+                ZoomShader.SetBuffer(0, "_OldMultiFrameData", multiFrameRenderBuffer);
+                ZoomShader.SetInt("_Register", settings.register);
+                ZoomShader.SetInt("_PixelizationBase", settings.pixelizationBase);
+                if (settings.lastPixelizationLevel < settings.pixelizationLevel)
+                {
+                    dummyTexture = PixelizedShaders.InitializePixelizedTexture(
+                        dummyTexture,
+                        settings.ReducedWidth(),
+                        settings.ReducedHeight());
+                }
+                else
+                {
+                    dummyTexture = PixelizedShaders.InitializePixelizedTexture(
+                        dummyTexture,
+                        settings.LastReducedWidth(),
+                        settings.LastReducedHeight());
+
+                }
+                //Dispatch shader to do the work
+                //the dummy texture should be the smaller size, so no work is wasted
+                PixelizedShaders.Dispatch(ZoomShader, dummyTexture);
+                multiFrameRenderBuffer.Dispose();
+                multiFrameRenderBuffer = temp;
+
+                settings.lastPixelizationLevel = settings.pixelizationLevel;
+                SetFrameFinished(false);
+
             }
             guiController.pixelizationChange = 0;
         }
@@ -713,6 +687,13 @@ public class MandelbrotContoroler : MonoBehaviour
             cameraController.shiftX = 0;
             cameraController.shiftY = 0;
         }
+        if (cameraController.screenSizeChanged)
+        {
+            RegenereateFractalComputeBuffers();
+            dynamicSettings.reset = true;
+            OnMoveComand();
+        }
+
         guiController.settings = settings;
         guiController.dynamicSettings = dynamicSettings;
 
@@ -815,7 +796,6 @@ public class MandelbrotContoroler : MonoBehaviour
     void LateUpdate()
     {
         HandleFlags();
-        HandleScreenSizeChange();
         HandleAntialias();
         AutomaticParametersChange();
 
