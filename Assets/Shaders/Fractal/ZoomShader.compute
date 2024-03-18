@@ -1,0 +1,75 @@
+#pragma kernel CSMain
+
+//This shader handles fast zoom in
+#pragma multi_compile FLOAT DOUBLE INFINITE
+#pragma multi_compile IN OUT
+
+#if FLOAT
+#define TYPE float
+#elif DOUBLE
+#define TYPE double
+#elif INFINITE
+#define INF
+#endif
+//The render texture should be the size of the new buffer
+RWTexture2D<float4> Result;
+
+
+int _Precision;
+static const int PixelSize = 2 * _Precision + 3;
+
+
+uint _PixelizationBase;
+
+#ifdef INF
+RWStructuredBuffer<int> _MultiFrameData;
+RWStructuredBuffer<int> _OldMultiFrameData;
+#else
+struct Pixel {
+	TYPE CurrentZX;
+	TYPE CurrentZY;
+	uint iter;
+	bool finished;
+	float offset;
+};
+RWStructuredBuffer<Pixel> _MultiFrameData;
+RWStructuredBuffer<Pixel> _OldMultiFrameData;
+#endif
+uint _Register;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint width, height;
+	Result.GetDimensions(width, height);
+
+	uint oldWidth = width * _PixelizationBase;
+	uint oldHeight = height * _PixelizationBase;
+
+	uint cornerX = (oldWidth - width) / 2;
+	uint cornerY = (oldHeight - height) / 2;
+
+#if IN
+	uint idOld = (cornerY + id.y) * oldWidth + cornerX + id.x + oldWidth * oldHeight * _Register;
+	uint idNew = id.x + id.y * width + width * height * _Register;
+#endif
+#if OUT
+	uint idNew = (cornerY + id.y) * oldWidth + cornerX + id.x + oldWidth * oldHeight * _Register;
+	uint idOld = id.x + id.y * width + width * height * _Register;
+#endif
+
+#ifdef INF
+	idNew *= PixelSize;
+	idOld *= PixelSize;
+	for (int k = 0; k < PixelSize; k++) {
+		_MultiFrameData[idNew + k] = _OldMultiFrameData[idOld + k];
+	}
+
+#else
+	_MultiFrameData[idNew].iter = _OldMultiFrameData[idOld].iter;
+	_MultiFrameData[idNew].CurrentZX =  _OldMultiFrameData[idOld].CurrentZX;
+	_MultiFrameData[idNew].CurrentZY = _OldMultiFrameData[idOld].CurrentZY;
+	_MultiFrameData[idNew].finished =_OldMultiFrameData[idOld].finished;
+	_MultiFrameData[idNew].offset = _OldMultiFrameData[idOld].offset;
+#endif
+}

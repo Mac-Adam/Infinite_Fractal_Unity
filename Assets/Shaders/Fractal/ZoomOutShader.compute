@@ -36,13 +36,13 @@ RWStructuredBuffer<Pixel> _OldMultiFrameData;
 #endif
 uint _Register;
 
-[numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
 {
 	uint width, height;
 	Result.GetDimensions(width, height);
 
-	uint idNew = id.x + id.y * width + width * height * _Register;
+	uint idOld = id.x + id.y * width + width * height * _Register;
 
 	uint oldWidth = width * _PixelizationBase;
 	uint oldHeight = height * _PixelizationBase;
@@ -50,8 +50,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	uint cornerX = (oldWidth - width) / 2;
 	uint cornerY = (oldHeight - height) / 2;
 
-	uint idOld = (cornerY + id.y) * oldWidth + cornerX + id.x + oldWidth * oldHeight * _Register;
-
+	uint idNew = (cornerY + id.y) * oldWidth + cornerX + id.x + oldWidth * oldHeight * _Register;
+	uint idOld = id.x + id.y * width + width * height * _Register;
 
 #ifdef INF
 	idNew *= PixelSize;
@@ -62,9 +62,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 #else
 	_MultiFrameData[idNew].iter = _OldMultiFrameData[idOld].iter;
-	_MultiFrameData[idNew].CurrentZX =  _OldMultiFrameData[idOld].CurrentZX;
+	_MultiFrameData[idNew].CurrentZX = _OldMultiFrameData[idOld].CurrentZX;
 	_MultiFrameData[idNew].CurrentZY = _OldMultiFrameData[idOld].CurrentZY;
-	_MultiFrameData[idNew].finished =_OldMultiFrameData[idOld].finished;
+	_MultiFrameData[idNew].finished = _OldMultiFrameData[idOld].finished;
 	_MultiFrameData[idNew].offset = _OldMultiFrameData[idOld].offset;
 #endif
 }
