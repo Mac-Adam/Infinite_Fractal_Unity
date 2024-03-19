@@ -59,11 +59,11 @@ public class CameraController : MonoBehaviour
 
         FixedPointNumber mousePosRealX = new(cpuPrecision);
 
-        mousePosRealX.SetDouble(mouseTextureCoordinatesX - settings.ReducedWidth() / 2);
+        mousePosRealX.SetDouble(mouseTextureCoordinatesX - settings.ReducedWidth(false) / 2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
         FixedPointNumber mousePosRealY = new(cpuPrecision);
 
-        mousePosRealY.SetDouble(mouseTextureCoordinatesY - settings.ReducedHeight() / 2);
+        mousePosRealY.SetDouble(mouseTextureCoordinatesY - settings.ReducedHeight(false) / 2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
         FixedPointNumber multiplyer = new(cpuPrecision);
 
