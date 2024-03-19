@@ -23,8 +23,18 @@ namespace FixedPointNumberSystem
             Shader.DisableKeyword("FLOAT");
             Shader.DisableKeyword("DOUBLE");
             Shader.DisableKeyword("INFINITE");
+            Shader.DisableKeyword("ITER");
             Shader.DisableKeyword("IN");
             Shader.DisableKeyword("OUT");
+
+        }
+        public static void SetKeywords(string[] keywords)
+        {
+            ResetAllKeywords();
+            foreach (string word in keywords)
+            {
+                Shader.EnableKeyword(word);
+            }
         }
 
         public static GPUPrecision[] precisions = {

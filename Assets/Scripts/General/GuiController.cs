@@ -30,6 +30,7 @@ Pixelization:
     I - Zoom In
     O - Zoom Out
     U - Upscale Image
+    D - Downscale Image
 Visual:
     Z - Make a zoom in video
     S - Make a Screenshot
@@ -51,6 +52,7 @@ Visual:
     string zoomVideoKey = "z";
 
     string upscaleKey = "u";
+    string downscaleKey = "d";
     string pixelizationLevelUpKey = "i";
     string pixelizationLevelDownKey = "o";
 
@@ -65,8 +67,8 @@ Visual:
     public int pixelizationChange = 0; // by how much should the pixelization be changed
  
 
-    public bool RequestedUpscale = false;
-
+    public bool requestedUpscale = false;
+    public bool requestedDownscale = false;
 
     public float colorStrength = 5;
     const float ColorStrengthMax = 1000;
@@ -292,8 +294,13 @@ Visual:
         }
         if (Input.GetKeyDown(upscaleKey))
         {
-            RequestedUpscale = true;
+            requestedUpscale = true;
             
+        }
+        if (Input.GetKeyDown(downscaleKey))
+        {
+            requestedDownscale = true;
+
         }
     }
 

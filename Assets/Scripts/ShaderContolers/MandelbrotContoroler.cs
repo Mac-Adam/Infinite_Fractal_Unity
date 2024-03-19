@@ -307,8 +307,8 @@ public class MandelbrotContoroler : MonoBehaviour
         }
 
         ColorBuffer.SetData(MyColoringSystem.colorPalettes[guiController.currColorPalette].colors);
-        //If the screen moved the reset is a false alarm
-        if(dynamicSettings.shiftX != 0|| dynamicSettings.shiftY !=0)
+        //If the screen moved the reset is a false alarm unless doing frankenstein rendering
+        if((dynamicSettings.shiftX != 0|| dynamicSettings.shiftY !=0) &&!settings.frankensteinRendering)
         {
             dynamicSettings.reset = false;
         }
@@ -388,7 +388,6 @@ public class MandelbrotContoroler : MonoBehaviour
         RenderShader.SetFloat("_ColorStrength", guiController.colorStrength);
         RenderShader.SetBool("_Smooth", guiController.smoothGradient);
         RenderShader.SetBool("_Upscaling", settings.upscaling);
-        RenderShader.SetBool("_Reset", dynamicSettings.turboReset);
         RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[guiController.currColorPalette].gradientType);
         RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(settings.pixelizationBase,Math.Abs(settings.pixelizationLevel)));
         RenderShader.SetBool("_Superresolution", settings.pixelizationLevel < 0);
@@ -569,23 +568,27 @@ public class MandelbrotContoroler : MonoBehaviour
             {
                 //the buffers won't handle it
                 guiController.changedFrankenstein = false;
-                return;
             }
-            settings.frankensteinSteps = OtherFunctions.IntPow(2, guiController.requestedFrankensteinLevel);
-            settings.frankensteinRendering = settings.frankensteinSteps != 1;
-            settings.frankensteinX = 0;
-            settings.frankensteinY = 0;
-            ResetParams();
-            dynamicSettings.turboReset = true;
-            guiController.changedFrankenstein = false;
+            else
+            {
+                settings.frankensteinSteps = OtherFunctions.IntPow(2, guiController.requestedFrankensteinLevel);
+                settings.frankensteinRendering = settings.frankensteinSteps != 1;
+                settings.frankensteinX = 0;
+                settings.frankensteinY = 0;
+                RegenereateFractalComputeBuffers();
+                ResetParams();
+                dynamicSettings.turboReset = true;
+                guiController.changedFrankenstein = false;
+            }
+    
         }
 
-        if (guiController.RequestedUpscale)
+        if (guiController.requestedUpscale)
         {
             //There is room for more pixels
             if (settings.MaxPixelizationLevel() < settings.pixelizationLevel)
             {
-
+                settings.lastPixelizationLevel = settings.pixelizationLevel;
                 preUpscalePixLvl = settings.pixelizationLevel;
                 settings.pixelizationLevel -= 1;
 
@@ -608,12 +611,36 @@ public class MandelbrotContoroler : MonoBehaviour
                 dynamicSettings.currIter = 0;
                 OnMoveComand();
             }
-            guiController.RequestedUpscale = false;
+            guiController.requestedUpscale = false;
+        }
+
+        if (guiController.requestedDownscale)
+        {
+            settings.lastPixelizationLevel = settings.pixelizationLevel;
+            settings.pixelizationLevel += 1;
+
+            //Handle buffers
+            RegenereateFractalComputeBuffers();
+            IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+
+            //make sure the scale is ok
+            FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
+            scaleFixer.SetDouble(settings.pixelizationLevel > settings.lastPixelizationLevel ? settings.pixelizationBase : 1.0 / settings.pixelizationBase);
+            cameraController.Scale *= scaleFixer;
+
+            //Make sure the render starts properly
+            SetRenderFinished(false);
+            SetStepFinished(false);
+            SetFrameFinished(false);
+            dynamicSettings.currIter = 0;
+            OnMoveComand();
+          
+            guiController.requestedDownscale = false;
         }
 
         if (guiController.pixelizationChange != 0)
         {
-            if (settings.MaxPixelizationLevel() <= settings.pixelizationLevel + guiController.pixelizationChange)
+            if (!settings.frankensteinRendering && settings.MaxPixelizationLevel() <= settings.pixelizationLevel + guiController.pixelizationChange)
             {
                 if (guiController.pixelizationChange > 0)
                 {
@@ -635,8 +662,8 @@ public class MandelbrotContoroler : MonoBehaviour
                 switch (settings.precision)
                 {
                     case Precision.INFINTE:
-                        Shader.EnableKeyword("INFINITE");
                         ZoomShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
+                        Shader.EnableKeyword("INFINITE");
                         temp = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
                         break;
                     case Precision.DOUBLE:
@@ -743,11 +770,44 @@ public class MandelbrotContoroler : MonoBehaviour
         if (dynamicSettings.reset || dynamicSettings.turboReset)
         {
             PixelizedShaders.Dispatch(ResetShader, dummyTexture);
+            if (settings.frankensteinRendering)
+            {
+                ResetShader.SetInt("_Register", settings.register == 1? 0 : 1);
+            }
         }
-        if (dynamicSettings.shiftX != 0 || dynamicSettings.shiftY != 0)
+        if ((dynamicSettings.shiftX != 0 || dynamicSettings.shiftY != 0 )&& !settings.frankensteinRendering)
         {
             PixelizedShaders.Dispatch(ShiftShader, dummyTexture);
         }
+        if (dynamicSettings.turboReset)
+        {
+            ResetShader.SetInt("_Register", 0);
+            ResetShader.SetBuffer(0, "_MultiFrameData", IterBuffer);
+            Shader.DisableKeyword("FLOAT");
+            Shader.DisableKeyword("DOUBLE");
+            Shader.DisableKeyword("INFINITE");
+            Shader.EnableKeyword("ITER");
+            //using screenshotTexture because the size of it is the same, so there won't be any conficts
+            screenshotTexture = PixelizedShaders.InitializePixelizedTexture(screenshotTexture, settings.ReducedWidth(false), settings.ReducedHeight(false), true);
+            PixelizedShaders.Dispatch(ResetShader, screenshotTexture);
+
+        }
+    
+        Shader.DisableKeyword("ITER");
+        switch (settings.precision)
+        {
+            case Precision.INFINTE:
+                Shader.EnableKeyword("INFINITE");
+                break;
+            case Precision.DOUBLE:
+                Shader.EnableKeyword("DOUBLE");
+                break;
+            case Precision.FLOAT:
+                Shader.EnableKeyword("FLOAT");
+                break;
+        }
+
+        Debug.Log($"{dummyTexture.width},{IterBuffer.count},{multiFrameRenderBuffer.count}");
         switch (settings.precision)
         {
             case Precision.INFINTE:

@@ -1,7 +1,7 @@
 #pragma kernel CSMain
 
 
-#pragma multi_compile FLOAT DOUBLE INFINITE
+#pragma multi_compile FLOAT DOUBLE INFINITE ITER
 
 #if FLOAT
 #define TYPE float
@@ -21,7 +21,14 @@ RWTexture2D<float4> Result;
 
 #ifdef INF
 RWStructuredBuffer<int> _MultiFrameData;
-#else
+#elif ITER
+struct Pixel {
+	uint iter;
+	bool finished;
+	float offset;
+};
+RWStructuredBuffer<Pixel> _MultiFrameData;
+#else 
 struct Pixel {
 	TYPE CurrentZX;
 	TYPE CurrentZY;
@@ -46,6 +53,10 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	for (int k = 0; k < PixelSize; k++) {
 		_MultiFrameData[pixelId + k] = 0;
 	}
+#elif ITER
+	_MultiFrameData[pixelId].iter = 0;
+	_MultiFrameData[pixelId].finished = false;
+	_MultiFrameData[pixelId].offset = 0;
 #else
 	_MultiFrameData[pixelId].iter = 0;
 	_MultiFrameData[pixelId].CurrentZX = 0;

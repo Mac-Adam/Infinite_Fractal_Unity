@@ -22,8 +22,6 @@ uint _MaxIter;
 uint _OldPixelWidth;
 bool _Upscaling;
 bool _RenderExact;
-bool _Reset;
-
 int _ColorArrayLength;
 StructuredBuffer<float4> _Colors;
 bool _Smooth;
@@ -73,28 +71,11 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 		textureX *= _ReduceAmount;
 		textureY *= _ReduceAmount;
 		reducedWidth *= _ReduceAmount;
-		if (_Reset) {
-			for (uint x = 0; x < _ReduceAmount; x++) {
-				for (uint y = 0; y < _ReduceAmount; y++) {
-					uint resetId = (textureX + x) + (textureY + y) * reducedWidth;
-					_IterBuffer[resetId].finished = false;
-					_IterBuffer[resetId].iter = 0;
-					_IterBuffer[resetId].offset = 0;
-				}
-			}
-		}
 	}
 	else { 
 		textureX /= _ReduceAmount;
 		textureY /= _ReduceAmount;
 		reducedWidth /= _ReduceAmount;
-		if (_Reset) {
-			uint resetId = textureX + textureY * reducedWidth;;
-			_IterBuffer[resetId].finished = false;
-			_IterBuffer[resetId].iter = 0;
-			_IterBuffer[resetId].offset = 0;
-		}
-		
 	}
 	int textureIdx = textureX + textureY * reducedWidth;
 	if (_Upscaling) {
