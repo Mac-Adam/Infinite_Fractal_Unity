@@ -36,7 +36,7 @@ uint _IterPerCycle = 5;
 int _BailoutRadius;
 int _BailoutRadiusSQ;
 
-StructuredBuffer<int> _PossitionBuffer;
+StructuredBuffer<int> _DataBuffer;
 static const int MiddleX = 0;
 static const int MiddleY = PRECISION;
 static const int Scale = PRECISION * 2;
@@ -58,10 +58,10 @@ int _ShiftY;
 
 uint _Register;
 
-RWStructuredBuffer<int> _FpMultiframeBuffer;
+RWStructuredBuffer<int> _MultiFrameData;
 
 bool _reset;
-bool _pixelizationBase;
+
 struct res {
 	uint iter;
 	bool finished;
@@ -91,16 +91,16 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits middle;
 	[unroll]
 	for (int j = 0; j < PRECISION; j++) {
-		zX.digits[j] = _FpMultiframeBuffer[idx + CurX + j];
-		zY.digits[j] = _FpMultiframeBuffer[idx + CurY + j];
-		scale.digits[j] = _PossitionBuffer[Scale + j];
+		zX.digits[j] = _MultiFrameData[idx + CurX + j];
+		zY.digits[j] = _MultiFrameData[idx + CurY + j];
+		scale.digits[j] = _DataBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
 	offset.digits[0] = pixel.x - width / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
 	[unroll]
 	for (int a = 0; a < PRECISION; a++) {
-		middle.digits[a] = _PossitionBuffer[MiddleX + a];
+		middle.digits[a] = _DataBuffer[MiddleX + a];
 	}
 	cX = add(offset, middle);
 	for (int b = 0; b < PRECISION; b++) {
@@ -111,7 +111,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.y)), scale);
 	[unroll]
 	for (int c = 0; c < PRECISION; c++) {
-		middle.digits[c] = _PossitionBuffer[MiddleY + c];
+		middle.digits[c] = _DataBuffer[MiddleY + c];
 	}
 	cY = add(offset, middle);
 
@@ -132,17 +132,17 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 
 		if (!inBounds(squareX, squareY, _BailoutRadiusSQ)) {
-			_FpMultiframeBuffer[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
-			//_FpMultiframeBuffer[idx + iterOffset] = getOffset(float2(squareX.digits[0], squareY.digits[0]));
-			_FpMultiframeBuffer[idx + finished] = true;
+			_MultiFrameData[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
+			//_MultiFrameData[idx + iterOffset] = getOffset(float2(squareX.digits[0], squareY.digits[0]));
+			_MultiFrameData[idx + finished] = true;
 			return iter;
 		}
 	}
 	for (int l = 0; l < PRECISION; l++) {
-		_FpMultiframeBuffer[idx + CurX + l] = zX.digits[l];
+		_MultiFrameData[idx + CurX + l] = zX.digits[l];
 	}
 	for (int k = 0; k < PRECISION; k++) {
-		_FpMultiframeBuffer[idx + CurY + k] = zY.digits[k];
+		_MultiFrameData[idx + CurY + k] = zY.digits[k];
 	}
 
 
@@ -166,75 +166,23 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	int currentIter = 0;
 
-	
-	if (_ShiftX != 0 || _ShiftY != 0) {
-		int oldBasePixelId;
-		int min;
-		int max;
-		if (_Register == 0) {
-			min = width * height;
-			max = width * height *2;
-			oldBasePixelId = basePixelId - _ShiftX - _ShiftY * width + width * height;	
-		}
-		else if (_Register == 1) {
-			min = 0;
-			max = width * height;
-
-			oldBasePixelId = basePixelId - _ShiftX - _ShiftY * width - width * height;
-		}
-		int oldPixelId = oldBasePixelId * PixelSize;
-		
-		if (int(id.x) <= _ShiftX || //left border
-			int(width - id.x) <= -_ShiftX || //rigth  border
-			int(id.y) <= _ShiftY || //top border
-			int(height - id.y) <= -_ShiftY ||//bottom border
-			oldBasePixelId<min|| oldBasePixelId>max){ 
-			
-			
-			//this part  should be rerendered
-			for (int a = 0; a < PixelSize; a++) {
-				_FpMultiframeBuffer[pixelId + a] = 0;
-			}
-
-		}
-		else {
-
-		
-
-			//this part can be salvaged
-			for (int b = 0; b < PixelSize; b++) {
-				_FpMultiframeBuffer[pixelId + b] = _FpMultiframeBuffer[oldPixelId + b];
-			}
-		}
-
-
-
-
-	}
-	if (_reset) {
-		for (int k = 0; k < PixelSize; k++) {
-			_FpMultiframeBuffer[pixelId + k] = 0;
-		}
-	}
-	
-
 	//check if further computatuin is nesesary
-	if (!_FpMultiframeBuffer[pixelId + finished]) {
+	if (!_MultiFrameData[pixelId + finished]) {
 
 		currentIter = getIter(id.xy, width, height, pixelId);
 
-		_FpMultiframeBuffer[pixelId + iter] += currentIter;
-		if ((uint)_FpMultiframeBuffer[pixelId + iter] >= _MaxIter) {
-			_FpMultiframeBuffer[pixelId + finished] = true;
+		_MultiFrameData[pixelId + iter] += currentIter;
+		if ((uint)_MultiFrameData[pixelId + iter] >= _MaxIter) {
+			_MultiFrameData[pixelId + finished] = true;
 		}
 
 
 	}
 	int iterId = id.x + _FrankensteinOffsetX + (id.y + _FrankensteinOffsetY) * _RenderWidth;
 
-	_IterBuffer[iterId].iter = _FpMultiframeBuffer[pixelId + iter];
-	_IterBuffer[iterId].finished = _FpMultiframeBuffer[pixelId + finished];
-	_IterBuffer[iterId].offset = (float)(_FpMultiframeBuffer[pixelId + iterOffset]) / BIGNUM;
+	_IterBuffer[iterId].iter = _MultiFrameData[pixelId + iter];
+	_IterBuffer[iterId].finished = _MultiFrameData[pixelId + finished];
+	_IterBuffer[iterId].offset = (float)(_MultiFrameData[pixelId + iterOffset]) / BIGNUM;
 
 
 }

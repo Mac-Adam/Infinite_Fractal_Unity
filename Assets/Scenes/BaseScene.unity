@@ -316,10 +316,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   InfiniteShader: {fileID: 7200000, guid: 97ce3c6f3118c4249882377764e1b84b, type: 3}
   FloatShader: {fileID: 7200000, guid: 3f2e0da2785481c4cbf4f7ad9fc41ec5, type: 3}
-  DoubleShader: {fileID: 7200000, guid: 678fa519bb5d3234c9b765bd06a8b293, type: 3}
   RenderShader: {fileID: 7200000, guid: d622378c12d34354090ba291bd17275b, type: 3}
+  ResetShader: {fileID: 7200000, guid: 97399c10c02de9744a9d6342972f84fd, type: 3}
+  ShiftShader: {fileID: 7200000, guid: e947e86e79ba4164eb686b088cf2f72b, type: 3}
+  ZoomShader: {fileID: 7200000, guid: fa1fc18634395864b95f16ad9c1cb385, type: 3}
   AddShader: {fileID: 4800000, guid: 33e4928eb071c54458beaf83662e765d, type: 3}
-  guiControler: {fileID: 1652624213}
 --- !u!1001 &1652624212
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -417,17 +418,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2c3fc9e39c877714696bb94b36bf48f2, type: 3}
---- !u!114 &1652624213 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8142731233616675678, guid: 2c3fc9e39c877714696bb94b36bf48f2, type: 3}
-  m_PrefabInstance: {fileID: 1652624212}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 355d5e06c83274949a4fe0e053174e15, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1851789509
 GameObject:
   m_ObjectHideFlags: 0

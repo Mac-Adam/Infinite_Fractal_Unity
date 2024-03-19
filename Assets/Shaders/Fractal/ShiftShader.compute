@@ -1,0 +1,106 @@
+#pragma kernel CSMain
+
+#pragma multi_compile FLOAT DOUBLE INFINITE
+
+#if FLOAT
+#define TYPE float
+#elif DOUBLE
+#define TYPE double
+#elif INFINITE
+#define INF
+#endif
+
+//This shader Shifts the buffer
+
+
+int _Precision;
+static const int PixelSize = 2 * _Precision + 3;
+
+RWTexture2D<float4> Result;
+
+#ifdef INF
+RWStructuredBuffer<int> _MultiFrameData;
+#else
+struct Pixel {
+	TYPE CurrentZX;
+	TYPE CurrentZY;
+	uint iter;
+	bool finished;
+	float offset;
+};
+RWStructuredBuffer<Pixel> _MultiFrameData;
+#endif
+
+int _ShiftX;
+int _ShiftY;
+
+uint _Register;
+
+
+[numthreads(8, 8, 1)]
+
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+
+	uint width, height;
+	Result.GetDimensions(width, height);
+
+	uint pixelId = id.x + id.y * width + width * height * _Register;
+
+	int oldPixelId;
+	int min;
+	int max;
+	if (_Register == 0) {
+		min = width * height;
+		max = width * height * 2;
+		oldPixelId = pixelId - _ShiftX - _ShiftY * width + width * height;
+	}
+	else if (_Register == 1) {
+		min = 0;
+		max = width * height;
+
+		oldPixelId = pixelId - _ShiftX - _ShiftY * width - width * height;
+	}
+
+	if (int(id.x) <= _ShiftX || //left border
+		int(width - id.x) <= -_ShiftX || //rigth  border
+		int(id.y) <= _ShiftY || //top border
+		int(height - id.y) <= -_ShiftY ||//bottom border
+		oldPixelId<min || oldPixelId>max) {
+
+#ifdef INF
+		oldPixelId *= PixelSize;
+		pixelId *= PixelSize;
+#endif
+
+		//this part  should be rerendered
+#ifdef INF
+		for (int a = 0; a < PixelSize; a++) {
+			_MultiFrameData[pixelId + a] = 0;
+		}
+#else
+		_MultiFrameData[pixelId].iter = 0;
+		_MultiFrameData[pixelId].CurrentZX = 0;
+		_MultiFrameData[pixelId].CurrentZY = 0;
+		_MultiFrameData[pixelId].finished = false;
+		_MultiFrameData[pixelId].offset = 0;
+#endif
+
+	}
+	else {
+#ifdef INF
+		oldPixelId *= PixelSize;
+		pixelId *= PixelSize;
+		for (int b = 0; b < PixelSize; b++) {
+			_MultiFrameData[pixelId + b] = _MultiFrameData[oldPixelId + b];
+		}
+#else
+		_MultiFrameData[pixelId].iter = _MultiFrameData[oldPixelId].iter;
+		_MultiFrameData[pixelId].CurrentZX = _MultiFrameData[oldPixelId].CurrentZX;
+		_MultiFrameData[pixelId].CurrentZY = _MultiFrameData[oldPixelId].CurrentZY;
+		_MultiFrameData[pixelId].finished = _MultiFrameData[oldPixelId].finished;
+		_MultiFrameData[pixelId].offset = _MultiFrameData[oldPixelId].offset;
+#endif
+	}
+	
+}

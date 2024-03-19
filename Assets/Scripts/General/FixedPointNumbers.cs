@@ -12,12 +12,28 @@ namespace FixedPointNumberSystem
                 this.name = name;
             } 
         }
-                
+        //Some shaders are multicompiled, to chose the right wersion proper keywords should be enabled
+        //Use this method to make sure all the keywords are reset before turning proper ones on
         public static void ResetAllKeywords()
         {
             foreach(GPUPrecision pre in precisions)
             {
                 Shader.DisableKeyword(pre.name);
+            }
+            Shader.DisableKeyword("FLOAT");
+            Shader.DisableKeyword("DOUBLE");
+            Shader.DisableKeyword("INFINITE");
+            Shader.DisableKeyword("ITER");
+            Shader.DisableKeyword("IN");
+            Shader.DisableKeyword("OUT");
+
+        }
+        public static void SetKeywords(string[] keywords)
+        {
+            ResetAllKeywords();
+            foreach (string word in keywords)
+            {
+                Shader.EnableKeyword(word);
             }
         }
 
