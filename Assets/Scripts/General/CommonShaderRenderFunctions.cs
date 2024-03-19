@@ -178,9 +178,9 @@ namespace CommonShaderRenderFunctions
         public bool turboReset;
         public int shiftX;
         public int shiftY;
-        public bool renderFinished;
-        public bool frameFinished;
-        public bool frankensteinStepFinished;
+        public bool renderFinished; // Signals if the whole render is finished (all antialias steps are finished)
+        public bool frameFinished; // Signals if the current antialiast step is finished
+        public bool stepFinished; // Signals if the subrender is finished
         public float renderStatTime;
         public float renderTimeElapsed;
     }
@@ -276,29 +276,6 @@ namespace CommonShaderRenderFunctions
         new Vector2(0,-1.0f/3),
 
     };
-
-        public static void BlitWitthAntialiasing(uint currentSample,bool frameFinished, bool renderFinished, bool liveOverride,RenderTexture destination,RenderTexture renderedTexture,Material addMaterial,Action NewFrameCallback)
-        {
-            
-            if ((currentSample == 0 && !frameFinished) || liveOverride)
-            {
-                Graphics.Blit(renderedTexture, destination);
-
-            }else if (renderFinished)
-            {
-                return;
-            }
-            else if (frameFinished)
-            {
-
-                addMaterial.SetFloat("_Sample", currentSample);
-                Graphics.Blit(renderedTexture, destination, addMaterial);
-                NewFrameCallback.Invoke();
-               
-            }
-
-        }
-
 
     }
 

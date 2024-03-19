@@ -58,15 +58,9 @@ public class MandelbrotContoroler : MonoBehaviour
     Settings settings = new(true);
     DynamicSettings dynamicSettings = new();
 
-    PixelizationData GetPixelizationData()
-    {
-        //TODO fix it probably won't work
-        return new(settings.ReducedWidth(), settings.ReducedHeight(), settings.LastReducedWidth(), settings.LastReducedHeight(), settings.PixelCount(), settings.LastPixelCount(), settings.pixelizationBase, settings.register);
-    }
-
     void ResetIterPerCycle()
     {
-        settings.iterPerCycle = itersPerCycle[(int)settings.precision];
+        settings.iterPerCycle = Math.Clamp( itersPerCycle[(int)settings.precision]*OtherFunctions.IntPow(2,settings.frankensteinSteps),0,guiController.maxIter);
     }
     void SetSPrecision(int val)
     {
@@ -83,7 +77,7 @@ public class MandelbrotContoroler : MonoBehaviour
         settings.currentSample = 0;
         dynamicSettings.currIter = 0;
         SetFrameFinished(false);
-        SetFrankensteinFinished(false);
+        SetStepFinished(false);
         SetRenderFinished(false);
         if (settings.frankensteinRendering)
         {
@@ -119,16 +113,18 @@ public class MandelbrotContoroler : MonoBehaviour
    
     void SetRenderFinished(bool val)
     {
+        //Sonmething forced a rerender before it was finished
         if (val == false) {
             dynamicSettings.renderStatTime = Time.time;
         }
-
+        //Nothing chagned
         if(dynamicSettings.renderFinished == val)
         {
             return;
         }
 
         dynamicSettings.renderFinished = val;
+        //Since the render is finished the render time can be updated
         if(dynamicSettings.renderFinished == true)
         {
             dynamicSettings.renderTimeElapsed = Time.time - dynamicSettings.renderStatTime;
@@ -137,12 +133,14 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     void SetFrameFinished(bool val)
     {
+        //Nothing changed
         if(dynamicSettings.frameFinished == val)
         {
             return;
         }
 
         dynamicSettings.currIter = 0;
+        //Check if the whole render is finished
         if (settings.doAntialasing)
         {
             if (settings.currentSample >= settings.maxAntiAliasyncReruns)
@@ -156,34 +154,39 @@ public class MandelbrotContoroler : MonoBehaviour
         }
 
         dynamicSettings.frameFinished = val;
+        //New frame requested needs to reset frankenstein steps
         if(dynamicSettings.frameFinished == false)
         {
             settings.frankensteinX = 0;
             settings.frankensteinY = 0;
-
         }
     }
-    void SetFrankensteinFinished(bool val)
+    void SetStepFinished(bool val)
     {
+        //If not doing frankenstein renderig those two are identical
         if (!settings.frankensteinRendering)
         {
             SetFrameFinished(val);
 
-            dynamicSettings.frankensteinStepFinished = val;
+            dynamicSettings.stepFinished = val;
             return;
         }
-        if (dynamicSettings.frankensteinStepFinished == val)
+        //Nothing changed
+        if (dynamicSettings.stepFinished == val)
         {
             return;
         }
+
+        //Step finished 
         if(val == true)
         {
+            //Whole frame is done
             if(settings.frankensteinX == settings.frankensteinSteps - 1 && settings.frankensteinY == settings.frankensteinSteps - 1)
             {
-                dynamicSettings.frankensteinStepFinished = true;
+                dynamicSettings.stepFinished = true;
                 SetFrameFinished(true);
             }
-            else
+            else //Need to do more work
             {           
                 ResetIterPerCycle();
                 dynamicSettings.reset = true;
@@ -199,7 +202,7 @@ public class MandelbrotContoroler : MonoBehaviour
         }
         else
         {
-            dynamicSettings.frankensteinStepFinished = false;
+            dynamicSettings.stepFinished = false;
         }
         
     }
@@ -304,12 +307,14 @@ public class MandelbrotContoroler : MonoBehaviour
         }
 
         ColorBuffer.SetData(MyColoringSystem.colorPalettes[guiController.currColorPalette].colors);
-       
+        //If the screen moved the reset is a false alarm
         if(dynamicSettings.shiftX != 0|| dynamicSettings.shiftY !=0)
         {
             dynamicSettings.reset = false;
         }
+        ComputeShader shader = settings.precision == Precision.INFINTE ? InfiniteShader:FloatShader;
         GPUCode.ResetAllKeywords();
+        //Set the render place wiht proper precision
         if (settings.precision == Precision.INFINTE)
         {
             int[] data = new int[3 * settings.GetShaderPre()];
@@ -323,28 +328,11 @@ public class MandelbrotContoroler : MonoBehaviour
 
             dataBuffer.SetData(data);
 
-            Shader.EnableKeyword("INFINITE");
-            
+            Shader.EnableKeyword("INFINITE");     
             Shader.EnableKeyword(GPUCode.precisions[settings.precisionLevel].name);
 
-            InfiniteShader.SetBuffer(0, "_FpMultiframeBuffer", multiFrameRenderBuffer);
-            InfiniteShader.SetBuffer(0, "_PossitionBuffer", dataBuffer);
-            InfiniteShader.SetVector("_PixelOffset", settings.antialiasLookupTable[settings.currentSample % settings.antialiasLookupTable.Length]);
-            InfiniteShader.SetInt("_MaxIter", guiController.maxIter);
-            InfiniteShader.SetBool("_reset", dynamicSettings.reset || dynamicSettings.turboReset);
-            InfiniteShader.SetInt("_pixelizationBase", settings.pixelizationBase);
-            InfiniteShader.SetInt("_Register", settings.register);
-            InfiniteShader.SetInt("_IterPerCycle", settings.iterPerCycle);
-            InfiniteShader.SetBuffer(0, "_IterBuffer", IterBuffer);
-            InfiniteShader.SetInt("_BailoutRadius", guiController.bailoutRadius);
-            InfiniteShader.SetInt("_RenderWidth", settings.ReducedWidth(false));
-            InfiniteShader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
-            InfiniteShader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
-
-            ResetShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
             ResetShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
 
-            ShiftShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
             ShiftShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
         }
         else if (settings.precision == Precision.DOUBLE || settings.precision == Precision.FLOAT)
@@ -367,27 +355,25 @@ public class MandelbrotContoroler : MonoBehaviour
                     (float)MiddleYToSend.ToDouble()
                 };
                 dataBuffer.SetData(data);
-                Shader.EnableKeyword("FLOAT");
-              
+                Shader.EnableKeyword("FLOAT");       
             }
 
-            FloatShader.SetBuffer(0, "_DataBuffer", dataBuffer);
-            FloatShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
-
-            ResetShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
-            ShiftShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
-
-            FloatShader.SetVector("_PixelOffset", settings.antialiasLookupTable[settings.currentSample % settings.antialiasLookupTable.Length]);
-            FloatShader.SetInt("_MaxIter", guiController.maxIter);
-            FloatShader.SetInt("_Register", settings.register);
-            FloatShader.SetInt("_IterPerCycle", settings.iterPerCycle);
-            FloatShader.SetBuffer(0, "_IterBuffer", IterBuffer);
-            FloatShader.SetInt("_BailoutRadius", guiController.bailoutRadius);
-            FloatShader.SetInt("_RenderWidth", settings.ReducedWidth(false));
-            FloatShader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
-            FloatShader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
-       
         }
+        ResetShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
+        ShiftShader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
+
+        shader.SetBuffer(0, "_DataBuffer", dataBuffer);
+        shader.SetBuffer(0, "_MultiFrameData", multiFrameRenderBuffer);
+        shader.SetVector("_PixelOffset", settings.antialiasLookupTable[settings.currentSample % settings.antialiasLookupTable.Length]);
+        shader.SetInt("_MaxIter", guiController.maxIter);
+        shader.SetInt("_Register", settings.register);
+        shader.SetInt("_IterPerCycle", settings.iterPerCycle);
+        shader.SetBuffer(0, "_IterBuffer", IterBuffer);
+        shader.SetInt("_BailoutRadius", guiController.bailoutRadius);
+        shader.SetInt("_RenderWidth", settings.ReducedWidth(false));
+        shader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
+        shader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
+
 
 
         ShiftShader.SetInt("_Register", settings.register);
@@ -395,7 +381,6 @@ public class MandelbrotContoroler : MonoBehaviour
         ShiftShader.SetInt("_ShiftY", dynamicSettings.shiftY);
 
         ResetShader.SetInt("_Register", settings.register);
-
 
         RenderShader.SetBuffer(0, "_IterBuffer", IterBuffer);
         RenderShader.SetBuffer(0, "_OldIterBuffer", OldIterBuffer);
@@ -421,7 +406,7 @@ public class MandelbrotContoroler : MonoBehaviour
         dynamicSettings.currIter = 0;
         settings.upscaling = false;
         SetFrameFinished(false);
-        SetFrankensteinFinished(false);
+        SetStepFinished(false);
         SetRenderFinished(false);
         ResetIterPerCycle();
         if (settings.frankensteinRendering)
@@ -433,8 +418,15 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void AutomaticParametersChange()
     {
-        
-        if (!dynamicSettings.frankensteinStepFinished && !dynamicSettings.renderFinished)
+        //While rendergin try to adjust the amout of iters per cycle to stay in the sweet spot between 
+        //quick render and acceptable fps
+        //In short at the beging of a frame the gpu needs to read a bunch of data ( quite slow)
+        //Then it does (iterPerCycle) calculations
+        //the more calculations per frame it needs to read the data less times
+        //to much and the fps drops below acceptable level and the app is laggy
+        //TODO: chceck if the fps has beed externaly limited (for example on a laptop working on batery)
+        //In that case the iterPerCycle quickly drops to 1, and the frame takes ages to finish.
+        if (!dynamicSettings.stepFinished && !dynamicSettings.renderFinished)
         {
             if (1 / Time.deltaTime > maxTagretFramerate)
             {
@@ -449,6 +441,7 @@ public class MandelbrotContoroler : MonoBehaviour
 
             }
         }
+
         if (settings.zoomVideo)
         {
             if (dynamicSettings.renderFinished)
@@ -466,7 +459,7 @@ public class MandelbrotContoroler : MonoBehaviour
 
             }
         }
-
+        //check how many zeros are on the begign of the scale variable
         int tagretPrecison = 0;
         foreach(int digit in cameraController.Scale.digits)
         {
@@ -479,6 +472,7 @@ public class MandelbrotContoroler : MonoBehaviour
                 break;
             }
         }
+        //set the GPU precision acording to the needed anout
         if (tagretPrecison + 1 >= GPUCode.precisions[settings.precisionLevel].precision)
         {
             SetSPrecision(settings.precisionLevel + 1);
@@ -491,6 +485,8 @@ public class MandelbrotContoroler : MonoBehaviour
                 SetSPrecision(settings.precisionLevel - 1);
             }
         }
+        //the values where the precision swithces are arbitrtary and probably coud be made tighter for a tiny increase in performance
+        ////but this is not a priority and those numbers work allways 
         if (cameraController.Scale.ToDouble() > 1E-6)
         {
             SetPrecision(Precision.FLOAT);
@@ -509,18 +505,20 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void HandleFlags()
     {
-        //This code will be somewhere else in the long run
+        //This part of the code handles all the requests from the other controlers
         if (guiController.requestingSS)
         {
             SaveCurrentRenderTextureAsAPng();
             guiController.requestingSS = false;
         }
+        
         if (guiController.requestedZoomVid)
         {
             //this may need some more code
             settings.zoomVideo = !settings.zoomVideo;
             guiController.requestedZoomVid = false;
         }
+        
         if (guiController.changedAntialias)
         {
             settings.doAntialasing = !settings.doAntialasing;
@@ -528,6 +526,7 @@ public class MandelbrotContoroler : MonoBehaviour
             OnMoveComand();
             guiController.changedAntialias = false;
         }
+        
         if (guiController.currColorPalette != guiController.lastColorPalette)
         {
             ColorBuffer.Dispose();
@@ -535,6 +534,7 @@ public class MandelbrotContoroler : MonoBehaviour
             OnMoveComand();
             guiController.lastColorPalette = guiController.currColorPalette;
         }
+        
         if (guiController.resetRequested)
         {
             dynamicSettings.turboReset = true;
@@ -542,26 +542,37 @@ public class MandelbrotContoroler : MonoBehaviour
             ResetAntialias();
             guiController.resetRequested = false;
         }
+        
         if (guiController.changedSmoothGradient)
         {
             OnMoveComand();
             guiController.changedSmoothGradient = false;
         }
+        
         if (guiController.changedMaxIter)
         {
             ResetParams();
             ResetAntialias();
             guiController.changedMaxIter = false;
         }
+       
         if (guiController.changedBailoutRadius)
         {
             ResetParams();
             ResetAntialias();
             guiController.changedBailoutRadius = false;
         }
+        
         if (guiController.changedFrankenstein)
         {
+            if(settings.pixelizationLevel + guiController.requestedFrankensteinLevel <= settings.MaxPixelizationLevel())
+            {
+                //the buffers won't handle it
+                guiController.changedFrankenstein = false;
+                return;
+            }
             settings.frankensteinSteps = OtherFunctions.IntPow(2, guiController.requestedFrankensteinLevel);
+            settings.frankensteinRendering = settings.frankensteinSteps != 1;
             settings.frankensteinX = 0;
             settings.frankensteinY = 0;
             ResetParams();
@@ -592,7 +603,7 @@ public class MandelbrotContoroler : MonoBehaviour
                 //Make sure the render starts properly
                 settings.upscaling = true;
                 SetRenderFinished(false);
-                SetFrankensteinFinished(false);
+                SetStepFinished(false);
                 SetFrameFinished(false);
                 dynamicSettings.currIter = 0;
                 OnMoveComand();
@@ -712,16 +723,18 @@ public class MandelbrotContoroler : MonoBehaviour
         cameraController.deadZoneRight = guiController.guiOn ? (int)guiController.guiTemplate.sizes.width : 0;
 
     }
+    //This function handles when the GPU has finished the frame
     public void HandleAntialias()
     {
-        if (!dynamicSettings.frankensteinStepFinished)
+
+        if (!dynamicSettings.stepFinished)
         {
             dynamicSettings.currIter += settings.iterPerCycle;
         }
 
         if (dynamicSettings.currIter > guiController.maxIter)
         {
-            SetFrankensteinFinished(true);
+            SetStepFinished(true);
         }
 
     }
@@ -755,10 +768,6 @@ public class MandelbrotContoroler : MonoBehaviour
 
     public void BlitTexture(RenderTexture destination)
     {
-
-        //Should be probably changed 
-
-
         //If not dooing antialiasting allways display live
         if (!settings.doAntialasing)
         {
@@ -767,7 +776,7 @@ public class MandelbrotContoroler : MonoBehaviour
         }
 
         //otherwise display live only if none renders were finished
-        if ((settings.currentSample == 0 && !dynamicSettings.frameFinished) || Input.GetMouseButton(0) && Input.mousePosition.x < Screen.width - guiController.guiTemplate.sizes.width)
+        if (settings.currentSample == 0 && !dynamicSettings.frameFinished)
         {
             Graphics.Blit(renderTexture, destination);
 
@@ -778,14 +787,15 @@ public class MandelbrotContoroler : MonoBehaviour
         }// if the frame is finished continue to the next sample
         else if (dynamicSettings.frameFinished)
         {
-
+            //this basicly combines the image with those already on the screen in a way that the 
+            //result is an average of them
             addMaterial.SetFloat("_Sample", settings.currentSample);
             Graphics.Blit(renderTexture, destination, addMaterial);
+            //sets up next render
             SetFrameFinished(false);
-            SetFrankensteinFinished(false);
+            SetStepFinished(false);
             settings.currentSample++;
             dynamicSettings.reset = true;
-
         }
     }
 
@@ -829,7 +839,6 @@ public class MandelbrotContoroler : MonoBehaviour
     {
         // Make sure we have a current render target
         InitializeRenderTextures();
-        //Debug.Log($"Reg renderd: {settings.register}");
         DispatchShaders();
 
         BlitTexture(destination);
