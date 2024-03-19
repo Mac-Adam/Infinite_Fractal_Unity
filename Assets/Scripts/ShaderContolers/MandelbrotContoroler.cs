@@ -138,7 +138,6 @@ public class MandelbrotContoroler : MonoBehaviour
         {
             return;
         }
-
         dynamicSettings.currIter = 0;
         //Check if the whole render is finished
         if (settings.doAntialasing)
@@ -610,6 +609,7 @@ public class MandelbrotContoroler : MonoBehaviour
                 SetFrameFinished(false);
                 dynamicSettings.currIter = 0;
                 OnMoveComand();
+                settings.lastPixelizationLevel = settings.pixelizationLevel;
             }
             guiController.requestedUpscale = false;
         }
@@ -636,6 +636,7 @@ public class MandelbrotContoroler : MonoBehaviour
             OnMoveComand();
           
             guiController.requestedDownscale = false;
+            settings.lastPixelizationLevel = settings.pixelizationLevel;
         }
 
         if (guiController.pixelizationChange != 0)
@@ -806,8 +807,6 @@ public class MandelbrotContoroler : MonoBehaviour
                 Shader.EnableKeyword("FLOAT");
                 break;
         }
-
-        Debug.Log($"{dummyTexture.width},{IterBuffer.count},{multiFrameRenderBuffer.count}");
         switch (settings.precision)
         {
             case Precision.INFINTE:
