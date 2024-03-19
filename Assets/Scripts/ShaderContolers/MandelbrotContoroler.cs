@@ -212,7 +212,8 @@ public class MandelbrotContoroler : MonoBehaviour
         OtherFunctions.SaveRenderTextureToFile(screenshotTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
     }
 
-
+    //Iter buffer can't be handled in this function since when upscaling it needs to be renewed without Dispose
+    //(Due to both OldIterBuffer and IterBuffer pointing to the same buffer
     void RegenereateFractalComputeBuffers()
     {
         if (multiFrameRenderBuffer != null)
@@ -223,8 +224,6 @@ public class MandelbrotContoroler : MonoBehaviour
         {
             dataBuffer.Dispose();
         }
-
-
         switch (settings.precision)
         {
             case Precision.INFINTE:
@@ -246,8 +245,8 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void InitializeBuffers()
     {
-        IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
         OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+        IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
         dataBuffer = new ComputeBuffer(3, sizeof(float));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
         RegenereateFractalComputeBuffers();
@@ -572,24 +571,25 @@ public class MandelbrotContoroler : MonoBehaviour
 
         if (guiController.RequestedUpscale)
         {
+            //There is room for more pixels
             if (settings.MaxPixelizationLevel() < settings.pixelizationLevel)
             {
-
-                int[] arr = new int[settings.PixelCount(false) * 3];
-                IterBuffer.GetData(arr);
-                OldIterBuffer.Dispose();
-                OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
-                OldIterBuffer.SetData(arr);
-                IterBuffer.Dispose();
-
 
                 preUpscalePixLvl = settings.pixelizationLevel;
                 settings.pixelizationLevel -= 1;
 
+                //Handle buffers
+                OldIterBuffer.Dispose();
+                OldIterBuffer = IterBuffer;
+                RegenereateFractalComputeBuffers();
                 IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+
+                //make sure the scale is ok
                 FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
                 scaleFixer.SetDouble(settings.pixelizationLevel > settings.lastPixelizationLevel ? settings.pixelizationBase : 1.0 / settings.pixelizationBase);
                 cameraController.Scale *= scaleFixer;
+
+                //Make sure the render starts properly
                 settings.upscaling = true;
                 SetRenderFinished(false);
                 SetFrankensteinFinished(false);
@@ -599,6 +599,7 @@ public class MandelbrotContoroler : MonoBehaviour
             }
             guiController.RequestedUpscale = false;
         }
+
         if (guiController.pixelizationChange != 0)
         {
             if (settings.MaxPixelizationLevel() <= settings.pixelizationLevel + guiController.pixelizationChange)
@@ -667,6 +668,7 @@ public class MandelbrotContoroler : MonoBehaviour
             }
             guiController.pixelizationChange = 0;
         }
+
         if (cameraController.scrollMoved)
         {
             OnMoveComand();
@@ -674,6 +676,7 @@ public class MandelbrotContoroler : MonoBehaviour
 
             cameraController.scrollMoved = false;
         }
+
         if (cameraController.shiftX != 0 || cameraController.shiftY != 0)
         {
             dynamicSettings.shiftX = cameraController.shiftX;
@@ -687,8 +690,15 @@ public class MandelbrotContoroler : MonoBehaviour
             cameraController.shiftX = 0;
             cameraController.shiftY = 0;
         }
+
         if (cameraController.screenSizeChanged)
         {
+
+            if (IterBuffer != null)
+            {
+                IterBuffer.Dispose();
+            }
+            IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
             RegenereateFractalComputeBuffers();
             dynamicSettings.reset = true;
             OnMoveComand();
@@ -700,10 +710,6 @@ public class MandelbrotContoroler : MonoBehaviour
         cameraController.settings = settings;
 
         cameraController.deadZoneRight = guiController.guiOn ? (int)guiController.guiTemplate.sizes.width : 0;
-
-        // end of the temp code
-
-
 
     }
     public void HandleAntialias()
@@ -790,7 +796,6 @@ public class MandelbrotContoroler : MonoBehaviour
         InitializeValues();
         InitializeBuffers();
         ResetParams();
-
     }
     //Some of the code executed here needs to be executer after the other modules have finishied their code
     void LateUpdate()
@@ -798,7 +803,6 @@ public class MandelbrotContoroler : MonoBehaviour
         HandleFlags();
         HandleAntialias();
         AutomaticParametersChange();
-
     }
     private void OnDestroy()
     {
