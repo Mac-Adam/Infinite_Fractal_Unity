@@ -10,6 +10,8 @@ If the value for the coresponding pixel is not part of the set, the iteration pr
 */
 
 #pragma multi_compile FLOAT DOUBLE
+#pragma multi_compile MANDELBROT BURNING_SHIP
+
 
 #if FLOAT
 #define TYPE float
@@ -84,10 +86,19 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, int idx) {
 			}
 			return iter;
 		}
+//This part Is responsible for calculating the iteration
+#if MANDELBROT
 		z.y = 2 * z.x * z.y + c.y;
 		z.x = squares.x - squares.y + c.x;
+#elif BURNING_SHIP
+		z.y = abs(2 * z.x * z.y) + c.y;
+		z.x = squares.x - squares.y + c.x;
+#endif
+
 		squares.x = z.x * z.x;
 		squares.y = z.y * z.y;
+
+
 		iter++;
 	}
 	_MultiFrameData[idx].finished = true;
@@ -127,6 +138,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		TYPE2 uv = ((TYPE2)id.xy + _PixelOffset - TYPE2(width / 2, height / 2)) * scale;
 		// add offset
 		uv += TYPE2(_OffsetX, _OffsetY);
+		//Turned out the image was flipped this was added to reflip it
+		//It might have introduced some hidden bugs
+		uv.y = -uv.y;
 
 		//Iterate
 		if (_MultiFrameData[pixelId].iter == 0) {

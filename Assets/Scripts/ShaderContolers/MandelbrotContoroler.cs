@@ -7,6 +7,11 @@ using CommonShaderRenderFunctions;
 
 public class MandelbrotContoroler : MonoBehaviour
 {
+    //Will allways render in fnfinite precision, use only for debuging
+    public bool forceInfinte = false;
+
+
+
     //Shaders
     public ComputeShader InfiniteShader;
     public ComputeShader FloatShader;
@@ -64,10 +69,15 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     void SetSPrecision(int val)
     {
+        if (settings.precisionLevel == val || val == 0)
+        {
+            return;
+        }
         val = Math.Clamp(val, 0, GPUCode.precisions.Length - 1);
         settings.precisionLevel = val;
         DisposeBuffers();
         InitializeBuffers();
+
         ResetParams();
     }
 
@@ -289,6 +299,16 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void SetShadersParameters()
     {
+        //Choose Shader type:
+        foreach(ShaderInfo info in PixelizedShaders.shaderNames)
+        {
+            Shader.DisableKeyword(info.internalName);
+        }
+
+        Shader.EnableKeyword(PixelizedShaders.shaderNames[settings.shaderNumber].internalName);
+
+
+
         //calculate render place
         FixedPointNumber MiddleXToSend = new(cameraController.MiddleX);
         FixedPointNumber MiddleYToSend = new(cameraController.MiddleY);
@@ -424,21 +444,27 @@ public class MandelbrotContoroler : MonoBehaviour
         //to much and the fps drops below acceptable level and the app is laggy
         //TODO: chceck if the fps has beed externaly limited (for example on a laptop working on batery)
         //In that case the iterPerCycle quickly drops to 1, and the frame takes ages to finish.
-        if (!dynamicSettings.stepFinished && !dynamicSettings.renderFinished)
+        if(SystemInfo.batteryStatus != BatteryStatus.Discharging)
         {
-            if (1 / Time.deltaTime > maxTagretFramerate)
+            //Do any kind of frame related automatic parameter change only if the device is not on battery.
+            //A battery powered device on battery will most likely limit the fps to 30, this messes up the algorythms
+            if (!dynamicSettings.stepFinished && !dynamicSettings.renderFinished)
             {
-                settings.iterPerCycle++;
-            }
-            else if (1 / Time.deltaTime < minTargetFramerate)
-            {
-                if (settings.iterPerCycle > 1)
+                if (1 / Time.deltaTime > maxTagretFramerate)
                 {
-                    settings.iterPerCycle--;
+                    settings.iterPerCycle++;
                 }
+                else if (1 / Time.deltaTime < minTargetFramerate)
+                {
+                    if (settings.iterPerCycle > 1)
+                    {
+                        settings.iterPerCycle--;
+                    }
 
+                }
             }
         }
+
 
         if (settings.zoomVideo)
         {
@@ -485,19 +511,33 @@ public class MandelbrotContoroler : MonoBehaviour
         }
         //the values where the precision swithces are arbitrtary and probably coud be made tighter for a tiny increase in performance
         ////but this is not a priority and those numbers work allways 
-        if (cameraController.Scale.ToDouble() > 1E-6)
+        if (forceInfinte)
         {
-            SetPrecision(Precision.FLOAT);
-        }
-        else if(cameraController.Scale.ToDouble() > 1E-14)
-        {
-            SetPrecision(Precision.DOUBLE);
+            if (settings.precisionLevel == 0)
+            {
+                SetSPrecision(1);
+            }
+            SetPrecision(Precision.INFINTE);
         }
         else
         {
-            SetPrecision(Precision.INFINTE);
-          
+            if (cameraController.Scale.ToDouble() > 1E-6)
+            {
+                SetPrecision(Precision.FLOAT);
+            }
+            else if (cameraController.Scale.ToDouble() > 1E-14)
+            {
+                SetPrecision(Precision.DOUBLE);
+            }
+            else
+            {
+                SetPrecision(Precision.INFINTE);
+
+            }
+
         }
+       
+   
 
    
     }
@@ -532,7 +572,15 @@ public class MandelbrotContoroler : MonoBehaviour
             OnMoveComand();
             guiController.lastColorPalette = guiController.currColorPalette;
         }
-        
+
+        if (guiController.currFractal != guiController.lastFractal)
+        {
+            ResetParams();
+
+            settings.shaderNumber = guiController.currFractal;
+            guiController.lastFractal = guiController.currFractal;
+        }
+
         if (guiController.resetRequested)
         {
             dynamicSettings.turboReset = true;

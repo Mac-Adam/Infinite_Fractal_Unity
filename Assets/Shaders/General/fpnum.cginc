@@ -203,6 +203,13 @@ digits multiply(digits a, digits b)
 digits square(digits a) {
 	return multiply(a, a);
 }
+
+digits abs(digits a) {
+	if (IsPositive(a)){
+		return a;
+	}
+	return Negate(a);
+}
 digits setDouble(double num) {
 	digits a;
 	bool negate = false;
@@ -237,5 +244,7 @@ float toFloat(digits num){
 	}
 	return res;
 }
+
+
 
 

@@ -1,5 +1,7 @@
 #pragma kernel CSMain
 
+#pragma multi_compile MANDELBROT BURNING_SHIP
+
 #pragma multi_compile Q_VERY_LOW Q_LOW Q_MED Q_HIGH Q_VERY_HIGH Q_ULTRA Q_ULTRA_HIGH Q_SUPER Q_MEGA Q_SUPER_MEGA
 
 #if Q_VERY_LOW
@@ -89,6 +91,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits scale;
 	digits offset;
 	digits middle;
+	//Initialize values
 	[unroll]
 	for (int j = 0; j < PRECISION; j++) {
 		zX.digits[j] = _MultiFrameData[idx + CurX + j];
@@ -96,6 +99,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		scale.digits[j] = _DataBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
+	//Initialize values from cpu
 	offset.digits[0] = pixel.x - width / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
 	[unroll]
@@ -106,7 +110,6 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	for (int b = 0; b < PRECISION; b++) {
 		offset.digits[b] = 0;
 	}
-
 	offset.digits[0] = pixel.y - height / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.y)), scale);
 	[unroll]
@@ -114,7 +117,9 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		middle.digits[c] = _DataBuffer[MiddleY + c];
 	}
 	cY = add(offset, middle);
-
+	//Turned out the image was flipped this was added to reflip it
+	//It might have introduced some hidden bugs
+	cY = Negate(cY);
 
 	int iter = 0;
 	squareX = square(zX);
@@ -123,9 +128,14 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	for (uint i = 0; i < _IterPerCycle; i++) {
 
 
-
+//This part is responsibe for calculationg iteration insert new fractals here
+#if MANDELBROT
 		zY = add(cY, multiply(add(zX,zX), zY));
 		zX = add(subtract(squareX, squareY), cX);
+#elif BURNING_SHIP
+		zY = add(cY, abs(multiply(add(zX, zX), zY)));
+		zX = add(subtract(squareX, squareY), cX);
+#endif
 		squareX = square(zX);
 		squareY = square(zY);
 		iter++;
@@ -168,7 +178,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	//check if further computatuin is nesesary
 	if (!_MultiFrameData[pixelId + finished]) {
-
 		currentIter = getIter(id.xy, width, height, pixelId);
 
 		_MultiFrameData[pixelId + iter] += currentIter;

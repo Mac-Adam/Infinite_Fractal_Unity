@@ -217,6 +217,37 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1 &866464754
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 866464755}
+  m_Layer: 0
+  m_Name: New Game Object
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &866464755
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 866464754}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -314,6 +345,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29aae8a54aa57f346bf17f765f2442d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  forceInfinte: 0
   InfiniteShader: {fileID: 7200000, guid: 97ce3c6f3118c4249882377764e1b84b, type: 3}
   FloatShader: {fileID: 7200000, guid: 3f2e0da2785481c4cbf4f7ad9fc41ec5, type: 3}
   RenderShader: {fileID: 7200000, guid: d622378c12d34354090ba291bd17275b, type: 3}
@@ -416,6 +448,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: BlankCanvas
       objectReference: {fileID: 0}
+    - target: {fileID: 8142731233616675678, guid: 2c3fc9e39c877714696bb94b36bf48f2, type: 3}
+      propertyPath: SlideVievPrefab
+      value: 
+      objectReference: {fileID: 1772409568555505970, guid: 77bb98526d0616e4c97cdd856278fd1e, type: 3}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2c3fc9e39c877714696bb94b36bf48f2, type: 3}
 --- !u!1 &1851789509
@@ -470,7 +506,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_FirstSelected: {fileID: 0}
   m_sendNavigationEvents: 1
-  m_DragThreshold: 10
+  m_DragThreshold: 50
 --- !u!4 &1851789512
 Transform:
   m_ObjectHideFlags: 0

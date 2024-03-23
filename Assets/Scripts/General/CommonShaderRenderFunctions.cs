@@ -1,10 +1,22 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using FixedPointNumberSystem;
 using CommonFunctions;
 namespace CommonShaderRenderFunctions
 {
-    
+    public struct ShaderInfo
+    {
+        public string internalName;
+        public string outsideName;
+
+        public ShaderInfo(string internalName, string outsideName)
+        {
+            this.internalName = internalName;
+            this.outsideName = outsideName;
+        }
+
+    }
     public enum Precision { FLOAT = 0, DOUBLE = 1, INFINTE = 2 };
     struct PixelizationData //shortcut to keep everything condensed
     {
@@ -51,6 +63,7 @@ namespace CommonShaderRenderFunctions
         public int precisionLevel;
         public int iterPerCycle;
         public bool doAntialasing;
+        public int shaderNumber;
     
         //There are probably better ways to do this, but I want to initialize it to the same thing allways
         public Settings(bool _)
@@ -72,6 +85,7 @@ namespace CommonShaderRenderFunctions
             precisionLevel = 1;
             iterPerCycle = 50;
             doAntialasing = false;
+            shaderNumber = 0;
         }
 
 
@@ -214,6 +228,13 @@ namespace CommonShaderRenderFunctions
 
     class PixelizedShaders
     {
+        static public readonly ShaderInfo[] shaderNames = new ShaderInfo[]
+        {
+            new("MANDELBROT","Mandelbrot"),
+            new("BURNING_SHIP","Burning Ship")
+        };
+        
+
         public const uint MAXBYTESPERBUFFER = 2147483648;
         public static RenderTexture InitializePixelizedTexture(RenderTexture texture, int reducedWidth, int reducedHeight, bool additionalCondition,Action callback,bool smallSize = false)
         {
