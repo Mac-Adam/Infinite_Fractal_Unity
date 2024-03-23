@@ -10,7 +10,7 @@ If the value for the coresponding pixel is not part of the set, the iteration pr
 */
 
 #pragma multi_compile FLOAT DOUBLE
-#pragma multi_compile MANDELBROT BURNING_SHIP
+#pragma multi_compile MANDELBROT BURNING_SHIP MANDEL3 MANDEL4
 
 
 #if FLOAT
@@ -71,6 +71,10 @@ float getOffset(float2 squares) {
 	res = clamp(res, 0.0, 1.0);
 	return res;
 }
+
+TYPE2 mulComplex(TYPE2 a, TYPE2 b) {
+	return TYPE2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
 uint getIteration(TYPE2 possition, TYPE2 InitialZ, int idx) {
 	TYPE2 c = possition;
 	uint iter = 0;
@@ -93,6 +97,10 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, int idx) {
 #elif BURNING_SHIP
 		z.y = abs(2 * z.x * z.y) + c.y;
 		z.x = squares.x - squares.y + c.x;
+#elif MANDEL3
+		z = mulComplex(z, mulComplex(z, z)) + c;
+#elif MANDEL4
+		z = mulComplex(mulComplex(z, z), mulComplex(z, z)) + c;
 #endif
 
 		squares.x = z.x * z.x;

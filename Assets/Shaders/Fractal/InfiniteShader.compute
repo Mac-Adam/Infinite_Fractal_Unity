@@ -1,6 +1,6 @@
 #pragma kernel CSMain
 
-#pragma multi_compile MANDELBROT BURNING_SHIP
+#pragma multi_compile MANDELBROT BURNING_SHIP MANDEL3 MANDEL4
 
 #pragma multi_compile Q_VERY_LOW Q_LOW Q_MED Q_HIGH Q_VERY_HIGH Q_ULTRA Q_ULTRA_HIGH Q_SUPER Q_MEGA Q_SUPER_MEGA
 
@@ -135,7 +135,24 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 #elif BURNING_SHIP
 		zY = add(cY, abs(multiply(add(zX, zX), zY)));
 		zX = add(subtract(squareX, squareY), cX);
+#elif MANDEL3 
+// Not the optimal way but it is simple to write down
+// TODO: unroll it and reduce the amount of multiplications
+		complex z;
+		z.x = zX;
+		z.y = zY;
+		z = mulComplex(mulComplex(z, z), z);
+		zX = add(z.x, cX);
+		zY = add(z.y, cY);
+#elif MANDEL4
+		complex z;
+		z.x = zX;
+		z.y = zY;
+		z = mulComplex(mulComplex(z, z), mulComplex(z, z));
+		zX = add(z.x, cX);
+		zY = add(z.y, cY);
 #endif
+
 		squareX = square(zX);
 		squareY = square(zY);
 		iter++;

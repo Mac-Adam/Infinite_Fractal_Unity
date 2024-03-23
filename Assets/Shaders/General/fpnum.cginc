@@ -8,6 +8,12 @@ static const uint digitBase = 46300;
 struct digits {
 	int digits[PRECISION];
 }; 
+
+struct complex {
+	digits x;
+	digits y;
+};
+
 bool IsPositive(digits a) {
 	[fastopt]
 	for (int i = 0; i < PRECISION; i++) {
@@ -86,6 +92,13 @@ digits Negate(digits a) {
 	}
 	return a;
 }
+digits intMul(digits a, int num) {
+	for (int j = 0; j < PRECISION; j++) {
+		a.digits[j] *= num;
+	}
+	return normalizePositive(a);
+}
+
 digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//Multiplies shifts and normalizes
 	[unroll]
 	for (int j = 0; j < PRECISION; j++) {
@@ -242,6 +255,13 @@ float toFloat(digits num){
 	for (int i = 0; i < PRECISION; i++) {
 		res += num.digits[i] * pow(digitBase,-i);
 	}
+	return res;
+}
+
+complex mulComplex(complex a, complex b) {
+	complex res;
+	res.x = subtract(multiply(a.x, b.x), multiply(a.y, b.y));
+	res.y = add(multiply(a.x, b.y), multiply(a.y, b.x));
 	return res;
 }
 

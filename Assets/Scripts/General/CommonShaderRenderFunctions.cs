@@ -231,7 +231,9 @@ namespace CommonShaderRenderFunctions
         static public readonly ShaderInfo[] shaderNames = new ShaderInfo[]
         {
             new("MANDELBROT","Mandelbrot"),
-            new("BURNING_SHIP","Burning Ship")
+            new("BURNING_SHIP","Burning Ship"),
+            new("MANDEL3","Mandelbrot cube"),
+            new("MANDEL4","Mandelbrot 4th")
         };
         
 
