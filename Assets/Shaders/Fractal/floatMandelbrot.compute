@@ -67,7 +67,15 @@ uint _Register;
 
 float getOffset(float2 squares) {
 	float logz = log((squares.x + squares.y)) / 2.0;
-	float res = log(logz / log(_BailoutRadius)) / log(2.0);
+	float res = log(logz / log(_BailoutRadius));
+#if MANDELBROT || BURNING_SHIP
+	res/= log(2.0);
+#elif MANDEL3
+	res /= log(3.0);
+#elif MANDEL4
+	res /= log(4.0);
+#endif
+
 	res = clamp(res, 0.0, 1.0);
 	return res;
 }
