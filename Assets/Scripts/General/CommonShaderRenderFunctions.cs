@@ -9,11 +9,15 @@ namespace CommonShaderRenderFunctions
     {
         public string internalName;
         public string outsideName;
+        // Turns out different fractals need diferent ones for optimal rendering
+        // For fixed point calculations the one int reserved for the whole part of a number is to small when the fractal escapes too quick
+        public int bailoutRadius;
 
-        public ShaderInfo(string internalName, string outsideName)
+        public ShaderInfo(string internalName, string outsideName,int bailoutRadius)
         {
             this.internalName = internalName;
             this.outsideName = outsideName;
+            this.bailoutRadius = bailoutRadius;
         }
 
     }
@@ -228,12 +232,15 @@ namespace CommonShaderRenderFunctions
 
     class PixelizedShaders
     {
-        static public readonly ShaderInfo[] shaderNames = new ShaderInfo[]
+        //When adding a new fractal you need to:
+        // place Its info here
+        // add edit iteration and potencial calculation in the shaders
+        static public readonly ShaderInfo[] fractalInfos = new ShaderInfo[]
         {
-            new("MANDELBROT","Mandelbrot"),
-            new("BURNING_SHIP","Burning Ship"),
-            new("MANDEL3","Mandelbrot cube"),
-            new("MANDEL4","Mandelbrot 4th")
+            new("MANDELBROT","Mandelbrot",128),
+            new("BURNING_SHIP","Burning Ship",128),
+            new("MANDEL3","Mandelbrot cube",32),
+            new("MANDEL4","Mandelbrot 4th",12)
         };
         
 

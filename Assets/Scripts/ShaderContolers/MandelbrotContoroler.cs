@@ -300,12 +300,12 @@ public class MandelbrotContoroler : MonoBehaviour
     public void SetShadersParameters()
     {
         //Choose Shader type:
-        foreach(ShaderInfo info in PixelizedShaders.shaderNames)
+        foreach(ShaderInfo info in PixelizedShaders.fractalInfos)
         {
             Shader.DisableKeyword(info.internalName);
         }
 
-        Shader.EnableKeyword(PixelizedShaders.shaderNames[settings.shaderNumber].internalName);
+        Shader.EnableKeyword(PixelizedShaders.fractalInfos[settings.shaderNumber].internalName);
 
 
 
@@ -579,6 +579,7 @@ public class MandelbrotContoroler : MonoBehaviour
 
             settings.shaderNumber = guiController.currFractal;
             guiController.lastFractal = guiController.currFractal;
+            guiController.bailoutRadius = PixelizedShaders.fractalInfos[guiController.currFractal].bailoutRadius;
         }
 
         if (guiController.resetRequested)

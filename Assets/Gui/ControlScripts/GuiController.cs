@@ -120,13 +120,13 @@ Visual:
 
     public void SetFractal(int val)
     {
-        if (val % PixelizedShaders.shaderNames.Length == currFractal)
+        if (val % PixelizedShaders.fractalInfos.Length == currFractal)
         {
             return;
         }
 
         lastFractal = currFractal;
-        currFractal = val % PixelizedShaders.shaderNames.Length;
+        currFractal = val % PixelizedShaders.fractalInfos.Length;
     }
     public void SetMaxIter(int iter)
     {
@@ -220,7 +220,7 @@ Visual:
             new DropdownTemplate(
                 "Fractal",
                 currFractal,
-                PixelizedShaders.shaderNames.Select(sn => sn.outsideName).ToList(),
+                PixelizedShaders.fractalInfos.Select(sn => sn.outsideName).ToList(),
                 (int i)=> SetFractal(i)
                 ),
             new DropdownTemplate(
