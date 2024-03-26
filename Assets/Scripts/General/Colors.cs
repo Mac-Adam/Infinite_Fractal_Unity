@@ -46,6 +46,13 @@ namespace Colors
                 HexTo01Color("#91b8c4"),
                 HexTo01Color("#d67b27"),
                 HexTo01Color("#03074d")
+            },5,"Test"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
             },1,"Sunset"),
         new ColorPalette(
             new Vector4[] {
@@ -95,15 +102,22 @@ namespace Colors
     }
     public struct ColorPalette
     {
+        //Types:
+        // 0 - In rgb color space
+        // 1 - In lab color space
+        // 2 - in lch color space, shortest
+        // 3 - In lch one dir
+        // 4 - In lch other
+        // 5 experimental angle based
         public Vector4[] colors;
         public int length;
-        public int gradientType;
+        public int type;
         public string name;
         public ColorPalette(Vector4[] col, int t, string n)
         {
             colors = col;
             length = col.Length;
-            gradientType = t;
+            type = t;
             name = n;
         }
     }

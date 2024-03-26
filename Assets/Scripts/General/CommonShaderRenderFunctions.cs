@@ -100,7 +100,10 @@ namespace CommonShaderRenderFunctions
         }
         public int GetShaderPixelSize()
         {
-            return  2 * GetShaderPre() + 3;
+           
+            return 2 * GetShaderPre() + 4;
+            
+           
         }
 
 
@@ -172,10 +175,10 @@ namespace CommonShaderRenderFunctions
                 switch (precision)
                 {
                     case Precision.FLOAT:
-                        bufferSize = 2 * pixelCount * FloatPixelPacket.size;
+                        bufferSize = 2 * pixelCount * PixelSizes.floatSize;
                         break;
                     case Precision.DOUBLE:
-                        bufferSize = 2 * pixelCount * DoublePixelPacket.size;
+                        bufferSize = 2 * pixelCount * PixelSizes.doubleSize;
                         break;
                     case Precision.INFINTE:
                         bufferSize = 2 * pixelCount * sizeof(int) * GetShaderPixelSize();
@@ -203,31 +206,12 @@ namespace CommonShaderRenderFunctions
         public float renderTimeElapsed;
     }
 
-    public struct DoublePixelPacket
+    public struct PixelSizes
     {
-        double CurrentZX;
-        double CurrentZY;
-        uint iter;
-        uint finished;
-        float offset;
-        //for reasosns I don't fully understand sizeof(float) must be mutiplied by 2, otherwise it doesn't work
-        public static int size = sizeof(double) * 2 + sizeof(uint) * 2 + sizeof(float) * 2;
-    }
-    public struct FloatPixelPacket
-    {
-        float CurrentZX;
-        float CurrentZY;
-        uint iter;
-        uint finished;
-        float offset;
-        public static int size = sizeof(float) * 3 + sizeof(uint) * 2;
-    }
-    public struct IterPixelPacket
-    {
-        int iter;
-        int finished;
-        float rest;
-        public static int size = sizeof(int) * 2 + sizeof(float);
+        //since it's not that big of a deal for floats and doubles, the deriviative will always be stored 
+        public static int floatSize = sizeof(float) * 6 + sizeof(uint)* 2;
+        public static int doubleSize = sizeof(double)* 4 + sizeof(uint)* 2 + sizeof(float)* 4;
+        public static int iter = sizeof(int) * 2 + 3 * sizeof(float);
     }
 
     class PixelizedShaders
@@ -237,7 +221,7 @@ namespace CommonShaderRenderFunctions
         // add edit iteration and potencial calculation in the shaders
         static public readonly ShaderInfo[] fractalInfos = new ShaderInfo[]
         {
-            new("MANDELBROT","Mandelbrot",128),
+            new("MANDELBROT","Mandelbrot",1000),
             new("BURNING_SHIP","Burning Ship",128),
             new("MANDEL3","Mandelbrot cube",32),
             new("MANDEL4","Mandelbrot 4th",12)

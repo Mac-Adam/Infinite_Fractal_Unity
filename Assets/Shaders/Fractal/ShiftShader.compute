@@ -14,7 +14,9 @@
 
 
 int _Precision;
-static const int PixelSize = 2 * _Precision + 3;
+
+
+static const int PixelSize = 2 * _Precision + 4;
 
 RWTexture2D<float4> Result;
 
@@ -24,9 +26,12 @@ RWStructuredBuffer<int> _MultiFrameData;
 struct Pixel {
 	TYPE CurrentZX;
 	TYPE CurrentZY;
+	TYPE DerX;
+	TYPE DerY;
 	uint iter;
 	bool finished;
 	float offset;
+	float angle;
 };
 RWStructuredBuffer<Pixel> _MultiFrameData;
 #endif
@@ -98,8 +103,11 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		_MultiFrameData[pixelId].iter = _MultiFrameData[oldPixelId].iter;
 		_MultiFrameData[pixelId].CurrentZX = _MultiFrameData[oldPixelId].CurrentZX;
 		_MultiFrameData[pixelId].CurrentZY = _MultiFrameData[oldPixelId].CurrentZY;
+		_MultiFrameData[pixelId].DerX = _MultiFrameData[oldPixelId].DerX;
+		_MultiFrameData[pixelId].DerY = _MultiFrameData[oldPixelId].DerY;
 		_MultiFrameData[pixelId].finished = _MultiFrameData[oldPixelId].finished;
 		_MultiFrameData[pixelId].offset = _MultiFrameData[oldPixelId].offset;
+		_MultiFrameData[pixelId].angle = _MultiFrameData[oldPixelId].angle;
 #endif
 	}
 	

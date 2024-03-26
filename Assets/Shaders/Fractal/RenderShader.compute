@@ -1,7 +1,6 @@
 
 #pragma kernel CSMain
 #include "Assets/Shaders/General/colorSpaces.cginc"
-
 /*
 This shader doesn't care how the data was created, 
 it simply renders the image on the screen based on the parameters
@@ -9,31 +8,48 @@ TODO: document the variables
 */
 
 RWTexture2D<float4> Result;
+
+// how many real pixels per computation pixel
 uint _ReduceAmount;
+// if true there are more computation pixels than real pixels
 bool _Superresolution;
 struct res {
 	uint iter; 
 	bool finished;
 	float offset;
+	float angle;
 }; 
+//Two buffers in caase of upscaling
+bool _Upscaling;
 RWStructuredBuffer<res> _IterBuffer;
 RWStructuredBuffer<res> _OldIterBuffer;
+
+
 uint _MaxIter;
 uint _OldPixelWidth;
-bool _Upscaling;
+
+
+//Used when renderign at high res
 bool _RenderExact;
+
+//Used to transport colors
 int _ColorArrayLength;
 StructuredBuffer<float4> _Colors;
+//Whether to use continous escape time
 bool _Smooth;
+//What type of gradient
 int _Type;
+// how many iterations per color
 float _ColorStrength;
 float4 getColor(res res) {
+	//at this moment the interior is allways black
 	float4 InColor = float4(0.0, 0.0, 0.0, 1.0f);
 
 
 	if (!res.finished || res.iter >= _MaxIter) {
 		return InColor;
 	}
+
 	if (res.iter == 0) {
 		res.iter = 1;
 	}
@@ -44,11 +60,17 @@ float4 getColor(res res) {
 	else {
 		iter = (float)res.iter;
 	}
+
 	float baseRatio = iter/_ColorStrength;
 	int baseColorIdx = (int)(floor(baseRatio) % _ColorArrayLength);
 	int upColorIdx = (int)((floor(baseRatio) + 1) % _ColorArrayLength);
 	float ratio = baseRatio % 1;
 	
+	if (_Type == 5) {
+		
+		return lerpColors(_Colors[0], _Colors[1], (res.angle + PI)/PI, 1, false);
+	}
+
 	return lerpColors(_Colors[baseColorIdx],_Colors[upColorIdx], ratio,_Type,_Smooth);
 	
 
@@ -67,6 +89,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 		Result[id.xy] = getColor(_IterBuffer[textureX + textureY * reducedWidth]);
 		return;
 	}
+
 	if (_Superresolution) {
 		textureX *= _ReduceAmount;
 		textureY *= _ReduceAmount;
@@ -77,7 +100,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 		textureY /= _ReduceAmount;
 		reducedWidth /= _ReduceAmount;
 	}
+
 	int textureIdx = textureX + textureY * reducedWidth;
+
 	if (_Upscaling) {
 		if (_IterBuffer[textureIdx].finished) {
 			Result[id.xy] = getColor(_IterBuffer[textureIdx]);
@@ -101,6 +126,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			Result[id.xy] = getColor(_OldIterBuffer[oldTextureIdx]);
 		}
 	}
+
 	else {
 		Result[id.xy] = getColor(_IterBuffer[textureIdx]);
 	}

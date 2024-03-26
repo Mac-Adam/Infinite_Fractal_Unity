@@ -12,7 +12,6 @@ If the value for the coresponding pixel is not part of the set, the iteration pr
 #pragma multi_compile FLOAT DOUBLE
 #pragma multi_compile MANDELBROT BURNING_SHIP MANDEL3 MANDEL4
 
-
 #if FLOAT
 #define TYPE float
 #define TYPE2 float2
@@ -44,15 +43,19 @@ struct res {
 	uint iter;
 	bool finished;
 	float offset;
-}; 
+	float angle;
+};
 RWStructuredBuffer<res> _IterBuffer;
 
 struct Pixel {
 	TYPE CurrentZX;
 	TYPE CurrentZY;
+	TYPE DerX;
+	TYPE DerY;
 	uint iter;
 	bool finished;
 	float offset;
+	float angle;
 };
 
 RWStructuredBuffer<Pixel> _MultiFrameData;
@@ -83,16 +86,21 @@ float getOffset(float2 squares) {
 TYPE2 mulComplex(TYPE2 a, TYPE2 b) {
 	return TYPE2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
 }
-uint getIteration(TYPE2 possition, TYPE2 InitialZ, int idx) {
+uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 	TYPE2 c = possition;
 	uint iter = 0;
 	TYPE2 z = InitialZ;
 	TYPE2 squares = TYPE2(z.x * z.x, z.y * z.y);
+	TYPE2 der = initialDer;
 	while (squares.x + squares.y < _BailoutRadiusSQ) {
 		if (iter >= (_IterPerCycle)) {
 
 			_MultiFrameData[idx].CurrentZX = z.x;
 			_MultiFrameData[idx].CurrentZY = z.y;
+
+			_MultiFrameData[idx].DerX = der.x;
+			_MultiFrameData[idx].DerY = der.y;
+
 			if (_MultiFrameData[idx].iter >= _MaxIter) {
 				_MultiFrameData[idx].finished = true;
 			}
@@ -111,6 +119,7 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, int idx) {
 		z = mulComplex(mulComplex(z, z), mulComplex(z, z)) + c;
 #endif
 
+
 		squares.x = z.x * z.x;
 		squares.y = z.y * z.y;
 
@@ -119,6 +128,8 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, int idx) {
 	}
 	_MultiFrameData[idx].finished = true;
 	_MultiFrameData[idx].offset = getOffset((float2)squares);
+	_MultiFrameData[idx].angle = atan2(z.y,z.x);
+	
 	return iter;
 
 
@@ -160,10 +171,13 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 		//Iterate
 		if (_MultiFrameData[pixelId].iter == 0) {
-			currentIter = getIteration(uv, TYPE2(0.0, 0.0), pixelId);
+			currentIter = getIteration(uv, TYPE2(0.0, 0.0), TYPE2(1.0, 0.0), pixelId);
 		}
 		else {
-			currentIter = getIteration(uv, TYPE2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY), pixelId);
+			currentIter = getIteration(uv, 
+				TYPE2(_MultiFrameData[pixelId].CurrentZX, _MultiFrameData[pixelId].CurrentZY),
+				TYPE2(_MultiFrameData[pixelId].DerX, _MultiFrameData[pixelId].DerY),
+				pixelId);
 		}
 		//update iteration count
 
@@ -178,4 +192,5 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_IterBuffer[iterId].iter = _MultiFrameData[pixelId].iter;
 	_IterBuffer[iterId].finished = _MultiFrameData[pixelId].finished;
 	_IterBuffer[iterId].offset = _MultiFrameData[pixelId].offset;
+	_IterBuffer[iterId].angle = _MultiFrameData[pixelId].angle;
 }

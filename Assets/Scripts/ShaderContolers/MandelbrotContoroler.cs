@@ -9,8 +9,7 @@ public class MandelbrotContoroler : MonoBehaviour
 {
     //Will allways render in fnfinite precision, use only for debuging
     public bool forceInfinte = false;
-
-
+    public bool forceDouble = false;
 
     //Shaders
     public ComputeShader InfiniteShader;
@@ -243,11 +242,11 @@ public class MandelbrotContoroler : MonoBehaviour
                 dataBuffer = new ComputeBuffer(3 * settings.GetShaderPre(), sizeof(int));
                 break;
             case Precision.DOUBLE:
-                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
+                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, PixelSizes.doubleSize);
                 dataBuffer = new ComputeBuffer(3, sizeof(double));
                 break;
             case Precision.FLOAT:
-                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
+                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, PixelSizes.floatSize);
                 dataBuffer = new ComputeBuffer(3, sizeof(float));
                 break;
 
@@ -257,8 +256,8 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void InitializeBuffers()
     {
-        OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
-        IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+        OldIterBuffer = new ComputeBuffer(settings.PixelCount(false), PixelSizes.iter);
+        IterBuffer = new ComputeBuffer(settings.PixelCount(false), PixelSizes.iter);
         dataBuffer = new ComputeBuffer(3, sizeof(float));
         ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
         RegenereateFractalComputeBuffers();
@@ -306,7 +305,7 @@ public class MandelbrotContoroler : MonoBehaviour
         }
 
         Shader.EnableKeyword(PixelizedShaders.fractalInfos[settings.shaderNumber].internalName);
-
+ 
 
 
         //calculate render place
@@ -407,7 +406,7 @@ public class MandelbrotContoroler : MonoBehaviour
         RenderShader.SetFloat("_ColorStrength", guiController.colorStrength);
         RenderShader.SetBool("_Smooth", guiController.smoothGradient);
         RenderShader.SetBool("_Upscaling", settings.upscaling);
-        RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[guiController.currColorPalette].gradientType);
+        RenderShader.SetInt("_Type", MyColoringSystem.colorPalettes[guiController.currColorPalette].type);
         RenderShader.SetInt("_ReduceAmount", OtherFunctions.IntPow(settings.pixelizationBase,Math.Abs(settings.pixelizationLevel)));
         RenderShader.SetBool("_Superresolution", settings.pixelizationLevel < 0);
         RenderShader.SetBool("_RenderExact", false);
@@ -518,6 +517,10 @@ public class MandelbrotContoroler : MonoBehaviour
                 SetSPrecision(1);
             }
             SetPrecision(Precision.INFINTE);
+        }
+        else if (forceDouble)
+        {
+            SetPrecision(Precision.DOUBLE);
         }
         else
         {
@@ -644,7 +647,7 @@ public class MandelbrotContoroler : MonoBehaviour
                 OldIterBuffer.Dispose();
                 OldIterBuffer = IterBuffer;
                 RegenereateFractalComputeBuffers();
-                IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+                IterBuffer = new ComputeBuffer(settings.PixelCount(false), PixelSizes.iter);
 
                 //make sure the scale is ok
                 FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
@@ -670,7 +673,7 @@ public class MandelbrotContoroler : MonoBehaviour
 
             //Handle buffers
             RegenereateFractalComputeBuffers();
-            IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+            IterBuffer = new ComputeBuffer(settings.PixelCount(false), PixelSizes.iter);
 
             //make sure the scale is ok
             FixedPointNumber scaleFixer = new(CameraController.cpuPrecision);
@@ -704,7 +707,7 @@ public class MandelbrotContoroler : MonoBehaviour
                 OnMoveComand();
                 //Dispose old buffer
                 IterBuffer.Dispose();
-                IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+                IterBuffer = new ComputeBuffer(settings.PixelCount(false), PixelSizes.iter);
                 //setup Shader
                 GPUCode.ResetAllKeywords();
                 Shader.EnableKeyword(settings.lastPixelizationLevel < settings.pixelizationLevel ? "IN" : "OUT");
@@ -718,11 +721,11 @@ public class MandelbrotContoroler : MonoBehaviour
                         break;
                     case Precision.DOUBLE:
                         Shader.EnableKeyword("DOUBLE");
-                        temp = new ComputeBuffer(settings.PixelCount() * 2, DoublePixelPacket.size);
+                        temp = new ComputeBuffer(settings.PixelCount() * 2, PixelSizes.doubleSize);
                         break;
                     default: // idk why i need to do this thike that :/
                         Shader.EnableKeyword("FLOAT");
-                        temp = new ComputeBuffer(settings.PixelCount() * 2, FloatPixelPacket.size);
+                        temp = new ComputeBuffer(settings.PixelCount() * 2, PixelSizes.floatSize);
                         break;
                 }
                 ZoomShader.SetBuffer(0, "_MultiFrameData", temp);
@@ -786,7 +789,7 @@ public class MandelbrotContoroler : MonoBehaviour
             {
                 IterBuffer.Dispose();
             }
-            IterBuffer = new ComputeBuffer(settings.PixelCount(false), IterPixelPacket.size);
+            IterBuffer = new ComputeBuffer(settings.PixelCount(false), PixelSizes.iter);
             RegenereateFractalComputeBuffers();
             dynamicSettings.reset = true;
             OnMoveComand();

@@ -4,6 +4,7 @@
 
 #pragma multi_compile Q_VERY_LOW Q_LOW Q_MED Q_HIGH Q_VERY_HIGH Q_ULTRA Q_ULTRA_HIGH Q_SUPER Q_MEGA Q_SUPER_MEGA
 
+
 #if Q_VERY_LOW
 #define PRECISION 4
 #elif Q_LOW
@@ -46,10 +47,12 @@ static const int Scale = PRECISION * 2;
 
 static const int CurX = 0;
 static const int CurY = PRECISION;
+
 static const int iter = 2 * PRECISION;
 static const int finished = 2 * PRECISION + 1;
 static const int iterOffset = 2 * PRECISION + 2;
-static const int PixelSize = 2 * PRECISION + 3;
+static const int angle = 2 * PRECISION + 3;
+static const int PixelSize = 2 * PRECISION + 4;
 
 uint _RenderWidth;
 int _FrankensteinOffsetX;
@@ -68,6 +71,7 @@ struct res {
 	uint iter;
 	bool finished;
 	float offset;
+	float angle;
 };
 RWStructuredBuffer<res> _IterBuffer;
 
@@ -167,7 +171,8 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 		if (!inBounds(squareX, squareY, _BailoutRadiusSQ)) {
 			_MultiFrameData[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
-			//_MultiFrameData[idx + iterOffset] = getOffset(float2(squareX.digits[0], squareY.digits[0]));
+			_MultiFrameData[idx + angle] = atan2(toFloat(zX),toFloat(zY))*BIGNUM;
+
 			_MultiFrameData[idx + finished] = true;
 			return iter;
 		}
@@ -178,6 +183,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	for (int k = 0; k < PRECISION; k++) {
 		_MultiFrameData[idx + CurY + k] = zY.digits[k];
 	}
+
 
 
 	return iter;
@@ -216,6 +222,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_IterBuffer[iterId].iter = _MultiFrameData[pixelId + iter];
 	_IterBuffer[iterId].finished = _MultiFrameData[pixelId + finished];
 	_IterBuffer[iterId].offset = (float)(_MultiFrameData[pixelId + iterOffset]) / BIGNUM;
+	_IterBuffer[iterId].angle = (float)(_MultiFrameData[pixelId + angle]) / BIGNUM;
 
 
 }
