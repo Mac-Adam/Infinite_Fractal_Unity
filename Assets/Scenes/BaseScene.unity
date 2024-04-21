@@ -346,6 +346,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   forceInfinte: 0
+  forceDouble: 0
+  tiling: {fileID: 2800000, guid: 97df935936b628444be45abd1fecb374, type: 3}
   InfiniteShader: {fileID: 7200000, guid: 97ce3c6f3118c4249882377764e1b84b, type: 3}
   FloatShader: {fileID: 7200000, guid: 3f2e0da2785481c4cbf4f7ad9fc41ec5, type: 3}
   RenderShader: {fileID: 7200000, guid: d622378c12d34354090ba291bd17275b, type: 3}

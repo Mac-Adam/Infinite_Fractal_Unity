@@ -46,13 +46,6 @@ namespace Colors
                 HexTo01Color("#91b8c4"),
                 HexTo01Color("#d67b27"),
                 HexTo01Color("#03074d")
-            },5,"Test"),
-        new ColorPalette(
-            new Vector4[] {
-                HexTo01Color("#155e80"),
-                HexTo01Color("#91b8c4"),
-                HexTo01Color("#d67b27"),
-                HexTo01Color("#03074d")
             },1,"Sunset"),
         new ColorPalette(
             new Vector4[] {
@@ -98,7 +91,20 @@ namespace Colors
                 HexTo01Color("#d67b27"),
                 HexTo01Color("#03074d")
             },2,"Dark Rainbow"),
+        new ColorPalette(
+            new Vector4[] {
+                 HexTo01Color("#FFFFFF")
+            },5,"Triangle Tiling",0),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#FFFFFF")
+            },6,"One to rule them all",1),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#FFFFFF")
+            },6,"Nebula",2),
         };
+
     }
     public struct ColorPalette
     {
@@ -108,17 +114,20 @@ namespace Colors
         // 2 - in lch color space, shortest
         // 3 - In lch one dir
         // 4 - In lch other
-        // 5 experimental angle based
+        // 5 Tilings
+        // 6 Rings 
         public Vector4[] colors;
         public int length;
         public int type;
         public string name;
-        public ColorPalette(Vector4[] col, int t, string n)
+        public int imageIdx;
+        public ColorPalette(Vector4[] col, int t, string n,int img = 0)
         {
             colors = col;
             length = col.Length;
             type = t;
             name = n;
+            imageIdx = img;
         }
     }
    

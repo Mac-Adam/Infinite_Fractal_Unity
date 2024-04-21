@@ -9,6 +9,8 @@ TODO: document the variables
 
 RWTexture2D<float4> Result;
 
+Texture2D<float4> Tiling;
+
 // how many real pixels per computation pixel
 uint _ReduceAmount;
 // if true there are more computation pixels than real pixels
@@ -67,8 +69,34 @@ float4 getColor(res res) {
 	float ratio = baseRatio % 1;
 	
 	if (_Type == 5) {
-		
-		return lerpColors(_Colors[0], _Colors[1], (res.angle + PI)/PI, 1, false);
+		//for Tilings, they need to be disconected or have the geometry of M.C. Escher square limit in order for it to look good
+		// A way to generate those tiles proceduraly: http://roy.red/posts/building-eschers-square-limit/
+		uint tw, th;
+		Tiling.GetDimensions(tw, th);
+		uint2 tileId; 
+		//Here the 1- needs to be remoced if the tiles are shrinking in the downward direction
+		tileId.y = (1-res.offset) * (float)th;
+		float normalizedAngle;
+		if (res.angle < 0) {
+			normalizedAngle = (res.angle + 2* PI) / 2 / PI;
+		}
+		else {
+			normalizedAngle = (res.angle)/ 2 / PI;
+		}
+		tileId.x = normalizedAngle*(float)tw;
+		return Tiling[tileId];
+	}
+	if (_Type == 6) {
+		//Rings
+		uint tw, th;
+		Tiling.GetDimensions(tw, th);
+		uint2 tileId;
+		float radius =res.offset;
+		tileId.x = (1.0 + res.offset * cos(res.angle)) * tw / 2;
+		tileId.y = (1.0 + res.offset * sin(res.angle)) * th / 2;
+		return Tiling[tileId];
+
+
 	}
 
 	return lerpColors(_Colors[baseColorIdx],_Colors[upColorIdx], ratio,_Type,_Smooth);
@@ -84,6 +112,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	Result.GetDimensions(width, height);
 	uint textureX = id.x;
 	uint textureY = id.y;
+
+
 	uint reducedWidth = width;
 	if (_RenderExact) {
 		Result[id.xy] = getColor(_IterBuffer[textureX + textureY * reducedWidth]);

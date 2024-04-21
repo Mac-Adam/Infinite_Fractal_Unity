@@ -171,7 +171,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 		if (!inBounds(squareX, squareY, _BailoutRadiusSQ)) {
 			_MultiFrameData[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
-			_MultiFrameData[idx + angle] = atan2(toFloat(zX),toFloat(zY))*BIGNUM;
+			_MultiFrameData[idx + angle] = atan2(toFloat(zY),toFloat(zX))*BIGNUM;
 
 			_MultiFrameData[idx + finished] = true;
 			return iter;
