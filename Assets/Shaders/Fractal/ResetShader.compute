@@ -2,6 +2,7 @@
 
 
 #pragma multi_compile FLOAT DOUBLE INFINITE ITER
+#pragma multi_compile DIST BARE
 
 
 #if FLOAT
@@ -16,7 +17,12 @@
 
 
 int _Precision;
-static const int PixelSize = 2 * _Precision + 4;
+#if DIST
+static const int PixelSize = 4 * _Precision + 5;
+static const int DerX = 2 * _Precision;
+#else
+static const int PixelSize = 2 * _Precision + 5;
+#endif
 RWTexture2D<float4> Result;
 
 #ifdef INF
@@ -27,6 +33,7 @@ struct Pixel {
 	bool finished;
 	float offset;
 	float angle;
+	float distance;
 };
 RWStructuredBuffer<Pixel> _MultiFrameData;
 #else 
@@ -39,6 +46,7 @@ struct Pixel {
 	bool finished;
 	float offset;
 	float angle;
+	float distance;
 };
 RWStructuredBuffer<Pixel> _MultiFrameData;
 #endif
@@ -57,11 +65,15 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	for (int k = 0; k < PixelSize; k++) {
 		_MultiFrameData[pixelId + k] = 0;
 	}
+#if DIST
+	_MultiFrameData[pixelId + DerX] = 1;
+#endif
 #elif ITER
 	_MultiFrameData[pixelId].iter = 0;
 	_MultiFrameData[pixelId].finished = false;
 	_MultiFrameData[pixelId].offset = 0;
 	_MultiFrameData[pixelId].angle = 0;
+	_MultiFrameData[pixelId].distance = 0;
 #else
 	_MultiFrameData[pixelId].iter = 0;
 	_MultiFrameData[pixelId].CurrentZX = 0;
@@ -71,6 +83,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_MultiFrameData[pixelId].finished = false;
 	_MultiFrameData[pixelId].offset = 0;
 	_MultiFrameData[pixelId].angle = 0;
+	_MultiFrameData[pixelId].distance = 0;
 #endif
 	
 	

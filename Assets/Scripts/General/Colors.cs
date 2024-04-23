@@ -46,6 +46,13 @@ namespace Colors
                 HexTo01Color("#91b8c4"),
                 HexTo01Color("#d67b27"),
                 HexTo01Color("#03074d")
+            },7,"Test"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
             },1,"Sunset"),
         new ColorPalette(
             new Vector4[] {
@@ -98,7 +105,7 @@ namespace Colors
         new ColorPalette(
             new Vector4[] {
                 HexTo01Color("#FFFFFF")
-            },6,"One to rule them all",1),
+            },6,"1 2 rule them all",1),
         new ColorPalette(
             new Vector4[] {
                 HexTo01Color("#FFFFFF")

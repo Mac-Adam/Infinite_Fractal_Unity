@@ -4,6 +4,9 @@
 
 #pragma multi_compile Q_VERY_LOW Q_LOW Q_MED Q_HIGH Q_VERY_HIGH Q_ULTRA Q_ULTRA_HIGH Q_SUPER Q_MEGA Q_SUPER_MEGA
 
+#pragma multi_compile BARE DIST
+
+
 
 #if Q_VERY_LOW
 #define PRECISION 4
@@ -29,7 +32,6 @@
 
 #include "Assets/Shaders/General/fpnum.cginc"
 
-#define BIGNUM 10000.0
 RWTexture2D<float4> Result;
 
 float2 _PixelOffset;
@@ -48,11 +50,27 @@ static const int Scale = PRECISION * 2;
 static const int CurX = 0;
 static const int CurY = PRECISION;
 
+#if DIST
+static const int DerX = 2 * PRECISION;
+static const int DerY = 3 * PRECISION;
+static const int iter = 4 * PRECISION;
+static const int finished = 4 * PRECISION + 1;
+static const int iterOffset = 4 * PRECISION + 2;
+static const int angle = 4 * PRECISION + 3;
+static const int distance = 4 * PRECISION + 4;
+static const int PixelSize = 4 * PRECISION + 5;
+
+#else
 static const int iter = 2 * PRECISION;
 static const int finished = 2 * PRECISION + 1;
 static const int iterOffset = 2 * PRECISION + 2;
 static const int angle = 2 * PRECISION + 3;
-static const int PixelSize = 2 * PRECISION + 4;
+static const int distance = 2 * PRECISION + 4;
+static const int PixelSize = 2 * PRECISION + 5;
+
+#endif
+
+
 
 uint _RenderWidth;
 int _FrankensteinOffsetX;
@@ -67,18 +85,20 @@ RWStructuredBuffer<int> _MultiFrameData;
 
 bool _reset;
 
+
+
+
 struct res {
 	uint iter;
 	bool finished;
 	float offset;
 	float angle;
+	float distance;
 };
 RWStructuredBuffer<res> _IterBuffer;
 
 
-//This wierd Multiplication by BIGNUM and conversion to INT is done 
-//beacause I need to encode float in range 0.0 - 1.0 in an INT datatype
-//this allows to store everything in one array insed of makeing a seprate array for the offsets
+//Returning float falue as a int allows me to store all the values in one int array, the value is later converted back to float
 int getOffset(float2 squares) {
 	float logz = log(squares.x + squares.y) / 2.0;
 	float res = log(logz / log(_BailoutRadius));
@@ -89,8 +109,8 @@ int getOffset(float2 squares) {
 #elif MANDEL4
 	res /= log(4.0);
 #endif
-	res = clamp(res, 0.0, 1.0) * BIGNUM;
-	return (int)res;
+	res = clamp(res, 0.0, 1.0) ;
+	return asint(res);
 }
 uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits cX;
@@ -102,14 +122,35 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits scale;
 	digits offset;
 	digits middle;
+#if DIST
+	double dzX;
+	double dzY;
+	//digits dzX;
+	//digits dzY;
+#endif
 	//Initialize values
 	[unroll]
 	for (int j = 0; j < PRECISION; j++) {
 		zX.digits[j] = _MultiFrameData[idx + CurX + j];
 		zY.digits[j] = _MultiFrameData[idx + CurY + j];
+#if DIST
+
+
+		//This is how it was
+		//dzX.digits[j] = _MultiFrameData[idx + DerX + j];
+		//dzY.digits[j] = _MultiFrameData[idx + DerY + j];
+#endif
 		scale.digits[j] = _DataBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
+
+#if DIST
+	//hack
+	dzX = asdouble(asuint(_MultiFrameData[idx + DerX]), asuint(_MultiFrameData[idx + DerX + 1]));
+	dzY = asdouble(asuint(_MultiFrameData[idx + DerY]),asuint( _MultiFrameData[idx + DerY + 1]));
+
+#endif
+
 	//Initialize values from cpu
 	offset.digits[0] = pixel.x - width / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
@@ -141,6 +182,29 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 //This part is responsibe for calculationg iteration insert new fractals here
 #if MANDELBROT
+#if DIST
+		//turned out I need to implent floating point numbers in order to represent the derivative ( it is not confined to range close to 1)
+		// as a hack I do all the calulations on double.
+
+		//this is how it was
+		//complex zComp;
+		//zComp.x = zX;
+		//zComp.y = zY;
+		//complex dzComp;
+		//dzComp.x = dzX;
+		//dzComp.y = dzY;
+		//complex temp = mulComplex(zComp, dzComp);
+		//dzX = add(intMul(temp.x,2), setDouble(1.0));
+		//dzY =intMul( temp.y,2);
+		
+
+		//hack
+		double temp = 2 * (dzX * toDouble(zX) - dzY * toDouble(zY)) + 1.0;
+		dzY = 2 * (dzX * toDouble(zY) + dzY * toDouble(zX));
+		dzX = temp;
+
+#endif
+
 		zY = add(cY, multiply(add(zX,zX), zY));
 		zX = add(subtract(squareX, squareY), cX);
 #elif BURNING_SHIP
@@ -171,12 +235,25 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 
 		if (!inBounds(squareX, squareY, _BailoutRadiusSQ)) {
 			_MultiFrameData[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
-			_MultiFrameData[idx + angle] = atan2(toFloat(zY),toFloat(zX))*BIGNUM;
-
+			_MultiFrameData[idx + angle] = asint(atan2(toFloat(zY),toFloat(zX)));
+#if DIST
+			double2 zf = float2(toDouble(zX), toDouble(zY));
+			double2 dzf = float2(dzX, dzY);
+			double d = 0.5 * sqrt(dot(zf, zf) / dot(dzf, dzf)) * log(dot(zf, zf));
+			_MultiFrameData[idx + distance] = asint((float)(d / toFloat(scale)));
+			/*float zMag2 = toFloat(squareX) + toFloat(squareY);
+			float dzMag2 = toFloat(dzX) * toFloat(dzX) + toFloat(dzY) * toFloat(dzY);
+			_MultiFrameData[idx + distance] = asint(0.5 * sqrt(zMag2 / dzMag2) * log(zMag2)/toFloat(scale));*/
+#else
+			_MultiFrameData[idx + distance] = asint(1000000.0); // this makes it so that if the distance estimation is turned of the image is not fully black
+#endif
 			_MultiFrameData[idx + finished] = true;
 			return iter;
 		}
 	}
+
+	//They are in separate loop bcs I read somewhrer online some time ago that this is faster
+	//Should verify the claim
 	for (int l = 0; l < PRECISION; l++) {
 		_MultiFrameData[idx + CurX + l] = zX.digits[l];
 	}
@@ -184,7 +261,26 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		_MultiFrameData[idx + CurY + k] = zY.digits[k];
 	}
 
-
+//This is how it was
+//#if DIST
+//	for (int m = 0; m < PRECISION; m++) {
+//		_MultiFrameData[idx + DerX + m] = dzX.digits[m];
+//	}
+//	for (int n = 0; n < PRECISION; n++) {
+//		_MultiFrameData[idx + DerY + n] = dzY.digits[n];
+//	}
+//#endif
+	
+	//hack
+#if DIST
+	uint tderx1, tderx2, tdery1, tdery2;
+	asuint(dzX,tderx1,tderx2);
+	asuint(dzY,tdery1,tdery2);
+	_MultiFrameData[idx + DerX] =asint(tderx1);
+	_MultiFrameData[idx + DerX+1] = asint(tderx2);
+	_MultiFrameData[idx + DerY] = asint(tdery1);
+	_MultiFrameData[idx + DerY + 1] = asint(tdery2);
+#endif
 
 	return iter;
 
@@ -221,8 +317,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 	_IterBuffer[iterId].iter = _MultiFrameData[pixelId + iter];
 	_IterBuffer[iterId].finished = _MultiFrameData[pixelId + finished];
-	_IterBuffer[iterId].offset = (float)(_MultiFrameData[pixelId + iterOffset]) / BIGNUM;
-	_IterBuffer[iterId].angle = (float)(_MultiFrameData[pixelId + angle]) / BIGNUM;
+	_IterBuffer[iterId].offset = asfloat(_MultiFrameData[pixelId + iterOffset]);
+	_IterBuffer[iterId].angle = asfloat(_MultiFrameData[pixelId + angle]) ;
+	_IterBuffer[iterId].distance = asfloat(_MultiFrameData[pixelId + distance]);
 
 
 }

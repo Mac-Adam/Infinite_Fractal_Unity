@@ -96,7 +96,7 @@ digits intMul(digits a, int num) {
 	for (int j = 0; j < PRECISION; j++) {
 		a.digits[j] *= num;
 	}
-	return normalizePositive(a);
+	return Normalize(a);
 }
 
 digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//Multiplies shifts and normalizes
@@ -254,6 +254,14 @@ float toFloat(digits num){
 	float res = 0.0;
 	for (int i = 0; i < PRECISION; i++) {
 		res += num.digits[i] * pow(digitBase,-i);
+	}
+	return res;
+}
+
+double toDouble(digits num) {
+	double res = 0.0;
+	for (int i = 0; i < PRECISION; i++) {
+		res += num.digits[i] * pow(digitBase, -i);
 	}
 	return res;
 }

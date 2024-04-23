@@ -7,9 +7,16 @@ using CommonShaderRenderFunctions;
 
 public class MandelbrotContoroler : MonoBehaviour
 {
-    //Will allways render in fnfinite precision, use only for debuging
+    //Will allways render in infinite precision, use only for debuging
     public bool forceInfinte = false;
     public bool forceDouble = false;
+    // Debug only, force whole computation in one step
+    public bool singleStepCompute = false;
+    //Distance estimation makes the computation take twice as long, will need to dynamicly switch that based on wether there is need for the data
+    //Note to self, if this is changed you need to handle the change in buffer size
+    public bool estimateDistance = true;
+
+
 
     public Texture2D[] tilings;
 
@@ -113,9 +120,9 @@ public class MandelbrotContoroler : MonoBehaviour
             return;
         }
         settings.precision = val;
-        if (settings.pixelizationLevel < settings.MaxPixelizationLevel())
+        if (settings.pixelizationLevel < settings.MaxPixelizationLevel(estimateDistance))
         {
-            settings.pixelizationLevel = settings.MaxPixelizationLevel();
+            settings.pixelizationLevel = settings.MaxPixelizationLevel(estimateDistance);
         }
         RegenereateFractalComputeBuffers();
         ResetParams();
@@ -240,7 +247,7 @@ public class MandelbrotContoroler : MonoBehaviour
         switch (settings.precision)
         {
             case Precision.INFINTE:
-                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
+                multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize(estimateDistance));
                 dataBuffer = new ComputeBuffer(3 * settings.GetShaderPre(), sizeof(int));
                 break;
             case Precision.DOUBLE:
@@ -300,6 +307,25 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void SetShadersParameters()
     {
+        //debug only
+        if (singleStepCompute)
+        {
+            settings.iterPerCycle = guiController.maxIter;
+        }
+
+
+        if (estimateDistance)
+        {
+            Shader.EnableKeyword("DIST");
+            Shader.DisableKeyword("BARE");
+        }
+        else
+        {
+            Shader.DisableKeyword("DIST");
+            Shader.EnableKeyword("BARE");
+        }
+
+
         //Choose Shader type:
         foreach(ShaderInfo info in PixelizedShaders.fractalInfos)
         {
@@ -393,7 +419,6 @@ public class MandelbrotContoroler : MonoBehaviour
         shader.SetInt("_RenderWidth", settings.ReducedWidth(false));
         shader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
         shader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
-
 
 
         ShiftShader.SetInt("_Register", settings.register);
@@ -618,7 +643,7 @@ public class MandelbrotContoroler : MonoBehaviour
         
         if (guiController.changedFrankenstein)
         {
-            if(settings.pixelizationLevel + guiController.requestedFrankensteinLevel <= settings.MaxPixelizationLevel())
+            if(settings.pixelizationLevel + guiController.requestedFrankensteinLevel <= settings.MaxPixelizationLevel(estimateDistance))
             {
                 //the buffers won't handle it
                 guiController.changedFrankenstein = false;
@@ -640,7 +665,7 @@ public class MandelbrotContoroler : MonoBehaviour
         if (guiController.requestedUpscale)
         {
             //There is room for more pixels
-            if (settings.MaxPixelizationLevel() < settings.pixelizationLevel)
+            if (settings.MaxPixelizationLevel(estimateDistance) < settings.pixelizationLevel)
             {
                 settings.lastPixelizationLevel = settings.pixelizationLevel;
                 preUpscalePixLvl = settings.pixelizationLevel;
@@ -696,7 +721,7 @@ public class MandelbrotContoroler : MonoBehaviour
 
         if (guiController.pixelizationChange != 0)
         {
-            if (!settings.frankensteinRendering && settings.MaxPixelizationLevel() <= settings.pixelizationLevel + guiController.pixelizationChange)
+            if (!settings.frankensteinRendering && settings.MaxPixelizationLevel(estimateDistance) <= settings.pixelizationLevel + guiController.pixelizationChange)
             {
                 if (guiController.pixelizationChange > 0)
                 {
@@ -720,7 +745,7 @@ public class MandelbrotContoroler : MonoBehaviour
                     case Precision.INFINTE:
                         ZoomShader.SetInt("_Precision", GPUCode.precisions[settings.precisionLevel].precision);
                         Shader.EnableKeyword("INFINITE");
-                        temp = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize());
+                        temp = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize(estimateDistance));
                         break;
                     case Precision.DOUBLE:
                         Shader.EnableKeyword("DOUBLE");
@@ -823,6 +848,12 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void DispatchShaders()
     {
+        //debug only
+        if (singleStepCompute)
+        {
+            dynamicSettings.turboReset = true;
+        }
+
         if (dynamicSettings.reset || dynamicSettings.turboReset)
         {
             PixelizedShaders.Dispatch(ResetShader, dummyTexture);
