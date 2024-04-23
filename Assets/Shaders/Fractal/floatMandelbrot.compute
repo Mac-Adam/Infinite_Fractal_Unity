@@ -1,6 +1,5 @@
 #pragma kernel CSMain
 
-
 /*
 This shader calculates the mandelbrot set using floats or doubles
 
@@ -9,8 +8,13 @@ while calculating images in high resolution or high detail.
 If the value for the coresponding pixel is not part of the set, the iteration process is skipped 
 */
 
+//Not sure if I need to use the multi compile feature it there is only two options 
+//But it wors so let's say that I am prepareing for the future
 #pragma multi_compile FLOAT DOUBLE
 #pragma multi_compile MANDELBROT BURNING_SHIP MANDEL3 MANDEL4
+#pragma multi_compile BARE DIST
+#pragma multi_compile JULIA NORMAL
+
 
 #if FLOAT
 #define TYPE float
@@ -32,6 +36,9 @@ uint _IterPerCycle = 10;
 TYPE _Scale;
 TYPE _OffsetX;
 TYPE _OffsetY;
+TYPE _CX;
+TYPE _CY;
+
 int _BailoutRadius;
 TYPE _BailoutRadiusSQ;
 StructuredBuffer<TYPE> _DataBuffer;
@@ -44,8 +51,11 @@ struct res {
 	bool finished;
 	float offset;
 	float angle;
+	float distance;
 };
 RWStructuredBuffer<res> _IterBuffer;
+//the data is duplicate in _ItarBuffer and _MultiFrameData, due to only the _MultiFrameData 
+//beeing shifdterd and altered and so on when using already computed data to speed up comptation
 
 struct Pixel {
 	TYPE CurrentZX;
@@ -56,13 +66,10 @@ struct Pixel {
 	bool finished;
 	float offset;
 	float angle;
+	float distance;
 };
 
 RWStructuredBuffer<Pixel> _MultiFrameData;
-
-
-int _ShiftX;
-int _ShiftY;
 
 uint _Register;
 
@@ -87,27 +94,44 @@ TYPE2 mulComplex(TYPE2 a, TYPE2 b) {
 	return TYPE2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
 }
 uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
+	
+	TYPE2 dz = initialDer; 
+	
+#if JULIA
+	TYPE2 c = TYPE2(_CX, _CY);
+#else
 	TYPE2 c = possition;
+#endif
 	uint iter = 0;
 	TYPE2 z = InitialZ;
 	TYPE2 squares = TYPE2(z.x * z.x, z.y * z.y);
-	TYPE2 der = initialDer;
 	while (squares.x + squares.y < _BailoutRadiusSQ) {
 		if (iter >= (_IterPerCycle)) {
 
+			
 			_MultiFrameData[idx].CurrentZX = z.x;
 			_MultiFrameData[idx].CurrentZY = z.y;
 
-			_MultiFrameData[idx].DerX = der.x;
-			_MultiFrameData[idx].DerY = der.y;
+			_MultiFrameData[idx].DerX = dz.x;
+			_MultiFrameData[idx].DerY = dz.y;
 
 			if (_MultiFrameData[idx].iter >= _MaxIter) {
 				_MultiFrameData[idx].finished = true;
+				_MultiFrameData[idx].distance = 0; 
+				
 			}
+
+
+
 			return iter;
 		}
 //This part Is responsible for calculating the iteration
 #if MANDELBROT
+		
+#if DIST
+		dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y, z.x * dz.y + z.y * dz.x) + TYPE2(1, 0);
+#endif
+
 		z.y = 2 * z.x * z.y + c.y;
 		z.x = squares.x - squares.y + c.x;
 #elif BURNING_SHIP
@@ -126,10 +150,14 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 
 		iter++;
 	}
+
+
 	_MultiFrameData[idx].finished = true;
 	_MultiFrameData[idx].offset = getOffset((float2)squares);
-	_MultiFrameData[idx].angle = atan2(z.y,z.x);
-	
+	_MultiFrameData[idx].angle = (float)atan2(z.y,z.x);
+
+	TYPE d = 0.5 * sqrt(dot(z, z) / dot(dz, dz)) * log(dot(z, z));
+	_MultiFrameData[idx].distance = (float)d / _Scale;
 	return iter;
 
 
@@ -149,6 +177,10 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_Scale = _DataBuffer[0];
 	_OffsetX = _DataBuffer[1];
 	_OffsetY = _DataBuffer[2];
+#if JULIA
+	_CX = _DataBuffer[3];
+	_CY = _DataBuffer[4];
+#endif
 
 
 	// Get the dimensions of the RenderTexture
@@ -161,8 +193,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	//check if further computation is nesesary
 	if (!_MultiFrameData[pixelId].finished) {
 		// Transform pixel to correct range
-		TYPE2 scale = _Scale;
-		TYPE2 uv = ((TYPE2)id.xy + _PixelOffset - TYPE2(width / 2, height / 2)) * scale;
+		TYPE2 uv = ((TYPE2)id.xy + _PixelOffset - TYPE2(width / 2, height / 2)) * _Scale;
 		// add offset
 		uv += TYPE2(_OffsetX, _OffsetY);
 		//Turned out the image was flipped this was added to reflip it
@@ -171,7 +202,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 		//Iterate
 		if (_MultiFrameData[pixelId].iter == 0) {
+#if JULIA
+			currentIter = getIteration(uv, uv, TYPE2(1.0, 0.0), pixelId);
+#else
 			currentIter = getIteration(uv, TYPE2(0.0, 0.0), TYPE2(1.0, 0.0), pixelId);
+#endif
+		
 		}
 		else {
 			currentIter = getIteration(uv, 
@@ -193,4 +229,5 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_IterBuffer[iterId].finished = _MultiFrameData[pixelId].finished;
 	_IterBuffer[iterId].offset = _MultiFrameData[pixelId].offset;
 	_IterBuffer[iterId].angle = _MultiFrameData[pixelId].angle;
+	_IterBuffer[iterId].distance = _MultiFrameData[pixelId].distance;
 }

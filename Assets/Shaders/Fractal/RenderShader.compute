@@ -20,6 +20,7 @@ struct res {
 	bool finished;
 	float offset;
 	float angle;
+	float distance;
 }; 
 //Two buffers in caase of upscaling
 bool _Upscaling;
@@ -97,6 +98,13 @@ float4 getColor(res res) {
 		return Tiling[tileId];
 
 
+	}
+	if (_Type == 7) {
+		float exp = 0.15;//the lower it is, the tighter the distance is packed
+		float max_dist = 1000;
+
+		float temp = clamp(pow(res.distance/ max_dist, exp), 0.0, 1.0);
+		return float4(1,1,1,1)*temp;
 	}
 
 	return lerpColors(_Colors[baseColorIdx],_Colors[upColorIdx], ratio,_Type,_Smooth);

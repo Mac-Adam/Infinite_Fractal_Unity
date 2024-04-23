@@ -68,6 +68,7 @@ namespace CommonShaderRenderFunctions
         public int iterPerCycle;
         public bool doAntialasing;
         public int shaderNumber;
+        public bool julia;
     
         //There are probably better ways to do this, but I want to initialize it to the same thing allways
         public Settings(bool _)
@@ -90,6 +91,7 @@ namespace CommonShaderRenderFunctions
             iterPerCycle = 50;
             doAntialasing = false;
             shaderNumber = 0;
+            julia = false;
         }
 
 
@@ -98,12 +100,17 @@ namespace CommonShaderRenderFunctions
         {
             return GPUCode.precisions[precisionLevel].precision;
         }
-        public int GetShaderPixelSize()
+        public int GetShaderPixelSize(bool distance)
         {
-           
-            return 2 * GetShaderPre() + 4;
+            if (distance)
+            {
+                return 4 * GetShaderPre() + 5;
+            }
+            else
+            {
+                return 2 * GetShaderPre() + 5;
+            }
             
-           
         }
 
 
@@ -161,7 +168,7 @@ namespace CommonShaderRenderFunctions
         }
 
 
-        public int MaxPixelizationLevel()
+        public int MaxPixelizationLevel(bool distance)
         {
             int max = 6; //This will allways be a valid level
             long pixelCount;
@@ -181,7 +188,7 @@ namespace CommonShaderRenderFunctions
                         bufferSize = 2 * pixelCount * PixelSizes.doubleSize;
                         break;
                     case Precision.INFINTE:
-                        bufferSize = 2 * pixelCount * sizeof(int) * GetShaderPixelSize();
+                        bufferSize = 2 * pixelCount * sizeof(int) * GetShaderPixelSize(distance);
                         break;
                 }
 
@@ -208,8 +215,9 @@ namespace CommonShaderRenderFunctions
 
     public struct PixelSizes
     {
-        //since it's not that big of a deal for floats and doubles, the deriviative will always be stored 
-        public static int floatSize = sizeof(float) * 6 + sizeof(uint)* 2;
+        //since it's not that big of a deal for floats and doubles, the deriviative and distance will always be stored 
+        public static int floatSize = sizeof(float) * 7 + sizeof(uint)* 2;
+        // I don't get it. For some reason there has to be place for 4 floats eaven though only 3 are used
         public static int doubleSize = sizeof(double)* 4 + sizeof(uint)* 2 + sizeof(float)* 4;
         public static int iter = sizeof(int) * 2 + 3 * sizeof(float);
     }

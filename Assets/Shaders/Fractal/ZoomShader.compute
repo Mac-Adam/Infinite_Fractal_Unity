@@ -3,6 +3,7 @@
 //This shader handles fast zoom in
 #pragma multi_compile FLOAT DOUBLE INFINITE
 #pragma multi_compile IN OUT
+#pragma multi_compile DIST BARE
 
 #if FLOAT
 #define TYPE float
@@ -17,8 +18,11 @@ RWTexture2D<float4> Result;
 
 int _Precision;
 
-static const int PixelSize = 2 * _Precision + 4;
-
+#if DIST
+static const int PixelSize = 4 * _Precision + 5;
+#else
+static const int PixelSize = 2 * _Precision + 5;
+#endif
 uint _PixelizationBase;
 
 #ifdef INF
@@ -34,6 +38,7 @@ struct Pixel {
 	bool finished;
 	float offset;
 	float angle;
+	float distance;
 };
 
 RWStructuredBuffer<Pixel> _MultiFrameData;
@@ -78,5 +83,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	_MultiFrameData[idNew].finished =_OldMultiFrameData[idOld].finished;
 	_MultiFrameData[idNew].offset = _OldMultiFrameData[idOld].offset;
 	_MultiFrameData[idNew].angle = _OldMultiFrameData[idOld].angle;
+	_MultiFrameData[idNew].distance = _OldMultiFrameData[idOld].distance;
 #endif
 }
