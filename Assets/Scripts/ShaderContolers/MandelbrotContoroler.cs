@@ -468,6 +468,7 @@ public class MandelbrotContoroler : MonoBehaviour
         RenderShader.SetBuffer(0, "_Colors", ColorBuffer);
         RenderShader.SetInt("_ColorArrayLength", MyColoringSystem.colorPalettes[guiController.currColorPalette].length);
         RenderShader.SetTexture(0, "Tiling", tilings[MyColoringSystem.colorPalettes[guiController.currColorPalette].imageIdx]);
+        RenderShader.SetInt("_InterpolationType",guiController.interpolationType);
 
     }
 

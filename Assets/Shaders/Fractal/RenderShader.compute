@@ -44,6 +44,9 @@ bool _Smooth;
 int _Type;
 // how many iterations per color
 float _ColorStrength;
+
+int _InterpolationType;
+
 float4 getColor(res res) {
 	//at this moment the interior is allways black
 	float4 InColor = float4(0.0, 0.0, 0.0, 1.0f);
@@ -64,7 +67,20 @@ float4 getColor(res res) {
 		iter = (float)res.iter;
 	}
 
-	float baseRatio = iter/_ColorStrength;
+	float baseRatio = iter;
+	if (_InterpolationType == 0) {
+		baseRatio /=_ColorStrength;
+	}
+	if (_InterpolationType == 1) {
+		baseRatio = log(baseRatio+1)*5/_ColorStrength;
+	}
+	if (_InterpolationType == 2) {
+		baseRatio = sqrt(baseRatio)*5 / _ColorStrength;
+	}
+	if (_InterpolationType == 3) {
+		baseRatio = pow(baseRatio, 0.33) * 5 / _ColorStrength;
+	}
+
 	int baseColorIdx = (int)(floor(baseRatio) % _ColorArrayLength);
 	int upColorIdx = (int)((floor(baseRatio) + 1) % _ColorArrayLength);
 	float ratio = baseRatio % 1;
@@ -99,12 +115,33 @@ float4 getColor(res res) {
 
 
 	}
-	if (_Type == 7) {
-		float exp = 0.15;//the lower it is, the tighter the distance is packed
-		float max_dist = 1000;
+	if (_Type == 7 || _Type == 8) { //The coeficients are picked arbitrarly, it somewhat works
+		float exp = 0.5/sqrt(_ColorStrength);
+		float max_dist = 10*_ColorStrength;
 
 		float temp = clamp(pow(res.distance/ max_dist, exp), 0.0, 1.0);
-		return float4(1,1,1,1)*temp;
+		temp *= (_ColorArrayLength-1);
+
+		int baseColorIdx = (int)(floor(temp) % _ColorArrayLength);
+		int upColorIdx = (int)((floor(temp) + 1) % _ColorArrayLength);
+		float ratio = temp % 1;
+		return lerpColors(_Colors[baseColorIdx], _Colors[upColorIdx], ratio, _Type - 6, _Smooth);
+	}
+	if (_Type == 9 || _Type == 10) {
+		float exp = 0.1;
+		float max_dist = 1000;
+
+		float temp = clamp(pow(res.distance / max_dist, exp), 0.0, 1.0);
+
+		int baseColorIdx = (int)(floor(baseRatio) % (_ColorArrayLength-1));
+		int upColorIdx = (int)((floor(baseRatio) + 1) % (_ColorArrayLength - 1));
+		float ratio = baseRatio % 1;
+
+		
+		float4 basicColor = lerpColors(_Colors[baseColorIdx+1], _Colors[upColorIdx+1], ratio, _Type - 8, _Smooth);
+
+
+		return lerpColors(_Colors[0],basicColor, temp, 1, false);
 	}
 
 	return lerpColors(_Colors[baseColorIdx],_Colors[upColorIdx], ratio,_Type,_Smooth);

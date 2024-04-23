@@ -26,15 +26,14 @@ public class GuiController : MonoBehaviour
     public UITemplate guiTemplate;
     string generalInfo;
     const string tooltip = @"Controls:
-Pixelization:
-    I - Zoom In
-    O - Zoom Out
-    U - Upscale Image
-    D - Downscale Image
-Visual:
+    J - Julia Set
+    F - Fractal change
+    I/O - Zoom In/Out
+    U/D - Up/Donwscale Image
     Z - Make a zoom in video
     S - Make a Screenshot
     L - Smooth Gradient
+    P - Interpolation Type
     C - Cycle Color Palette
     A - Toggle Antialiasing
     G - Toggle GUI";
@@ -57,8 +56,10 @@ Visual:
     string downscaleKey = "d";
     string pixelizationLevelUpKey = "i";
     string pixelizationLevelDownKey = "o";
+    string interpoaltionKey = "p";
 
     string fractalCycleKey = "f";
+
 
 
     //precision
@@ -93,6 +94,9 @@ Visual:
     public bool requestedZoomVid = false;
 
     public bool resetRequested = false;
+
+    public int interpolationType = 2;
+    int interpoalationTypeN = 4;
 
 
 
@@ -168,6 +172,11 @@ Visual:
         changedFrankenstein = true;
     }
 
+    public void SetInterpolation(int inter)
+    {
+        interpolationType = inter % interpoalationTypeN;
+    }
+
     public void Exit()
     {
         Application.Quit();
@@ -194,8 +203,8 @@ Visual:
             new SliderTemplate(
                 "Color Strenght",
                 colorStrength,
-                1,
-                10000,
+                ColorStrengthMin,
+                ColorStrengthMax,
                 true,
                 (float f)=> SetColorStrenght(f)
                 ),
@@ -203,7 +212,7 @@ Visual:
                 "Max Iterations",
                 maxIter,
                 1,
-                1000000,
+                100000,
                 true,
                 (float f)=> SetMaxIter(Mathf.FloorToInt(f))
                 ),
@@ -327,6 +336,10 @@ Visual:
         if (Input.GetKeyDown(fractalCycleKey))
         {
             SetFractal(currFractal + 1);
+        }
+        if (Input.GetKeyDown(interpoaltionKey))
+        {
+            SetInterpolation(interpolationType + 1);
         }
 
     }

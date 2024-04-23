@@ -46,13 +46,6 @@ namespace Colors
                 HexTo01Color("#91b8c4"),
                 HexTo01Color("#d67b27"),
                 HexTo01Color("#03074d")
-            },7,"Test"),
-        new ColorPalette(
-            new Vector4[] {
-                HexTo01Color("#155e80"),
-                HexTo01Color("#91b8c4"),
-                HexTo01Color("#d67b27"),
-                HexTo01Color("#03074d")
             },1,"Sunset"),
         new ColorPalette(
             new Vector4[] {
@@ -110,6 +103,37 @@ namespace Colors
             new Vector4[] {
                 HexTo01Color("#FFFFFF")
             },6,"Nebula",2),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#000000"),
+                HexTo01Color("#FFFFFF")
+            },7,"B/W distance"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d"),
+                HexTo01Color("#155e80"),
+            },7,"Distance Dark"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#7F7FD5"),
+                HexTo01Color("#91eae4")
+            },8,"Distance Bright"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#FFFFFF"),
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
+            },9,"Light Distance"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#000000"),
+                HexTo01Color("#40E0D0"),
+                HexTo01Color("#FF8C00"),
+                HexTo01Color("#5D26C1"),
+            },10,"Dark Distance"),
         };
 
     }
@@ -123,6 +147,11 @@ namespace Colors
         // 4 - In lch other
         // 5 Tilings
         // 6 Rings 
+        // 7 distance estimation lab
+        // 8 distance estimation lch
+        // On the next two types the first color is the darkener and will not be used as a gradient
+        // 9 lab with distance estimation as a darkener
+        // 10 lch with distance estimation as a darkener
         public Vector4[] colors;
         public int length;
         public int type;
