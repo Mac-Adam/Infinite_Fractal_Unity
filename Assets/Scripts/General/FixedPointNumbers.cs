@@ -58,6 +58,7 @@ namespace FixedPointNumberSystem
         //for simplicity it is assumed that both numers have the same precision
         public int precision;
         public int[] digits;
+
         public FixedPointNumber(int pre)
         {
             precision = pre;

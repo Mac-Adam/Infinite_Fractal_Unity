@@ -8,9 +8,12 @@ while calculating images in high resolution or high detail.
 If the value for the coresponding pixel is not part of the set, the iteration process is skipped 
 */
 
+//Not sure if I need to use the multi compile feature it there is only two options 
+//But it wors so let's say that I am prepareing for the future
 #pragma multi_compile FLOAT DOUBLE
 #pragma multi_compile MANDELBROT BURNING_SHIP MANDEL3 MANDEL4
 #pragma multi_compile BARE DIST
+#pragma multi_compile JULIA NORMAL
 
 
 #if FLOAT
@@ -33,6 +36,9 @@ uint _IterPerCycle = 10;
 TYPE _Scale;
 TYPE _OffsetX;
 TYPE _OffsetY;
+TYPE _CX;
+TYPE _CY;
+
 int _BailoutRadius;
 TYPE _BailoutRadiusSQ;
 StructuredBuffer<TYPE> _DataBuffer;
@@ -65,10 +71,6 @@ struct Pixel {
 
 RWStructuredBuffer<Pixel> _MultiFrameData;
 
-
-int _ShiftX;
-int _ShiftY;
-
 uint _Register;
 
 
@@ -95,8 +97,11 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 	
 	TYPE2 dz = initialDer; 
 	
-
+#if JULIA
+	TYPE2 c = TYPE2(_CX, _CY);
+#else
 	TYPE2 c = possition;
+#endif
 	uint iter = 0;
 	TYPE2 z = InitialZ;
 	TYPE2 squares = TYPE2(z.x * z.x, z.y * z.y);
@@ -172,6 +177,10 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_Scale = _DataBuffer[0];
 	_OffsetX = _DataBuffer[1];
 	_OffsetY = _DataBuffer[2];
+#if JULIA
+	_CX = _DataBuffer[3];
+	_CY = _DataBuffer[4];
+#endif
 
 
 	// Get the dimensions of the RenderTexture
@@ -193,7 +202,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 		//Iterate
 		if (_MultiFrameData[pixelId].iter == 0) {
+#if JULIA
+			currentIter = getIteration(uv, uv, TYPE2(1.0, 0.0), pixelId);
+#else
 			currentIter = getIteration(uv, TYPE2(0.0, 0.0), TYPE2(1.0, 0.0), pixelId);
+#endif
+		
 		}
 		else {
 			currentIter = getIteration(uv, 

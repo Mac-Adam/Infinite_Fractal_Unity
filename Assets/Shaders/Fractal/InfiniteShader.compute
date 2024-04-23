@@ -6,6 +6,7 @@
 
 #pragma multi_compile BARE DIST
 
+#pragma multi_compile JULIA NORMAL
 
 
 #if Q_VERY_LOW
@@ -45,6 +46,8 @@ StructuredBuffer<int> _DataBuffer;
 static const int MiddleX = 0;
 static const int MiddleY = PRECISION;
 static const int Scale = PRECISION * 2;
+static const int JuliaX = PRECISION * 3;
+static const int JuliaY = PRECISION * 4;
 
 
 static const int CurX = 0;
@@ -131,8 +134,16 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	//Initialize values
 	[unroll]
 	for (int j = 0; j < PRECISION; j++) {
+#if JULIA
+		if (_MultiFrameData[idx + iter] > 0) {
+			zX.digits[j] = _MultiFrameData[idx + CurX + j];
+			zY.digits[j] = _MultiFrameData[idx + CurY + j];
+		}
+#else
+
 		zX.digits[j] = _MultiFrameData[idx + CurX + j];
 		zY.digits[j] = _MultiFrameData[idx + CurY + j];
+#endif
 #if DIST
 
 
@@ -150,7 +161,37 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	dzY = asdouble(asuint(_MultiFrameData[idx + DerY]),asuint( _MultiFrameData[idx + DerY + 1]));
 
 #endif
+#if JULIA
+	if (_MultiFrameData[idx + iter] == 0) {
+		//Initialize values from cpu
+		offset.digits[0] = pixel.x - width / 2;
+		offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
+		[unroll]
+		for (int a = 0; a < PRECISION; a++) {
+			middle.digits[a] = _DataBuffer[MiddleX + a];
+		}
+		zX = add(offset, middle);
+		for (int b = 0; b < PRECISION; b++) {
+			offset.digits[b] = 0;
+		}
+		offset.digits[0] = pixel.y - height / 2;
+		offset = multiply(add(offset, setDouble((double)_PixelOffset.y)), scale);
+		[unroll]
+		for (int c = 0; c < PRECISION; c++) {
+			middle.digits[c] = _DataBuffer[MiddleY + c];
+		}
+		zY = add(offset, middle);
+		//Turned out the image was flipped this was added to reflip it
+		//It might have introduced some hidden bugs
+		zY = Negate(zY);
+	}
+	[unroll]
+	for (int g = 0; g < PRECISION; g++) {
+		cX.digits[g] = _DataBuffer[JuliaX + g];
+		cY.digits[g] = _DataBuffer[JuliaY + g];
+	}
 
+#else
 	//Initialize values from cpu
 	offset.digits[0] = pixel.x - width / 2;
 	offset = multiply(add(offset, setDouble((double)_PixelOffset.x)), scale);
@@ -172,7 +213,7 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	//Turned out the image was flipped this was added to reflip it
 	//It might have introduced some hidden bugs
 	cY = Negate(cY);
-
+#endif
 	int iter = 0;
 	squareX = square(zX);
 	squareY = square(zY);

@@ -68,6 +68,7 @@ namespace CommonShaderRenderFunctions
         public int iterPerCycle;
         public bool doAntialasing;
         public int shaderNumber;
+        public bool julia;
     
         //There are probably better ways to do this, but I want to initialize it to the same thing allways
         public Settings(bool _)
@@ -90,6 +91,7 @@ namespace CommonShaderRenderFunctions
             iterPerCycle = 50;
             doAntialasing = false;
             shaderNumber = 0;
+            julia = false;
         }
 
 

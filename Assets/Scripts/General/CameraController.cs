@@ -17,13 +17,23 @@ public class CameraController : MonoBehaviour
     int oldMouseTextureCoordinatesY;
     int PrevScreenX;
     int PrevScreenY;
+
+
     //shouldn't be public in the long run
     public static int cpuPrecision = GPUCode.precisions[^1].precision + 5;
+
+
+
+    FixedPointNumber mousePosRealX = new(cpuPrecision);
+    FixedPointNumber mousePosRealY = new(cpuPrecision);
+
     //This have to be initialized,
     //At the moment they don't have a default value
     public FixedPointNumber MiddleX = new(cpuPrecision);
     public FixedPointNumber MiddleY = new(cpuPrecision);
     public FixedPointNumber Scale = new(cpuPrecision);
+    public FixedPointNumber juliaX = new(cpuPrecision);
+    public FixedPointNumber juliaY = new(cpuPrecision);
 
 
     //Controls
@@ -37,9 +47,20 @@ public class CameraController : MonoBehaviour
     public bool scrollMoved = false;
     public int shiftX = 0;
     public int shiftY = 0;
+    public bool julia = false;
+
+
+    string juliaKey = "j";
+
 
     //this script has the be aware of those values:
     public Settings settings;
+
+    public void Home() {
+        MiddleX.SetDouble(0);
+        MiddleY.SetDouble(0);
+        Scale.SetDouble(0.0025);
+    }
 
     public void HandleMouseInput()
     {
@@ -57,11 +78,10 @@ public class CameraController : MonoBehaviour
         int mouseTextureCoordinatesY = OtherFunctions.Reduce((int)mousePosPix.y, settings.pixelizationBase, settings.pixelizationLevel);
 
 
-        FixedPointNumber mousePosRealX = new(cpuPrecision);
+        
 
         mousePosRealX.SetDouble(mouseTextureCoordinatesX - settings.ReducedWidth(false) / 2);
         mousePosRealX = mousePosRealX * Scale + MiddleX;
-        FixedPointNumber mousePosRealY = new(cpuPrecision);
 
         mousePosRealY.SetDouble(mouseTextureCoordinatesY - settings.ReducedHeight(false) / 2);
         mousePosRealY = mousePosRealY * Scale + MiddleY;
@@ -113,6 +133,16 @@ public class CameraController : MonoBehaviour
     void Update()
     {
         HandleMouseInput();
+
+        if (Input.GetKeyDown(juliaKey))
+        {
+            julia = true;
+            juliaX = new (mousePosRealX);
+            juliaY = new(mousePosRealY);
+            Home();
+
+        }
+
 
         screenSizeChanged = PrevScreenX != Screen.width || PrevScreenY != Screen.height;
         PrevScreenX = Screen.width;

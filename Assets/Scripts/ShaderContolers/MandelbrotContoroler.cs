@@ -244,19 +244,20 @@ public class MandelbrotContoroler : MonoBehaviour
         {
             dataBuffer.Dispose();
         }
+        int numOfData = 5; 
         switch (settings.precision)
         {
             case Precision.INFINTE:
                 multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, sizeof(int) * settings.GetShaderPixelSize(estimateDistance));
-                dataBuffer = new ComputeBuffer(3 * settings.GetShaderPre(), sizeof(int));
+                dataBuffer = new ComputeBuffer(numOfData * settings.GetShaderPre(), sizeof(int));
                 break;
             case Precision.DOUBLE:
                 multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, PixelSizes.doubleSize);
-                dataBuffer = new ComputeBuffer(3, sizeof(double));
+                dataBuffer = new ComputeBuffer(numOfData, sizeof(double));
                 break;
             case Precision.FLOAT:
                 multiFrameRenderBuffer = new ComputeBuffer(settings.PixelCount() * 2, PixelSizes.floatSize);
-                dataBuffer = new ComputeBuffer(3, sizeof(float));
+                dataBuffer = new ComputeBuffer(numOfData, sizeof(float));
                 break;
 
         }
@@ -307,6 +308,7 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void SetShadersParameters()
     {
+       
         //debug only
         if (singleStepCompute)
         {
@@ -333,7 +335,17 @@ public class MandelbrotContoroler : MonoBehaviour
         }
 
         Shader.EnableKeyword(PixelizedShaders.fractalInfos[settings.shaderNumber].internalName);
- 
+
+        if (settings.julia)
+        {
+            Shader.EnableKeyword("JULIA");
+            Shader.DisableKeyword("NORMAL");
+        }
+        else
+        {
+            Shader.DisableKeyword("JULIA");
+            Shader.EnableKeyword("NORMAL");
+        }
 
 
         //calculate render place
@@ -363,12 +375,15 @@ public class MandelbrotContoroler : MonoBehaviour
         //Set the render place wiht proper precision
         if (settings.precision == Precision.INFINTE)
         {
-            int[] data = new int[3 * settings.GetShaderPre()];
+            int[] data = new int[5 * settings.GetShaderPre()];
             for (int i = 0; i < settings.GetShaderPre(); i++)
             {
                 data[i] = MiddleXToSend.digits[i];
                 data[settings.GetShaderPre() + i] = MiddleYToSend.digits[i];
                 data[settings.GetShaderPre() * 2 + i] = cameraController.Scale.digits[i];
+                data[settings.GetShaderPre() * 3 + i] = cameraController.juliaX.digits[i];
+                data[settings.GetShaderPre() * 4 + i] = cameraController.juliaY.digits[i];
+                
 
             }
 
@@ -385,21 +400,33 @@ public class MandelbrotContoroler : MonoBehaviour
         {
             if (settings.precision == Precision.DOUBLE)
             {
+               
+              
                 double[] data = {
                     cameraController.Scale.ToDouble(),
                     MiddleXToSend.ToDouble(),
-                    MiddleYToSend.ToDouble() 
+                    MiddleYToSend.ToDouble(),
+                    cameraController.juliaX.ToDouble(),
+                    cameraController.juliaY.ToDouble()
                 };
+                
+              
+              
                 dataBuffer.SetData(data);
                 Shader.EnableKeyword("DOUBLE");
             }
             else
             {
-                float[] data = { 
+                
+                float[] data = {
                     (float)cameraController.Scale.ToDouble(),
                     (float)MiddleXToSend.ToDouble(),
-                    (float)MiddleYToSend.ToDouble()
+                    (float)MiddleYToSend.ToDouble(),
+                    (float)cameraController.juliaX.ToDouble(),
+                    (float)cameraController.juliaY.ToDouble()
                 };
+             
+             
                 dataBuffer.SetData(data);
                 Shader.EnableKeyword("FLOAT");       
             }
@@ -821,6 +848,13 @@ public class MandelbrotContoroler : MonoBehaviour
             RegenereateFractalComputeBuffers();
             dynamicSettings.reset = true;
             OnMoveComand();
+        }
+
+        if (cameraController.julia)
+        {
+            settings.julia = !settings.julia;
+            ResetParams();
+            cameraController.julia = false;
         }
 
         guiController.settings = settings;
