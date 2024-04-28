@@ -27,6 +27,7 @@ public class MandelbrotContoroler : MonoBehaviour
     public ComputeShader ResetShader;
     public ComputeShader ShiftShader;
     public ComputeShader ZoomShader;
+    public ComputeShader CombineShader;
     public Shader AddShader;
 
 
@@ -34,7 +35,8 @@ public class MandelbrotContoroler : MonoBehaviour
     RenderTexture renderTexture;
     // texture the calculations are done on (can be different size than the render texture)
     RenderTexture dummyTexture;
-    RenderTexture screenshotTexture;
+    RenderTexture screenshotTexture; //On this one the calucaltion for ss is done
+    RenderTexture fullResRenderTexture; // here it is deposited
 
     Material addMaterial;
 
@@ -226,10 +228,15 @@ public class MandelbrotContoroler : MonoBehaviour
     
     void SaveCurrentRenderTextureAsAPng()
     {
-        RenderShader.SetBool("_RenderExact", true);
-        screenshotTexture = PixelizedShaders.InitializePixelizedTexture(screenshotTexture, settings.ReducedWidth(false), settings.ReducedHeight(false),true);
-        PixelizedShaders.Dispatch(RenderShader, screenshotTexture);
-        OtherFunctions.SaveRenderTextureToFile(screenshotTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
+        // if not doing antialiasing the texture needs to be generated on request
+        if (!settings.doAntialasing)
+        {
+            RenderShader.SetBool("_RenderExact", true);
+            PixelizedShaders.Dispatch(RenderShader, fullResRenderTexture);
+        }
+
+
+        OtherFunctions.SaveRenderTextureToFile(fullResRenderTexture, DateTime.Now.ToString("MM-dd-yyyy-hh-mm-ss-tt-fff"));
     }
 
     //Iter buffer can't be handled in this function since when upscaling it needs to be renewed without Dispose
@@ -305,6 +312,7 @@ public class MandelbrotContoroler : MonoBehaviour
         Destroy(renderTexture);
         Destroy(dummyTexture);
         Destroy(screenshotTexture);
+        Destroy(fullResRenderTexture);
     }
     public void SetShadersParameters()
     {
@@ -968,10 +976,22 @@ public class MandelbrotContoroler : MonoBehaviour
         }// if the frame is finished continue to the next sample
         else if (dynamicSettings.frameFinished)
         {
+         
             //this basicly combines the image with those already on the screen in a way that the 
             //result is an average of them
             addMaterial.SetFloat("_Sample", settings.currentSample);
             Graphics.Blit(renderTexture, destination, addMaterial);
+
+
+            //Idk why how the Graphics.Blit function works but it doesn't work as I inteded for the full res rendering
+            //When doing antialiasing, each time the frame is done calculating Full res redner texture for ss has to be updated
+            RenderShader.SetBool("_RenderExact", true);
+            PixelizedShaders.Dispatch(RenderShader, screenshotTexture);
+            CombineShader.SetTexture(0,"oldTexture",screenshotTexture);
+            CombineShader.SetFloat("currSample", settings.currentSample);
+            PixelizedShaders.Dispatch(CombineShader, fullResRenderTexture);
+
+
             //sets up next render
             SetFrameFinished(false);
             SetStepFinished(false);
@@ -1014,6 +1034,17 @@ public class MandelbrotContoroler : MonoBehaviour
             dummyTexture, 
             settings.ReducedWidth(),
             settings.ReducedHeight());
+
+        screenshotTexture = PixelizedShaders.InitializePixelizedTexture(
+            screenshotTexture, 
+            settings.ReducedWidth(false), 
+            settings.ReducedHeight(false), 
+            true);
+        fullResRenderTexture = PixelizedShaders.InitializePixelizedTexture(
+            fullResRenderTexture,
+            settings.ReducedWidth(false),
+            settings.ReducedHeight(false),
+            true);
     }
 
     private void Render(RenderTexture destination)
