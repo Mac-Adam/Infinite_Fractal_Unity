@@ -39,6 +39,8 @@ struct Pixel {
 	float offset;
 	float angle;
 	float distance;
+	float normX;
+	float normY;
 };
 
 RWStructuredBuffer<Pixel> _MultiFrameData;
@@ -84,5 +86,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	_MultiFrameData[idNew].offset = _OldMultiFrameData[idOld].offset;
 	_MultiFrameData[idNew].angle = _OldMultiFrameData[idOld].angle;
 	_MultiFrameData[idNew].distance = _OldMultiFrameData[idOld].distance;
+	_MultiFrameData[idNew].normX = _OldMultiFrameData[idOld].normX;
+	_MultiFrameData[idNew].normY = _OldMultiFrameData[idOld].normY;
 #endif
 }

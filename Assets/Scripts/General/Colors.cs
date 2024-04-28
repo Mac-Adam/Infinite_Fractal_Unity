@@ -42,6 +42,33 @@ namespace Colors
         static public ColorPalette[] colorPalettes = new ColorPalette[] {
         new ColorPalette(
             new Vector4[] {
+                HexTo01Color("#FFFFFF"),
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
+            },11,"Pastel Normal"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#FFFFFF"),
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
+            },12,"Pastel Normal 2"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#FFFFFF"),
+            },13,"Normal map"),
+        new ColorPalette(
+            new Vector4[] {
+                HexTo01Color("#155e80"),
+                HexTo01Color("#91b8c4"),
+                HexTo01Color("#d67b27"),
+                HexTo01Color("#03074d")
+            },13,"Rainbow normal"),
+        new ColorPalette(
+            new Vector4[] {
                 HexTo01Color("#155e80"),
                 HexTo01Color("#91b8c4"),
                 HexTo01Color("#d67b27"),
@@ -152,6 +179,8 @@ namespace Colors
         // On the next two types the first color is the darkener and will not be used as a gradient
         // 9 lab with distance estimation as a darkener
         // 10 lch with distance estimation as a darkener
+        // 11, 12 - less accurate normal map render with color light
+        // 13 14 - more acurate normal map render with white light
         public Vector4[] colors;
         public int length;
         public int type;

@@ -7,7 +7,7 @@
 #pragma multi_compile BARE DIST
 
 #pragma multi_compile JULIA NORMAL
-
+//TODO: THIS SHADER LACKS PROPER DERIVETIVE AND DISTANCE ESTIMATION BSC IT DOES'T YET SUPPORT FLOATS
 
 #if Q_VERY_LOW
 #define PRECISION 4
@@ -97,6 +97,8 @@ struct res {
 	float offset;
 	float angle;
 	float distance;
+	float normX;
+	float normY;
 };
 RWStructuredBuffer<res> _IterBuffer;
 

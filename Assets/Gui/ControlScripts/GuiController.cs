@@ -98,6 +98,8 @@ public class GuiController : MonoBehaviour
     public int interpolationType = 2;
     int interpoalationTypeN = 4;
 
+    public float angle = 4;
+
 
 
 
@@ -346,6 +348,15 @@ public class GuiController : MonoBehaviour
 
     public void HandleGuiUpdates()
     {
+        //TODO make it more acessable
+        if (Input.GetKey("v"))
+        {
+            angle = (angle + Time.deltaTime*1.5f) % (2 * 3.1415f);
+        }
+        
+
+
+
         string precisionText = settings.precision == Precision.FLOAT ? "float" : settings.precision == Precision.DOUBLE ? "double" : $"infine with precision {settings.precisionLevel}";
         string timeElapsed = String.Format("{0:0.000}", dynamicSettings.renderTimeElapsed);
         float RenderComplete = (float)(settings.frankensteinY * settings.frankensteinSteps + settings.frankensteinX) / (settings.frankensteinSteps * settings.frankensteinSteps);

@@ -52,6 +52,8 @@ struct res {
 	float offset;
 	float angle;
 	float distance;
+	float normX;
+	float normY;
 };
 RWStructuredBuffer<res> _IterBuffer;
 //the data is duplicate in _ItarBuffer and _MultiFrameData, due to only the _MultiFrameData 
@@ -67,6 +69,8 @@ struct Pixel {
 	float offset;
 	float angle;
 	float distance;
+	float normX;
+	float normY;
 };
 
 RWStructuredBuffer<Pixel> _MultiFrameData;
@@ -135,11 +139,22 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 		z.y = 2 * z.x * z.y + c.y;
 		z.x = squares.x - squares.y + c.x;
 #elif BURNING_SHIP
+#if DIST
+		dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y,sign(z.x)*sign(z.y)*( z.x * dz.y + z.y * dz.x)) + TYPE2(1, 0);
+#endif
+
 		z.y = abs(2 * z.x * z.y) + c.y;
 		z.x = squares.x - squares.y + c.x;
 #elif MANDEL3
+#if DIST
+		dz = 3.0 * mulComplex(mulComplex(z,z),dz) + TYPE2(1, 0);
+#endif
 		z = mulComplex(z, mulComplex(z, z)) + c;
 #elif MANDEL4
+#if DIST
+		dz = 4.0 * mulComplex(mulComplex(mulComplex(z, z), z), dz) + TYPE2(1, 0);
+#endif
+
 		z = mulComplex(mulComplex(z, z), mulComplex(z, z)) + c;
 #endif
 
@@ -158,6 +173,12 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 
 	TYPE d = 0.5 * sqrt(dot(z, z) / dot(dz, dz)) * log(dot(z, z));
 	_MultiFrameData[idx].distance = (float)d / _Scale;
+
+	float2 norm = float2(z.x * dz.x + z.y * dz.y, z.y * dz.x - z.x * dz.y);
+	norm /= dot(dz, dz);
+	float normMag = sqrt(dot(norm, norm));
+	_MultiFrameData[idx].normX = norm.x/normMag;
+	_MultiFrameData[idx].normY = norm.y/normMag;
 	return iter;
 
 
@@ -230,4 +251,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_IterBuffer[iterId].offset = _MultiFrameData[pixelId].offset;
 	_IterBuffer[iterId].angle = _MultiFrameData[pixelId].angle;
 	_IterBuffer[iterId].distance = _MultiFrameData[pixelId].distance;
+	_IterBuffer[iterId].normX = _MultiFrameData[pixelId].normX;
+	_IterBuffer[iterId].normY = _MultiFrameData[pixelId].normY;
 }

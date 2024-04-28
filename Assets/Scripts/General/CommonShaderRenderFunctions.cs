@@ -216,10 +216,11 @@ namespace CommonShaderRenderFunctions
     public struct PixelSizes
     {
         //since it's not that big of a deal for floats and doubles, the deriviative and distance will always be stored 
-        public static int floatSize = sizeof(float) * 7 + sizeof(uint)* 2;
-        // I don't get it. For some reason there has to be place for 4 floats eaven though only 3 are used
-        public static int doubleSize = sizeof(double)* 4 + sizeof(uint)* 2 + sizeof(float)* 4;
-        public static int iter = sizeof(int) * 2 + 3 * sizeof(float);
+        //Those bonus data starts to add up, I might need to do soething with it if if causes performance issues.
+        public static int floatSize = sizeof(float) * 9 + sizeof(uint)* 2;
+        // I don't get it. For some reason there has to be place for 6 floats eaven though only 5 are used
+        public static int doubleSize = sizeof(double)* 4 + sizeof(uint)* 2 + sizeof(float)* 6;
+        public static int iter = sizeof(int) * 2 + 5 * sizeof(float);
     }
 
     class PixelizedShaders

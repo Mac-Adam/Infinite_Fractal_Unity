@@ -21,6 +21,8 @@ struct res {
 	float offset;
 	float angle;
 	float distance;
+	float normX;
+	float normY;
 }; 
 //Two buffers in caase of upscaling
 bool _Upscaling;
@@ -44,6 +46,8 @@ bool _Smooth;
 int _Type;
 // how many iterations per color
 float _ColorStrength;
+
+float _Angle;
 
 int _InterpolationType;
 
@@ -142,6 +146,42 @@ float4 getColor(res res) {
 
 
 		return lerpColors(_Colors[0],basicColor, temp, 1, false);
+	}
+	if (_Type == 11 || _Type == 12) {
+		float ambientLight = 1.75;//If set to one it is pitch black where there is no light
+		float2 light = float2(cos(_Angle), sin(_Angle));
+		float t = res.normX * light.x + res.normY * light.y + ambientLight;
+		t = t / (1 + ambientLight);
+		if (t < 0)
+		{
+			t = 0;
+		}
+
+		int baseColorIdx = (int)(floor(baseRatio) % (_ColorArrayLength - 1));
+		int upColorIdx = (int)((floor(baseRatio) + 1) % (_ColorArrayLength - 1));
+		float ratio = baseRatio % 1;
+
+
+		float4 basicColor = lerpColors(_Colors[baseColorIdx + 1], _Colors[upColorIdx + 1], ratio, _Type - 10, _Smooth);
+		float4 LightColor = lerpColors(float4(0, 0, 0, 1), _Colors[0], t, 0, false);
+
+		return lerpColors(basicColor, LightColor, 0.5, 1, false);
+			
+	}
+	if (_Type == 13 || _Type == 14) {
+		float ambientLight = 1.5;//If set to one it is pitch black where there is no light
+		float2 light = float2(cos(_Angle), sin(_Angle));
+		float t = res.normX * light.x + res.normY * light.y + ambientLight;
+		t = t / (1 + ambientLight);
+		if (t < 0)
+		{
+			t = 0;
+		}
+
+		float4 basicColor = lerpColors(_Colors[baseColorIdx], _Colors[upColorIdx], ratio, _Type - 12, _Smooth);
+
+		return lerpColors(float4(0, 0, 0, 1), basicColor, t, 0, false);
+
 	}
 
 	return lerpColors(_Colors[baseColorIdx],_Colors[upColorIdx], ratio,_Type,_Smooth);
