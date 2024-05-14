@@ -32,6 +32,7 @@
 #endif
 
 #include "Assets/Shaders/General/fpnum.cginc"
+#include "Assets/Shaders/General/bigFloats.cginc"
 
 RWTexture2D<float4> Result;
 
@@ -128,10 +129,8 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	digits offset;
 	digits middle;
 #if DIST
-	double dzX;
-	double dzY;
-	//digits dzX;
-	//digits dzY;
+	digits dzX;
+	digits dzY;
 #endif
 	//Initialize values
 	[unroll]
@@ -148,21 +147,12 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 #endif
 #if DIST
 
-
-		//This is how it was
-		//dzX.digits[j] = _MultiFrameData[idx + DerX + j];
-		//dzY.digits[j] = _MultiFrameData[idx + DerY + j];
+		dzX.digits[j] = _MultiFrameData[idx + DerX + j];
+		dzY.digits[j] = _MultiFrameData[idx + DerY + j];
 #endif
 		scale.digits[j] = _DataBuffer[Scale + j];
 		offset.digits[j] = 0;
 	}
-
-#if DIST
-	//hack
-	dzX = asdouble(asuint(_MultiFrameData[idx + DerX]), asuint(_MultiFrameData[idx + DerX + 1]));
-	dzY = asdouble(asuint(_MultiFrameData[idx + DerY]),asuint( _MultiFrameData[idx + DerY + 1]));
-
-#endif
 #if JULIA
 	if (_MultiFrameData[idx + iter] == 0) {
 		//Initialize values from cpu
@@ -226,25 +216,16 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 //This part is responsibe for calculationg iteration insert new fractals here
 #if MANDELBROT
 #if DIST
-		//turned out I need to implent floating point numbers in order to represent the derivative ( it is not confined to range close to 1)
-		// as a hack I do all the calulations on double.
-
-		//this is how it was
-		//complex zComp;
-		//zComp.x = zX;
-		//zComp.y = zY;
-		//complex dzComp;
-		//dzComp.x = dzX;
-		//dzComp.y = dzY;
-		//complex temp = mulComplex(zComp, dzComp);
-		//dzX = add(intMul(temp.x,2), setDouble(1.0));
-		//dzY =intMul( temp.y,2);
 		
-
-		//hack
-		double temp = 2 * (dzX * toDouble(zX) - dzY * toDouble(zY)) + 1.0;
-		dzY = 2 * (dzX * toDouble(zY) + dzY * toDouble(zX));
-		dzX = temp;
+		complex zComp;
+		zComp.x = zX;
+		zComp.y = zY;
+		complex dzComp;
+		dzComp.x = dzX;
+		dzComp.y = dzY;
+		complex temp = mulComplexf(zComp, dzComp);
+		dzX = addf(intMulf(temp.x,2), setDouble(1.0));
+		dzY =intMulf( temp.y,2);
 
 #endif
 
@@ -281,12 +262,9 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 			_MultiFrameData[idx + angle] = asint(atan2(toFloat(zY),toFloat(zX)));
 #if DIST
 			double2 zf = float2(toDouble(zX), toDouble(zY));
-			double2 dzf = float2(dzX, dzY);
+			double2 dzf = float2(toDoublef(dzX), toDoublef(dzY));
 			double d = 0.5 * sqrt(dot(zf, zf) / dot(dzf, dzf)) * log(dot(zf, zf));
 			_MultiFrameData[idx + distance] = asint((float)(d / toFloat(scale)));
-			/*float zMag2 = toFloat(squareX) + toFloat(squareY);
-			float dzMag2 = toFloat(dzX) * toFloat(dzX) + toFloat(dzY) * toFloat(dzY);
-			_MultiFrameData[idx + distance] = asint(0.5 * sqrt(zMag2 / dzMag2) * log(zMag2)/toFloat(scale));*/
 #else
 			_MultiFrameData[idx + distance] = asint(1000000.0); // this makes it so that if the distance estimation is turned of the image is not fully black
 #endif
@@ -304,25 +282,13 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		_MultiFrameData[idx + CurY + k] = zY.digits[k];
 	}
 
-//This is how it was
-//#if DIST
-//	for (int m = 0; m < PRECISION; m++) {
-//		_MultiFrameData[idx + DerX + m] = dzX.digits[m];
-//	}
-//	for (int n = 0; n < PRECISION; n++) {
-//		_MultiFrameData[idx + DerY + n] = dzY.digits[n];
-//	}
-//#endif
-	
-	//hack
 #if DIST
-	uint tderx1, tderx2, tdery1, tdery2;
-	asuint(dzX,tderx1,tderx2);
-	asuint(dzY,tdery1,tdery2);
-	_MultiFrameData[idx + DerX] =asint(tderx1);
-	_MultiFrameData[idx + DerX+1] = asint(tderx2);
-	_MultiFrameData[idx + DerY] = asint(tdery1);
-	_MultiFrameData[idx + DerY + 1] = asint(tdery2);
+	for (int m = 0; m < PRECISION; m++) {
+		_MultiFrameData[idx + DerX + m] = dzX.digits[m];
+	}
+	for (int n = 0; n < PRECISION; n++) {
+		_MultiFrameData[idx + DerY + n] = dzY.digits[n];
+	}
 #endif
 
 	return iter;
