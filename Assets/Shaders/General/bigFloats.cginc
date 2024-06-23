@@ -5,6 +5,8 @@
 #endif
 
 static const uint maxShift = 1000;
+#define INFSHIFT -10000 // Returned from UpdateShift when the value is zero
+
 
 //the accual numeber takes only last 16 bits in each int ( this is because when multiplying 2^16 * 2^16 you can get 2^32 so its the maximum
 //usable value for simple computation without overflow
@@ -172,12 +174,24 @@ int getShift(digits a) {
 
 int decode(inout digits a) {
 	int shift = getShift(a);
-	a.digits[0] -= (shift+maxShift) * DIGITBASE * sign(a.digits[0]);
+	if (a.digits[0] < 0) {
+		a.digits[0] += (shift + maxShift) * DIGITBASE;
+	}
+	else {
+		a.digits[0] -= (shift + maxShift) * DIGITBASE;
+	}
+	
 	return shift;
 }
 
 void encode(inout digits a, int shift) {
-	a.digits[0] += DIGITBASE * (shift+maxShift) * sign(a.digits[0]);
+	if (a.digits[0] < 0) {
+		a.digits[0] -= DIGITBASE * (shift + maxShift);
+	}
+	else {
+		a.digits[0] += DIGITBASE * (shift + maxShift);
+	}
+	
 }
 
 //used for adding and so on, matches the shifts and returns the common shift
@@ -194,18 +208,18 @@ int matchShifts(inout digits a, inout digits b)
 	for (int i = PRECISION - 1; i >= 0; i--) {
 		if (i < abs(diff)) {
 			if (diff > 0) {
-				a.digits[i] = 0;
+				b.digits[i] = 0;
 			}
 			else {
-				b.digits[i] = 0;
+				a.digits[i] = 0;
 			}
 		}
 		else {
 			if (diff > 0) {
-				a.digits[i] = a.digits[i - diff];
+				b.digits[i] = b.digits[i - diff];
 			}
 			else {
-				b.digits[i] = b.digits[i + diff];
+				a.digits[i] = a.digits[i + diff];
 			}
 
 		}
@@ -221,23 +235,36 @@ int matchShifts(inout digits a, inout digits b)
 
 //Shifts and returns the sift
 //THIS SHOULD BE USED ON DECODED NUMBER, IT DOESN'T ENCODE IT
+//BUG IS HERE
 int updateShift(inout digits a) {
-	if (abs(a.digits[0]) >= DIGITBASE) {
+	int firstAbs = abs(a.digits[0]);
+	if (firstAbs >= DIGITBASE) {
 		[unroll]
 		for (int i = PRECISION - 1; i > 0; i--) {
 			a.digits[i] = a.digits[i - 1];
 		}
-		a.digits[0] /= DIGITBASE;
-		a.digits[1] %= DIGITBASE;
+		int first = firstAbs / DIGITBASE;
+		int second = firstAbs % DIGITBASE;
+		if (a.digits[0] > 0) {
+			a.digits[0] = first;
+			a.digits[1] = second;
+		}
+		else {
+			a.digits[0] = -first;
+			a.digits[1] = -second;
+		}
+		
 		return 1;
 	}
 	int counter = 0;
 	while (counter < PRECISION && a.digits[counter] == 0) {
 		counter++;
+		if (counter >= PRECISION) {
+			break;
+		}
 	}
 	if (counter == PRECISION) {
-		//Probably should handle zeros better
-		return 0;
+		return INFSHIFT;
 	}
 	if (counter == 0) {
 		return 0;
@@ -263,7 +290,13 @@ digits intMulf(digits a, int num) {
 		a.digits[j] *= num;
 	}
 	a = Normalize(a);
-	temp += updateShift(a);
+	int uSh = updateShift(a);
+	if (uSh == INFSHIFT) {
+		temp = 0;
+	}
+	else {
+		temp += uSh;
+	}
 	encode(a, temp);
 	return a;
 }
@@ -303,7 +336,13 @@ digits subtractf(digits a, digits b) {
 
 	}
 	a = Normalize(a);
-	temp += updateShift(a);
+	int uSh = updateShift(a);
+	if (uSh == INFSHIFT) {
+		temp = 0;
+	}
+	else {
+		temp += uSh;
+	}
 	encode(a, temp);
 	return a;
 }
@@ -315,7 +354,13 @@ digits addf(digits a, digits b) {
 		a.digits[i] += b.digits[i];
 	}
 	a = Normalize(a);
-	temp += updateShift(a);
+	int uSh = updateShift(a);
+	if (uSh == INFSHIFT) {
+		temp = 0;
+	}
+	else {
+		temp += uSh;
+	}
 	encode(a, temp);
 	return a;
 }
@@ -376,7 +421,11 @@ digits multiplyf(digits a, digits b)
 	if (negate) {
 		res = Negate(res);
 	}
-	int finalShift = aSh + bSh + updateShift(res);
+	int uSh = updateShift(res);
+	int finalShift = 0;
+	if (uSh != INFSHIFT) {
+		finalShift = aSh + bSh + uSh;
+	}	
 	encode(res, finalShift);
 	return res;
 }
@@ -388,14 +437,17 @@ digits squaref(digits a) {
 //ext
 digits setDoublef(double num) {
 	digits a;
+	int shift = 0;
+	if (num != 0) {
+		shift = int(floor(log(num) / log(DIGITBASE)));
+	}
 	bool negate = false;
 	if (num < 0) {
 		negate = true;
 		num = -num;
 	}
 	double temp = num;
-
-	int shift = int(floor(log(num) / log(DIGITBASE)));
+	
 	temp /= pow(DIGITBASE, shift);
 	[unroll]
 	for (int i = 0; i < PRECISION; i++)

@@ -273,8 +273,8 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		}
 	}
 
-	//They are in separate loop bcs I read somewhrer online some time ago that this is faster
-	//Should verify the claim
+	//They are in separate loop bcs I read somewhere online some time ago that this is faster
+	//TODO: verify that claim
 	for (int l = 0; l < PRECISION; l++) {
 		_MultiFrameData[idx + CurX + l] = zX.digits[l];
 	}
