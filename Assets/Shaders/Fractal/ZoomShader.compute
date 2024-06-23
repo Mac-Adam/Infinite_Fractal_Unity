@@ -19,7 +19,7 @@ RWTexture2D<float4> Result;
 int _Precision;
 
 #if DIST
-static const int PixelSize = 4 * _Precision + 5;
+static const int PixelSize = 4 * _Precision + 7;
 #else
 static const int PixelSize = 2 * _Precision + 5;
 #endif

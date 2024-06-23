@@ -481,6 +481,16 @@ double toDoublef(digits num) {
 	return res * pow(DIGITBASE, shift);
 }
 
+digits fromFP(digits a) {
+	digits res;
+	for (int i = 0; i < PRECISION; i++) {
+		res.digits[i] = a.digits[i];
+	}
+	int temp = updateShift(res);
+	encode(res, temp);
+	return res;
+}
+
 complex mulComplexf(complex a, complex b) {
 	complex res;
 	res.x = subtractf(multiplyf(a.x, b.x), multiplyf(a.y, b.y));

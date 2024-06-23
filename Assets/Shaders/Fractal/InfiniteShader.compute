@@ -62,7 +62,9 @@ static const int finished = 4 * PRECISION + 1;
 static const int iterOffset = 4 * PRECISION + 2;
 static const int angle = 4 * PRECISION + 3;
 static const int distance = 4 * PRECISION + 4;
-static const int PixelSize = 4 * PRECISION + 5;
+static const int normX = 4 * PRECISION + 5;
+static const int normY = 4 * PRECISION + 6;
+static const int PixelSize = 4 * PRECISION + 7;
 
 #else
 static const int iter = 2 * PRECISION;
@@ -71,7 +73,6 @@ static const int iterOffset = 2 * PRECISION + 2;
 static const int angle = 2 * PRECISION + 3;
 static const int distance = 2 * PRECISION + 4;
 static const int PixelSize = 2 * PRECISION + 5;
-
 #endif
 
 
@@ -206,6 +207,15 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 	//It might have introduced some hidden bugs
 	cY = Negate(cY);
 #endif
+
+#if DIST
+	if (_MultiFrameData[idx + iter] == 0) {
+		encode(dzX, 0);
+		encode(dzY, 0);
+	}
+
+
+#endif
 	int iter = 0;
 	squareX = square(zX);
 	squareY = square(zY);
@@ -218,13 +228,13 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 #if DIST
 		
 		complex zComp;
-		zComp.x = zX;
-		zComp.y = zY;
+		zComp.x = fromFP(zX);
+		zComp.y = fromFP(zY);
 		complex dzComp;
 		dzComp.x = dzX;
 		dzComp.y = dzY;
 		complex temp = mulComplexf(zComp, dzComp);
-		dzX = addf(intMulf(temp.x,2), setDouble(1.0));
+		dzX = addf(intMulf(temp.x,2), setDoublef(1.0));
 		dzY =intMulf( temp.y,2);
 
 #endif
@@ -265,6 +275,15 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 			double2 dzf = float2(toDoublef(dzX), toDoublef(dzY));
 			double d = 0.5 * sqrt(dot(zf, zf) / dot(dzf, dzf)) * log(dot(zf, zf));
 			_MultiFrameData[idx + distance] = asint((float)(d / toFloat(scale)));
+
+			// norm = z * dz*(conjugate )
+			float2 norm =float2(zf.x*dzf.x+zf.y*dzf.y,zf.y*dzf.x-zf.x*dzf.y);
+			norm /= dot(dzf, dzf);
+			float normMag = sqrt(dot(norm, norm));
+			_MultiFrameData[idx+normX] = asint(norm.x / normMag);
+			_MultiFrameData[idx+normY] = asint(norm.y / normMag);
+
+
 #else
 			_MultiFrameData[idx + distance] = asint(1000000.0); // this makes it so that if the distance estimation is turned of the image is not fully black
 #endif
@@ -328,7 +347,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_IterBuffer[iterId].finished = _MultiFrameData[pixelId + finished];
 	_IterBuffer[iterId].offset = asfloat(_MultiFrameData[pixelId + iterOffset]);
 	_IterBuffer[iterId].angle = asfloat(_MultiFrameData[pixelId + angle]) ;
-	_IterBuffer[iterId].distance = asfloat(_MultiFrameData[pixelId + distance]);
+	_IterBuffer[iterId].distance =  asfloat(_MultiFrameData[pixelId + distance]);
+	_IterBuffer[iterId].normX = asfloat(_MultiFrameData[pixelId + normX]);
+	_IterBuffer[iterId].normY = asfloat(_MultiFrameData[pixelId + normY]);
 
 
 }
