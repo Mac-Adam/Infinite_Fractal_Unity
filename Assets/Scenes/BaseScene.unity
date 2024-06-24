@@ -345,7 +345,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29aae8a54aa57f346bf17f765f2442d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  forceInfinte: 1
+  forceInfinte: 0
   forceDouble: 0
   singleStepCompute: 0
   estimateDistance: 1
