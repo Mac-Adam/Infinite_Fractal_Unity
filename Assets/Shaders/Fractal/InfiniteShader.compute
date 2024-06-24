@@ -271,8 +271,8 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 			_MultiFrameData[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
 			_MultiFrameData[idx + angle] = asint(atan2(toFloat(zY),toFloat(zX)));
 #if DIST
-			double2 zf = float2(toDouble(zX), toDouble(zY));
-			double2 dzf = float2(toDoublef(dzX), toDoublef(dzY));
+			double2 zf = double2(toDouble(zX), toDouble(zY));
+			double2 dzf = double2(toDoublef(dzX), toDoublef(dzY));
 			double d = 0.5 * sqrt(dot(zf, zf) / dot(dzf, dzf)) * log(dot(zf, zf));
 			_MultiFrameData[idx + distance] = asint((float)(d / toFloat(scale)));
 
@@ -348,8 +348,9 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	_IterBuffer[iterId].offset = asfloat(_MultiFrameData[pixelId + iterOffset]);
 	_IterBuffer[iterId].angle = asfloat(_MultiFrameData[pixelId + angle]) ;
 	_IterBuffer[iterId].distance =  asfloat(_MultiFrameData[pixelId + distance]);
+#if DIST
 	_IterBuffer[iterId].normX = asfloat(_MultiFrameData[pixelId + normX]);
 	_IterBuffer[iterId].normY = asfloat(_MultiFrameData[pixelId + normY]);
-
+#endif
 
 }
