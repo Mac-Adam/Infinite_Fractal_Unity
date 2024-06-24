@@ -271,12 +271,21 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 			_MultiFrameData[idx + iterOffset] = getOffset(float2(toFloat(squareX), toFloat(squareY)));
 			_MultiFrameData[idx + angle] = asint(atan2(toFloat(zY),toFloat(zX)));
 #if DIST
+			//Note to future me:
+			//There was a problem that the derievative was to big to be saved in double 10^1000 and so on
+			//This esaencially splits the complex number into the magnitude and len 1 vector
+			//(not quite what is left will have some non 1 len but small enought that it can be easyli handeled)
+			// then the calculations had to be edited to take that into acount. this is basicly:
+			//distance = |z/dz|*log(z)/scale
+			//norm = unitVector(z/dz)
+			int sh = matchShifts(dzX, dzY);
 			double2 zf = double2(toDouble(zX), toDouble(zY));
-			double2 dzf = double2(toDoublef(dzX), toDoublef(dzY));
-			double d = 0.5 * sqrt(dot(zf, zf) / dot(dzf, dzf)) * log(dot(zf, zf));
-			_MultiFrameData[idx + distance] = asint((float)(d / toFloat(scale)));
+			double2 dzf = double2(toDouble(dzX), toDouble(dzY));
+			double dz_log = log(dot(zf, zf))*0.5;
+			double d = sqrt(dot(zf, zf) / dot(dzf, dzf)) * dz_log;
 
-			// norm = z * dz*(conjugate )
+			_MultiFrameData[idx + distance] = asint( (float)(d / toFloat(scale) / pow(double(DIGITBASE),sh)));
+
 			float2 norm =float2(zf.x*dzf.x+zf.y*dzf.y,zf.y*dzf.x-zf.x*dzf.y);
 			norm /= dot(dzf, dzf);
 			float normMag = sqrt(dot(norm, norm));
