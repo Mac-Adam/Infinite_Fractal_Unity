@@ -18,7 +18,7 @@
 
 int _Precision;
 #if DIST
-static const int PixelSize = 4 * _Precision + 5;
+static const int PixelSize = 4 * _Precision + 7;
 static const int DerX = 2 * _Precision;
 #else
 static const int PixelSize = 2 * _Precision + 5;

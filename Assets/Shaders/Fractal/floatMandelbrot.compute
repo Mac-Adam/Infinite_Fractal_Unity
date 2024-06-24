@@ -133,7 +133,13 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 #if MANDELBROT
 		
 #if DIST
-		dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y, z.x * dz.y + z.y * dz.x) + TYPE2(1, 0);
+		if (sqrt(dot(dz, dz)) > 10) {
+			dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y, z.x * dz.y + z.y * dz.x);// + TYPE2(1, 0);
+		}
+		else {
+			dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y, z.x * dz.y + z.y * dz.x) + TYPE2(1, 0);
+		}
+		
 #endif
 
 		z.y = 2 * z.x * z.y + c.y;
@@ -174,7 +180,9 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 	TYPE d = 0.5 * sqrt(dot(z, z) / dot(dz, dz)) * log(dot(z, z));
 	_MultiFrameData[idx].distance = (float)d / _Scale;
 
-	float2 norm = float2(z.x * dz.x + z.y * dz.y, z.y * dz.x - z.x * dz.y);
+	
+	// norm = z * dz*(conjugate )
+	float2 norm = mulComplex(z,float2(dz.x,-dz.y));
 	norm /= dot(dz, dz);
 	float normMag = sqrt(dot(norm, norm));
 	_MultiFrameData[idx].normX = norm.x/normMag;

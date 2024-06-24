@@ -104,7 +104,7 @@ namespace CommonShaderRenderFunctions
         {
             if (distance)
             {
-                return 4 * GetShaderPre() + 5;
+                return 4 * GetShaderPre() + 7;
             }
             else
             {

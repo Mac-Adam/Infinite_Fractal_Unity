@@ -1,24 +1,33 @@
 //Due to some unity bug the PRECISION can't be #pragma multi_compile'ed here
 //Define it in the file you are including it in
 
-static const uint digitBase = 46300;
+#ifndef DIGITBASE
+#define DIGITBASE 46300u
+#endif
 
 
 
+
+
+
+
+//Those fucntions are identical in both files, so they dont have to be duplicated
+#ifndef COMMON
 struct digits {
 	int digits[PRECISION];
-}; 
+};
 
 struct complex {
 	digits x;
 	digits y;
 };
 
+
 bool IsPositive(digits a) {
 	[fastopt]
 	for (int i = 0; i < PRECISION; i++) {
 		if (a.digits[i] != 0) {
-			return a.digits[i]>0;
+			return a.digits[i] > 0;
 		}
 	}
 	return true;
@@ -27,7 +36,7 @@ digits borrowUp(digits a) {
 	a.digits[0]--;
 	[unroll]
 	for (int j = 1; j < PRECISION; j++) {
-		a.digits[j] += digitBase - 1;
+		a.digits[j] += DIGITBASE - 1;
 	}
 	a.digits[PRECISION - 1]++;
 	return a;
@@ -36,17 +45,18 @@ digits borrowDown(digits a) {
 	a.digits[0]++;
 	[unroll]
 	for (int j = 1; j < PRECISION; j++) {
-		a.digits[j] -= digitBase - 1;
+		a.digits[j] -= DIGITBASE - 1;
 	}
 	a.digits[PRECISION - 1]--;
 	return a;
 }
+
 //All digits has to be the same sign
 digits normalizePositive(digits a) {
 	[unroll]
 	for (int x = PRECISION - 1; x > 0; x--) {
-		a.digits[x - 1] += a.digits[x] / digitBase;
-		a.digits[x] %= digitBase;
+		a.digits[x - 1] += a.digits[x] / DIGITBASE;
+		a.digits[x] %= DIGITBASE;
 	}
 	return a;
 }
@@ -54,13 +64,13 @@ digits normalizeNegative(digits a) {
 	[unroll]
 	for (int x = PRECISION - 1; x > 0; x--) {
 		if (a.digits[x] > 0) {
-			a.digits[x - 1] += a.digits[x] / digitBase;
+			a.digits[x - 1] += a.digits[x] / DIGITBASE;
 		}
 		else {
-			a.digits[x - 1] -= abs(a.digits[x]) / digitBase;
+			a.digits[x - 1] -= abs(a.digits[x]) / DIGITBASE;
 		}
-		
-		a.digits[x] = -(int)(abs(a.digits[x]) % digitBase);
+
+		a.digits[x] = -(int)(abs(a.digits[x]) % DIGITBASE);
 	}
 	return a;
 }
@@ -92,14 +102,8 @@ digits Negate(digits a) {
 	}
 	return a;
 }
-digits intMul(digits a, int num) {
-	for (int j = 0; j < PRECISION; j++) {
-		a.digits[j] *= num;
-	}
-	return Normalize(a);
-}
 
-digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//Multiplies shifts and normalizes
+digits PrepareForAdding(digits a, inout int bonus, int num, int shiftAmount) {//Multiplies shifts and normalizes
 	[unroll]
 	for (int j = 0; j < PRECISION; j++) {
 		a.digits[j] *= num;
@@ -124,6 +128,37 @@ digits PrepareForAdding(digits a, inout int bonus, int num,int shiftAmount) {//M
 
 	return a;
 }
+
+digits addPositives(digits a, digits b) {
+	[unroll]
+	for (int i = 0; i < PRECISION; i++) {
+		a.digits[i] += b.digits[i];
+	}
+	a = normalizePositive(a);
+	return a;
+}
+
+digits abs(digits a) {
+	if (IsPositive(a)) {
+		return a;
+	}
+	return Negate(a);
+}
+
+#define COMMON
+#endif
+
+
+
+
+digits intMul(digits a, int num) {
+	for (int j = 0; j < PRECISION; j++) {
+		a.digits[j] *= num;
+	}
+	return Normalize(a);
+}
+
+
 bool IsGreater(digits a, digits b)
 {
 	[fastopt]
@@ -152,14 +187,6 @@ digits add(digits a, digits b) {
 		a.digits[i] += b.digits[i];
 	}
 	a = Normalize(a);
-	return a;
-}
-digits addPositives(digits a, digits b) {
-	[unroll]
-	for (int i = 0; i < PRECISION; i++) {
-		a.digits[i] += b.digits[i];
-	}
-	a = normalizePositive(a);
 	return a;
 }
 
@@ -204,8 +231,8 @@ digits multiply(digits a, digits b)
 	for (int x = 0; x < PRECISION; x++) {
 		res.digits[x] = temp2.digits[x];
 	}
-	res.digits[PRECISION - 1] += bonus / digitBase;
-	if (bonus % digitBase >= digitBase / 2) {
+	res.digits[PRECISION - 1] += bonus / DIGITBASE;
+	if (bonus % DIGITBASE >= DIGITBASE / 2) {
 		res.digits[PRECISION - 1]++;
 	}
 	if (negate) {
@@ -217,12 +244,7 @@ digits square(digits a) {
 	return multiply(a, a);
 }
 
-digits abs(digits a) {
-	if (IsPositive(a)){
-		return a;
-	}
-	return Negate(a);
-}
+
 digits setDouble(double num) {
 	digits a;
 	bool negate = false;
@@ -235,7 +257,7 @@ digits setDouble(double num) {
 	for (int i = 0; i < PRECISION; i++)
 	{
 		a.digits[i] = (int)temp;
-		temp = (temp - a.digits[i]) * digitBase;
+		temp = (temp - a.digits[i]) * DIGITBASE;
 	}
 	if (negate) {
 		a = Negate(a);
@@ -253,7 +275,7 @@ bool inBounds(digits a, digits b, int r) {
 float toFloat(digits num){
 	float res = 0.0;
 	for (int i = 0; i < PRECISION; i++) {
-		res += num.digits[i] * pow(digitBase,-i);
+		res += num.digits[i] * pow(DIGITBASE,-i);
 	}
 	return res;
 }
@@ -261,7 +283,7 @@ float toFloat(digits num){
 double toDouble(digits num) {
 	double res = 0.0;
 	for (int i = 0; i < PRECISION; i++) {
-		res += num.digits[i] * pow(digitBase, -i);
+		res += num.digits[i] * pow(DIGITBASE, -i);
 	}
 	return res;
 }
