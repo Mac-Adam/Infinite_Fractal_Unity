@@ -1,15 +1,9 @@
-//Due to some unity bug the PRECISION can't be #pragma multi_compile'ed here
+//PRECISION can't be #pragma multi_compile'ed here
 //Define it in the file you are including it in
 
 #ifndef DIGITBASE
 #define DIGITBASE 46300u
 #endif
-
-
-
-
-
-
 
 //Those fucntions are identical in both files, so they dont have to be duplicated
 #ifndef COMMON
@@ -24,7 +18,7 @@ struct complex {
 
 
 bool IsPositive(digits a) {
-	[fastopt]
+	
 	for (int i = 0; i < PRECISION; i++) {
 		if (a.digits[i] != 0) {
 			return a.digits[i] > 0;
@@ -152,6 +146,7 @@ digits abs(digits a) {
 
 
 digits intMul(digits a, int num) {
+	
 	for (int j = 0; j < PRECISION; j++) {
 		a.digits[j] *= num;
 	}
@@ -161,7 +156,7 @@ digits intMul(digits a, int num) {
 
 bool IsGreater(digits a, digits b)
 {
-	[fastopt]
+	
 	for (int i = 0; i < PRECISION; i++) {
 		if (a.digits[i] > b.digits[i])
 		{
@@ -218,7 +213,7 @@ digits multiply(digits a, digits b)
 		b = Negate(b);
 		negate = true;
 	}
-	[fastopt]
+	
 	for (int i = 0; i < PRECISION; i++) {
 		[unroll]
 		for (int k = 0; k < PRECISION; k++) {
@@ -266,6 +261,7 @@ digits setDouble(double num) {
 }
 bool inBounds(digits a, digits b, int r) {
 	a = add(a, b);
+	[unroll]
 	for (int c = 0; c < PRECISION; c++) {
 		b.digits[c] = 0;
 	}
@@ -274,6 +270,7 @@ bool inBounds(digits a, digits b, int r) {
 }
 float toFloat(digits num){
 	float res = 0.0;
+	
 	for (int i = 0; i < PRECISION; i++) {
 		res += num.digits[i] * pow(DIGITBASE,-i);
 	}
@@ -282,6 +279,7 @@ float toFloat(digits num){
 
 double toDouble(digits num) {
 	double res = 0.0;
+	
 	for (int i = 0; i < PRECISION; i++) {
 		res += num.digits[i] * pow(DIGITBASE, -i);
 	}
