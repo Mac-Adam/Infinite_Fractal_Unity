@@ -79,6 +79,7 @@ uint _Register;
 
 
 
+
 float getOffset(float2 squares) {
 	float logz = log((squares.x + squares.y)) / 2.0;
 	float res = log(logz / log(_BailoutRadius));
@@ -133,13 +134,7 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 #if MANDELBROT
 		
 #if DIST
-		if (sqrt(dot(dz, dz)) > 10) {
-			dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y, z.x * dz.y + z.y * dz.x);// + TYPE2(1, 0);
-		}
-		else {
-			dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y, z.x * dz.y + z.y * dz.x) + TYPE2(1, 0);
-		}
-		
+		dz = 2.0 * TYPE2(z.x * dz.x - z.y * dz.y, z.x * dz.y + z.y * dz.x) + TYPE2(1, 0);
 #endif
 
 		z.y = 2 * z.x * z.y + c.y;
@@ -154,7 +149,7 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 #elif MANDEL3
 #if DIST
 		dz = 3.0 * mulComplex(mulComplex(z,z),dz) + TYPE2(1, 0);
-#endif
+#endif //unrolling made no or little performance difference, leaving it like that for readibility
 		z = mulComplex(z, mulComplex(z, z)) + c;
 #elif MANDEL4
 #if DIST
@@ -181,7 +176,7 @@ uint getIteration(TYPE2 possition, TYPE2 InitialZ, TYPE2 initialDer, int idx) {
 	_MultiFrameData[idx].distance = (float)d / _Scale;
 
 	
-	// norm = z * dz*(conjugate )
+	// norm = z/dz
 	float2 norm = mulComplex(z,float2(dz.x,-dz.y));
 	norm /= dot(dz, dz);
 	float normMag = sqrt(dot(norm, norm));

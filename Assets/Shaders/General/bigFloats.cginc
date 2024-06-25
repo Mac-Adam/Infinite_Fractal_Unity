@@ -237,7 +237,7 @@ int matchShifts(inout digits a, inout digits b)
 //THIS SHOULD BE USED ON DECODED NUMBER, IT DOESN'T ENCODE IT
 //BUG IS HERE
 int updateShift(inout digits a) {
-	int firstAbs = abs(a.digits[0]);
+	uint firstAbs = abs(a.digits[0]);
 	if (firstAbs >= DIGITBASE) {
 		[unroll]
 		for (int i = PRECISION - 1; i > 0; i--) {
