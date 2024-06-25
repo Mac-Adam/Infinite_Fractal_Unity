@@ -67,8 +67,8 @@ public class MandelbrotContoroler : MonoBehaviour
 
     //constanst are a starting point the other one is dynamicly set based on hardware capabilities
     int[] itersPerCycle = new int[] { 50, 10, 1 };
-    const float minTargetFramerate = 60;
-    const float maxTagretFramerate = 200;
+    const float minTargetFramerate = 45;
+    const float maxTagretFramerate = 90;
 
     Settings settings = new(true);
     DynamicSettings dynamicSettings = new();
@@ -516,13 +516,13 @@ public class MandelbrotContoroler : MonoBehaviour
             {
                 if (1 / Time.deltaTime > maxTagretFramerate)
                 {
-                    settings.iterPerCycle++;
+                    settings.iterPerCycle*=2;
                 }
                 else if (1 / Time.deltaTime < minTargetFramerate)
                 {
                     if (settings.iterPerCycle > 1)
                     {
-                        settings.iterPerCycle--;
+                        settings.iterPerCycle/=2;
                     }
 
                 }
@@ -639,6 +639,16 @@ public class MandelbrotContoroler : MonoBehaviour
             ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
             OnMoveComand();
             guiController.lastColorPalette = guiController.currColorPalette;
+            if(estimateDistance && MyColoringSystem.colorPalettes[guiController.currColorPalette].type <= 6)
+            {
+                estimateDistance = false;
+                ResetParams();
+            }
+            else if (!estimateDistance && MyColoringSystem.colorPalettes[guiController.currColorPalette].type >= 7)
+            {
+                estimateDistance = true;
+                ResetParams();
+            }
         }
 
         if (guiController.currFractal != guiController.lastFractal)

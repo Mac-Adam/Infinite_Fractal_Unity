@@ -7,7 +7,6 @@
 #pragma multi_compile BARE DIST
 
 #pragma multi_compile JULIA NORMAL
-//TODO: THIS SHADER LACKS PROPER DERIVETIVE AND DISTANCE ESTIMATION BSC IT DOES'T YET SUPPORT FLOATS
 
 #if Q_VERY_LOW
 #define PRECISION 4
@@ -105,7 +104,7 @@ struct res {
 RWStructuredBuffer<res> _IterBuffer;
 
 
-//Returning float falue as a int allows me to store all the values in one int array, the value is later converted back to float
+//Returning float value as an int allows me to store all the values in one int array, the value is later converted back to float
 int getOffset(float2 squares) {
 	float logz = log(squares.x + squares.y) / 2.0;
 	float res = log(logz / log(_BailoutRadius));
@@ -238,28 +237,40 @@ uint getIter(uint2 pixel, uint width, uint height, uint idx) {
 		dzY =intMulf( temp.y,2);
 
 #endif
-
 		zY = add(cY, multiply(add(zX,zX), zY));
 		zX = add(subtract(squareX, squareY), cX);
 #elif BURNING_SHIP
 		zY = add(cY, abs(multiply(add(zX, zX), zY)));
 		zX = add(subtract(squareX, squareY), cX);
-#elif MANDEL3 
-// Not the optimal way but it is simple to write down
-// TODO: unroll it and reduce the amount of multiplications
-		complex z;
-		z.x = zX;
-		z.y = zY;
-		z = mulComplex(mulComplex(z, z), z);
-		zX = add(z.x, cX);
-		zY = add(z.y, cY);
+#elif MANDEL3 //in this case unrolling does a lot of performance
+#if DIST
+		digits zXf = fromFP(zX);
+		digits zYf = fromFP(zY);
+		digits sqDiff = fromFP(subtract(squareX, squareY));
+		digits xy2 = multiplyf(intMulf(zXf,2),zYf);
+		digits temp = intMulf(subtractf(multiplyf(dzX,sqDiff),multiplyf(xy2,dzY)), 3);
+		dzY = intMulf(addf(multiplyf(dzY, sqDiff), multiplyf(xy2, dzX)), 3);
+		dzX = addf(temp,setDoublef(1.0));
+#endif
+
+		zX = add(multiply(zX, subtract(squareX,intMul(squareY,3))), cX);
+		zY = add(multiply(zY, subtract( intMul(squareX, 3), squareY)), cY);
 #elif MANDEL4
-		complex z;
-		z.x = zX;
-		z.y = zY;
-		z = mulComplex(mulComplex(z, z), mulComplex(z, z));
-		zX = add(z.x, cX);
-		zY = add(z.y, cY);
+#if DIST
+		complex zCubed;
+		zCubed.x = fromFP(multiply(zX, subtract(squareX, intMul(squareY, 3))));
+		zCubed.y = fromFP(multiply(zY, subtract(intMul(squareX, 3), squareY)));
+		complex dzC;
+		dzC.x = dzX;
+		dzC.y = dzY;
+		complex tempD = mulComplexf(zCubed, dzC);
+		dzX = addf(intMulf(tempD.x, 4), setDoublef(1.0));
+		dzY = intMulf(tempD.y, 4);
+#endif
+
+		digits temp = subtract(add(square(squareX), square(squareY)), intMul(multiply(squareX, squareY), 6));
+		zY = add(intMul(multiply(multiply(zX, zY), subtract(squareX, squareY)), 4), cY);
+		zX = add(temp, cX);
 #endif
 
 		squareX = square(zX);
