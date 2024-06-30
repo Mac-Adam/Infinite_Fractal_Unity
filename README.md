@@ -2,20 +2,27 @@
 
 ![Main](./ScreenShots/2.png)
 
+Hi, this is my most complex project so far. Enjoy!
+For a general overview read this file.
+For some cool renders view the ScreenShots folder.
+For a user manual read MANUAL.md (highly recomended if you plan to have some fun with it).
+For a more in depth description of the inner workings read DOC.md
+
 ## What Are Fractals?
 
 To put it simply fractals are mathematical shapes containing infinite detail.
-This detail can be achieved In many different ways. Some fractals are self similar.
-Some never repeat. Mandelbrot set is Quasi self similar.
+This detail can be achieved in many different ways. 
+Some fractals are self similar. For example Sierpiński triangle.
+Some never repeat.
+Mandelbrot set is Quasi self similar.
 This means that after you zoom in far enough you will find copies of the original set,
-they will never be identical thought, this can be seen in the image above
-(this is one of the copies found in the "tip" on the negative real number line)
+they will never be identical thought.
 
 ## How is it generated?
 
 Mandelbrot set is a fractal that lives in the realm of [complex numbers](https://en.wikipedia.org/wiki/Complex_number).
 Each pixel on the screen is assigned a number based on its position.
-Horizontal axis is responsible for the real part while Vertical axis is responsible for imaginary part.
+Horizontal axis represents the real part while Vertical axis represents the imaginary part.
 Once a pixel is assigned it's number $c$ We define a series
 $$z_{n+1} = z_{n}^{2} + c$$
 $$z_{0} = 0$$
@@ -24,7 +31,7 @@ If this series diverges to infinity this pixel is colored if it stays low it is 
 ## Where do the colors come from?
 
 If the $|z| > 4$ we can be sure that the series diverges, we can therefore stop the computation and get the iteration count.
-In order to smooth out the gradient the $|z|$ is taken into account.
+The exact value of $|z|$ and the derievative is also taken into account.
 Using this data, color is calculated using a [CIELAB or CIELCh](https://en.wikipedia.org/wiki/CIELAB_color_space) color space.
 
 ## What distinguishes this app from a typical fractal generator?
@@ -44,16 +51,19 @@ for example 1.256 would be represented by [1,2,4,6].
 For this case numbers are centered around 1 so we can assume the dot is always after the first number.
 Typical long addition, subtraction and multiplication algorithms can be applied.
 Numbers of type int can be much larger than 10 so the numbers are not base 10, they are base 46300.
-Obviously this comes with a cost, computers are optimized to multiply numbers in float format, not this kind of format,
+Obviously this comes with a cost, GPUs are optimized to multiply numbers in float format, not this kind of format,
 This makes this kind of representation slower.
 
 ### How does this program fight computation time?
 
+As you zoom in, the computation time required incresees. For small zooms the frame can be generated in miliseconds, for extreme zooms the frame can be generated in hours. For this reasons, I ve taken some steps so that the experience of deep zooms is as smooth as possible.
+
+
 #### Real time rendering
 
 ![Real Time Rendering](./ScreenShots/1.gif)
-Each frame only a tiny amount of iterations are made per pixel,
-this means that even thought the whole frame can take a few seconds to render,
+Rendering and calculations is separated, therefore you can watch in real time how the image is created.
+This means that even thought the whole frame can take a few seconds to render,
 the program will always run smooth and never stutter.
 
 #### Salvaging information from previous renders
@@ -65,32 +75,36 @@ When you decide to move the image, data about already generated pixels is preser
 
 ![Pixels](./ScreenShots/3.png)
 If you want to dive deep into the fractal rendering each image on the way in full resolution is time consuming.
-3 buttons can help you with that:
-
-- I immediately zooms in while decreasing render resolution
-- U starts upcasing the image behind the scene and gradually puts it on screen
-- O immediately zooms out increasing render resolution
+Therefore the images can be rendered in lower resolution for a preview.
 
 ## Features
 
 ### Implemented
 
-- Mandelbrot Set
+- Mandelbrot Set, Burning Ship, Mandelbrot 3rd and 4th power
+- Julia Sets
 - Infinite zoom (Not really because of the build times e-100 should be possible in current version)
 - Various performance enhancements
+- Rendering in Tiles
 - Simple gui
 - Antyaliasing
 - Video Rendering
+- Distance Estimation
+- Normal Mapping with 1st derivative
+- Texture mapping
 
-### Planned
+
+### The Future
+
+This will probably be the last revision of the program.
+This are some fatures that could be added:
 
 - Other fractals
 - Better gui
 - Performance boost
-- Fixing known bugs
-- Finding unknown bugs
-- More control over colors
-- More render options
+- Color control via gui
+- Animated Julia Sets
+- Generating a fractal based on a provided shape
 
 ## How to use this app properly
 
@@ -150,18 +164,3 @@ I created a simple blender macro that allows to create this video in blender wit
 
 finished video will be saved to /renders folder
 
-## Gallery
-
-<p float="center">
-  <img src="./ScreenShots/1.png"  width="45%" height="45%">
-  <img src="./ScreenShots/4.png"  width="45%" height="45%">
-  
-<p float="center">
-  <img src="./ScreenShots/5.png"  width="45%" height="45%">
-  <img src="./ScreenShots/8.png"  width="45%" height="45%">
-</p>
-
-<p float="center">
-  <img src="./ScreenShots/9.png"  width="45%" height="45%">
-  <img src="./ScreenShots/10.png"  width="45%" height="45%">
-</p>
