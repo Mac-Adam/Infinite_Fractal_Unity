@@ -73,6 +73,13 @@ public class MandelbrotContoroler : MonoBehaviour
     Settings settings = new(true);
     DynamicSettings dynamicSettings = new();
 
+
+
+    public float param1;
+    public float param2;
+    public float param3;
+
+
     void ResetIterPerCycle()
     {
         settings.iterPerCycle = Math.Clamp( itersPerCycle[(int)settings.precision]*OtherFunctions.IntPow(2,settings.frankensteinSteps),0,guiController.maxIter);
@@ -316,6 +323,8 @@ public class MandelbrotContoroler : MonoBehaviour
     }
     public void SetShadersParameters()
     {
+
+        ResetParams();
        
         //debug only
         if (singleStepCompute)
@@ -455,6 +464,10 @@ public class MandelbrotContoroler : MonoBehaviour
         shader.SetInt("_FrankensteinOffsetX", settings.frankensteinX * settings.ReducedWidth());
         shader.SetInt("_FrankensteinOffsetY", settings.frankensteinY * settings.ReducedHeight());
 
+
+        shader.SetFloat("param1", param1);
+        shader.SetFloat("param2", param2);
+        shader.SetFloat("param3", param3);
 
         ShiftShader.SetInt("_Register", settings.register);
         ShiftShader.SetInt("_ShiftX", dynamicSettings.shiftX);
