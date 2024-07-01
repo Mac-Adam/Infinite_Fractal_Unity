@@ -5,13 +5,13 @@
 Hi, this is my most complex project so far. Enjoy!
 For a general overview read this file.
 For some cool renders view the ScreenShots folder.
-For a user manual read MANUAL.md (highly recomended if you plan to have some fun with it).
-For a more in depth description of the inner workings read DOC.md
+For a user manual read [MANUAL.md](MANUAL.md) (highly recommended if you plan to have some fun with it).
+For a more in depth description of the inner workings read [DOC.md](DOC.md)
 
 ## What Are Fractals?
 
 To put it simply fractals are mathematical shapes containing infinite detail.
-This detail can be achieved in many different ways. 
+This detail can be achieved in many different ways.
 Some fractals are self similar. For example Sierpiński triangle.
 Some never repeat.
 Mandelbrot set is Quasi self similar.
@@ -31,7 +31,7 @@ If this series diverges to infinity this pixel is colored if it stays low it is 
 ## Where do the colors come from?
 
 If the $|z| > 4$ we can be sure that the series diverges, we can therefore stop the computation and get the iteration count.
-The exact value of $|z|$ and the derievative is also taken into account.
+The exact value of $|z|$ and the derivative is also taken into account.
 Using this data, color is calculated using a [CIELAB or CIELCh](https://en.wikipedia.org/wiki/CIELAB_color_space) color space.
 
 ## What distinguishes this app from a typical fractal generator?
@@ -56,8 +56,7 @@ This makes this kind of representation slower.
 
 ### How does this program fight computation time?
 
-As you zoom in, the computation time required incresees. For small zooms the frame can be generated in miliseconds, for extreme zooms the frame can be generated in hours. For this reasons, I ve taken some steps so that the experience of deep zooms is as smooth as possible.
-
+As you zoom in, the computation time required increases. For small zooms the frame can be generated in milliseconds, for extreme zooms the frame can be generated in hours. For this reasons, I ve taken some steps so that the experience of deep zooms is as smooth as possible.
 
 #### Real time rendering
 
@@ -93,74 +92,15 @@ Therefore the images can be rendered in lower resolution for a preview.
 - Normal Mapping with 1st derivative
 - Texture mapping
 
-
 ### The Future
 
 This will probably be the last revision of the program.
-This are some fatures that could be added:
+This are some futures that could be added:
 
 - Other fractals
+- Optimizing targeted at video generation
 - Better gui
 - Performance boost
 - Color control via gui
 - Animated Julia Sets
 - Generating a fractal based on a provided shape
-
-## How to use this app properly
-
-### Basic Functions
-
-Basic functionality including panning and zooming can be controlled via your mouse
-In order to pan just press the left mouse button and move your mouse
-In order to zoom in scroll up and in order to zoom out scroll down
-
-### Proper Navigation
-
-Zooming with the scroll wheel is inefficient, because after each scale change whole image has to be rerendered.
-In order to navigate smoothly use those keys:
-
-- I immediately zooms in while decreasing render resolution
-- U starts upcasing the image behind the scene and gradually puts it on screen
-- O immediately zooms out increasing render resolution
-  If you ever get lost what resolution you are rendering in check the GUI that can be opened by pressing G
-
-### Visual Settings
-
-Before you get the perfect image, tweak the render setting to your liking:
-
-- color theme allows you to change the colors
-- max Iterations increases precision ( but it also increases render time )
-- color strength controls how wide a color stripe is ( increase this setting if the image is "glitchy" )
-
-### Screenshots and Video
-
-Pressing S key allows you to take a screenshot.
-Use it instead of print screen or any other way for those reasons:
-
-- GUI will always be hidden on screenshots taken this way
-- You can increase the resolution above your screen resolution and render an image in 4K or more
-
-Pressing Z key starts a video capture procedure.
-
-the procedure is automatic and doesn't require any other input.
-if you insert a move command like zoom or pan the procedure stops!
-It will capture a set of frames later used to render a video out of it.
-Make sure that the render resolution is double the resolution of the video you want to have
-
-Every screenshot and frame will be saved in /renders folder
-
-#### Automatic video rendering with blender
-
-After you captured your frames you can compose them into a video with any video editing software you'd like.
-I created a simple blender macro that allows to create this video in blender with just a few clicks.
-
-- Open Blender Video Editor
-- Open the text editor window (shift F11)
-- Open the /blenderMacro/createVideo.py file in it
-- Make sure that every image in the /renders folder is meant for the video ( delete or move old ones )
-- ( optional ) Tweak setting to your linking by altering the two variables fps and frames per image
-- ( optional ) Open console to see the progress
-- run the macro with the run script button ( alt P )
-
-finished video will be saved to /renders folder
-
