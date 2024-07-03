@@ -213,8 +213,8 @@ public class GuiController : MonoBehaviour
             new SliderTemplate(
                 "Max Iterations",
                 maxIter,
-                1,
-                100000,
+                100,
+                10000000,
                 true,
                 (float f)=> SetMaxIter(Mathf.FloorToInt(f))
                 ),
