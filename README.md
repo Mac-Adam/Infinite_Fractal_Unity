@@ -1,6 +1,6 @@
 # Fractal Generator
 
-![Main](./ScreenShots/2.png)
+![Main](./ScreenShots/Mandel_fullHd.png)
 
 Hi, this is my most complex project so far. Enjoy!
 For a general overview read this file.

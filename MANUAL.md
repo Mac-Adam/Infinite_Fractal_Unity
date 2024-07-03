@@ -2,6 +2,8 @@
 
 I tried to make this app as intuitive as possible.
 That said, it might be not be clear how to take advantage of the implemented features.
+Sometimes you might break the app by messing with the options. The fix is simple.
+**CLICK THE "R" BUTTON** to start the render correctly. It has always worked for me so if you found a bug not fixed by it, good job.
 
 ### Basic Functions
 
@@ -62,7 +64,7 @@ Your milage may vary, but try to keep resolution of a single tile at:
 - 4K/fullHD for double
 - half less for each precision increase.
 
-#### Automatic video rendering with blender
+### Automatic video rendering with blender
 
 After you captured your frames you can compose them into a video with any video editing software you'd like.
 I created a simple blender macro that allows to create this video in blender with just a few clicks.
@@ -81,3 +83,13 @@ You can comment the last line in the gen_video function to only set up the rende
 
 In short the video will be comprised of still images made at double the zoom. Zooming in at constant speed and then swapping the image for the new one. The swap is mostly seamless though you might see some small artifacts.
 Unfortunately images made using the "Distance" color palettes are not compatible with the video generation.
+
+### Some known "bugs"
+
+In this section I will describe a few known "bugs" that you might encounter.
+Most of them are features that could cause problems if abused.
+
+- The maxIter slider is log scale. This means that if you move it just slightly the computation time will not increase linearly, it will increase exponentially. For this reason if you slide it to far the render might never finish. Use it with caution.
+- Changing colors when using antyaliasing, sometimes will yeld weird results. Click R to fix it
+- Super high tiling will slow down the render if unnecessary (this will occur when you do a video render. After some frames have been generated, and the zoom decreased) you can just change the tiling to speed it up
+- Increasing the resolution too much without sufficient tiling may crash the program (Precision level > 2 with distance estimation or normal map)
