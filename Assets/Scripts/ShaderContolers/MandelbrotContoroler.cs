@@ -106,9 +106,13 @@ public class MandelbrotContoroler : MonoBehaviour
         }
     }
 
-    void OnMoveComand()
+    void OnMoveComand(bool skipReset = false)
     {
         settings.zoomVideo = false;
+        if (skipReset)
+        {
+            return;
+        }
         if (settings.frankensteinRendering)
         {
             ResetParams();
@@ -637,7 +641,7 @@ public class MandelbrotContoroler : MonoBehaviour
         {
             ColorBuffer.Dispose();
             ColorBuffer = new ComputeBuffer(MyColoringSystem.colorPalettes[guiController.currColorPalette].length, 4 * sizeof(float));
-            OnMoveComand();
+            OnMoveComand(true);
             guiController.lastColorPalette = guiController.currColorPalette;
             if(estimateDistance && MyColoringSystem.colorPalettes[guiController.currColorPalette].type <= 6)
             {
